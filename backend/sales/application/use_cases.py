@@ -48,9 +48,16 @@ class CompleteSaleUseCase:
                 discount = calculate_discount(
                     item.unit_price, item.quantity, item.discount_type, item.discount_value
                 )
+
+            product_name = item.product_name
+            if not product_name:
+                product = self._catalog.get_product(item.product_id)
+                if product is not None:
+                    product_name = str(product.get("name") or "")
+
             line = SaleLine(
                 product_id=item.product_id,
-                product_name=item.product_name,
+                product_name=product_name,
                 quantity=item.quantity,
                 unit_price=item.unit_price,
                 unit_cost=item.unit_cost,

@@ -104,6 +104,20 @@ def test_sale_without_stock_returns_400(api_client, cashier_user, product):
 
 
 @pytest.mark.django_db
+def test_sale_line_uses_the_catalog_product_name_when_omitted(
+    api_client, cashier_user, stocked_product
+):
+    api_client.force_authenticate(user=cashier_user)
+    payload = _payload(stocked_product.id)
+    del payload["lines"][0]["product_name"]
+
+    response = api_client.post("/api/v1/sales/", payload, format="json")
+
+    assert response.status_code == 201, response.data
+    assert response.data["lines"][0]["product_name"] == "Rice 5kg"
+
+
+@pytest.mark.django_db
 def test_cashier_cannot_refund(api_client, cashier_user, stocked_product):
     api_client.force_authenticate(user=cashier_user)
     sale = api_client.post("/api/v1/sales/", _payload(stocked_product.id), format="json")
