@@ -2,18 +2,17 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation } from '@tanstack/react-query';
-import { completeSale, CartItem } from '../api/pos';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { completeSale, CompleteSaleRequest, PaymentInput, CartItem } from '../api/pos';
 import { queueSale } from '../offline/saleQueue';
 import { isNetworkError } from '../offline/networkError';
+import { getApiErrorMessage } from '../../../shared/http/errors';
+import { formatMoney } from '../../../shared/utils/money';
 import { Modal } from '../../../shared/ui/Modal';
 import { Button } from '../../../shared/ui/Button';
 
 const paymentSchema = z.object({
-  method: z.enum(['cash', 'mobile_money', 'card', 'bank_transfer']),
   tendered: z.string().optional(),
-  reference: z.string().optional(),
-  provider: z.string().optional(),
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
@@ -32,30 +31,33 @@ interface PaymentModalProps {
 }
 
 export function PaymentModal({ isOpen, onClose, items, total, onComplete }: PaymentModalProps) {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<PaymentFormData>({
+  const { register, handleSubmit, watch } = useForm<PaymentFormData>({
     resolver: zodResolver(paymentSchema),
-    defaultValues: { method: 'cash' },
+    defaultValues: { tendered: '' },
   });
-
-  const method = watch('method');
+  const queryClient = useQueryClient();
   const [result, setResult] = useState<PaymentResult | null>(null);
+
+  const tenderedInput = watch('tendered') ?? '';
+  const tenderedValue = parseFloat(tenderedInput);
+  const hasTendered = tenderedInput.trim() !== '' && Number.isFinite(tenderedValue);
+  const shortfall = hasTendered && tenderedValue < total;
+  const change = hasTendered && tenderedValue >= total ? tenderedValue - total : 0;
 
   const mutation = useMutation({
     mutationFn: async (data: PaymentFormData): Promise<PaymentResult> => {
-      const payload = {
+      const payment: PaymentInput = { method: 'cash', amount: total.toFixed(2) };
+      const tendered = data.tendered?.trim();
+      if (tendered) payment.tendered = Number(tendered).toFixed(2);
+
+      const payload: CompleteSaleRequest = {
         lines: items.map((i) => ({
           product_id: i.product_id,
           quantity: i.quantity,
           unit_price: i.unit_price,
           unit_cost: i.unit_cost,
         })),
-        payments: [{
-          method: data.method,
-          amount: total.toFixed(2),
-          tendered: data.tendered,
-          reference: data.reference,
-          provider: data.provider,
-        }],
+        payments: [payment],
         idempotency_key: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       };
 
@@ -70,7 +72,10 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
         throw error;
       }
     },
-    onSuccess: (completed) => setResult(completed),
+    onSuccess: (completed) => {
+      setResult(completed);
+      queryClient.invalidateQueries();
+    },
   });
 
   if (result) {
@@ -117,62 +122,50 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit((data) => mutation.mutate(data))} disabled={mutation.isPending}>
+          <Button
+            onClick={handleSubmit((data) => mutation.mutate(data))}
+            disabled={mutation.isPending || shortfall}
+          >
             {mutation.isPending ? 'Processing...' : 'Complete Sale'}
           </Button>
         </>
       }
     >
       <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
-        <div>
-          <label className="label">Payment Method</label>
-          <div className="grid grid-cols-2 gap-2">
-            {(['cash', 'mobile_money', 'card', 'bank_transfer'] as const).map((m) => (
-              <label
-                key={m}
-                className={`flex items-center gap-2 rounded border px-3 py-2 cursor-pointer transition-colors ${
-                  method === m ? 'border-primary-500 bg-primary-50' : 'border-surface-200 hover:bg-surface-50'
-                }`}
-              >
-                <input type="radio" value={m} {...register('method')} className="sr-only" />
-                <span className="text-sm capitalize">{m.replace('_', ' ')}</span>
-              </label>
-            ))}
+        <div className="rounded-lg bg-surface-50 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-surface-500">Amount due</span>
+            <span className="text-xl font-semibold text-surface-600">{formatMoney(total)}</span>
           </div>
+          <p className="mt-1 text-xs text-surface-400">Cash payment</p>
         </div>
 
-        {method === 'cash' && (
-          <div>
-            <label className="label">Amount Tendered</label>
-            <input
-              type="number"
-              step="0.01"
-              {...register('tendered')}
-              className="input"
-              placeholder={total.toFixed(2)}
-            />
-            {errors.tendered && <p className="mt-1 text-xs text-error">{errors.tendered.message}</p>}
-          </div>
-        )}
-
-        {(method === 'mobile_money' || method === 'card' || method === 'bank_transfer') && (
-          <>
-            {method === 'mobile_money' && (
-              <div>
-                <label className="label">Provider</label>
-                <input {...register('provider')} className="input" placeholder="e.g. MTN, Airtel" />
-              </div>
-            )}
-            <div>
-              <label className="label">Reference</label>
-              <input {...register('reference')} className="input" placeholder="Transaction reference" />
+        <div>
+          <label className="label">Amount Tendered</label>
+          <input
+            type="number"
+            step="0.01"
+            inputMode="decimal"
+            {...register('tendered')}
+            className="input"
+            placeholder={total.toFixed(2)}
+          />
+          {shortfall && !mutation.error && (
+            <p className="mt-1 text-xs text-error">
+              Tendered is less than the amount due.
+            </p>
+          )}
+          {change > 0 && (
+            <div className="mt-2 flex items-center justify-between rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+              <span>Change</span>
+              <span className="font-semibold">{formatMoney(change)}</span>
             </div>
-          </>
-        )}
+          )}
+        </div>
 
         {mutation.error && (
           <div className="rounded bg-red-50 px-3 py-2 text-sm text-error">
-            {(mutation.error as Error).message}
+            {getApiErrorMessage(mutation.error)}
           </div>
         )}
       </form>
