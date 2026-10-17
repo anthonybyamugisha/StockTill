@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: stocktill
+      POSTGRES_USER: stocktill
+      POSTGRES_PASSWORD: stocktill
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stocktill"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://stocktill:stocktill@db:5432/stocktill
+      DJANGO_SECRET_KEY: dev-secret-key-change-in-production
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DEBUG: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:8000/api/v1
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
