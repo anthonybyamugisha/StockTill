@@ -91,8 +91,7 @@ StockTill/
 ├─ deploy/                                         backup.sh · restore.sh · env.template
 ├─ docker-compose.yml                              Local dev stack (api · db · web)
 ├─ Makefile                                        up · test · lint · typecheck
-├─ render.yaml                                     Render blueprint (production API)
-└─ main.tex                                        Competition write-up
+├─ render.yaml                                     Render blueprint                               
 ```
 
 ## Development
