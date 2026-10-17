@@ -16,10 +16,29 @@ export function formatDateTime(isoString: string): string {
   });
 }
 
-export function todayISO(): string {
-  return new Date().toISOString().split('T')[0];
+export function toISODate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
-export function daysAgoISO(days: number): string {
-  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+export function todayISO(now: Date = new Date()): string {
+  return toISODate(now);
+}
+
+export function daysAgoISO(days: number, now: Date = new Date()): string {
+  return toISODate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - days));
+}
+
+export function monthStartISO(now: Date = new Date()): string {
+  return toISODate(new Date(now.getFullYear(), now.getMonth(), 1));
+}
+
+export function formatShortDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-UG', {
+    day: 'numeric',
+    month: 'short',
+  });
 }
