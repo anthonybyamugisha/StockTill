@@ -28,3 +28,14 @@ class CreateUserSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+
+
+class AuditLogSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    user_id = serializers.UUIDField(allow_null=True)
+    action = serializers.CharField()
+    entity_type = serializers.CharField()
+    entity_id = serializers.CharField()
+    before = serializers.JSONField(allow_null=True)
+    after = serializers.JSONField(allow_null=True)
+    timestamp = serializers.DateTimeField()

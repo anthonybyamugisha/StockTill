@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -23,7 +23,7 @@ class AuditEntry:
         self.entity_id = entity_id
         self.before = before
         self.after = after
-        self.timestamp = timestamp or datetime.utcnow()
+        self.timestamp = timestamp or datetime.now(UTC)
 
 
 class AuditRepository(ABC):
@@ -71,3 +71,9 @@ class AuditRecorder:
                 after=after,
             )
         )
+
+
+def build_audit_recorder() -> AuditRecorder:
+    from accounts.infrastructure.audit_repository import DjangoAuditRepository
+
+    return AuditRecorder(DjangoAuditRepository())

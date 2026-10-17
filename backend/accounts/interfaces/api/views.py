@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from rest_framework import status
@@ -16,14 +18,23 @@ from accounts.application.use_cases import (
     UpdateUserUseCase,
 )
 from accounts.domain.entities import Role
+from accounts.infrastructure.audit_repository import DjangoAuditRepository
 from accounts.infrastructure.password_hasher import DjangoPasswordHasher
 from accounts.infrastructure.repository import DjangoUserRepository
 from accounts.interfaces.api.permissions import IsAdmin
 from accounts.interfaces.api.serializers import (
+    AuditLogSerializer,
     CreateUserSerializer,
     LoginSerializer,
     UserSerializer,
 )
+
+
+def _optional_uuid(value):
+    try:
+        return UUID(value) if value else None
+    except (TypeError, ValueError):
+        return None
 
 
 class UserListCreateView(APIView):
@@ -135,21 +146,11 @@ class AuditLogView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        from accounts.infrastructure.models import AuditLogModel
-
-        entries = AuditLogModel.objects.all().order_by("-timestamp")[:100]
-        return Response(
-            [
-                {
-                    "id": str(e.id),
-                    "user_id": str(e.user_id) if e.user_id else None,
-                    "action": e.action,
-                    "entity_type": e.entity_type,
-                    "entity_id": e.entity_id,
-                    "before": e.before,
-                    "after": e.after,
-                    "timestamp": e.timestamp.isoformat(),
-                }
-                for e in entries
-            ]
+        entries = DjangoAuditRepository().list_entries(
+            user_id=_optional_uuid(request.query_params.get("user_id")),
+            entity_type=request.query_params.get("entity_type") or None,
+            action=request.query_params.get("action") or None,
+            date_from=request.query_params.get("date_from") or None,
+            date_to=request.query_params.get("date_to") or None,
         )
+        return Response(AuditLogSerializer(entries[:100], many=True).data)
