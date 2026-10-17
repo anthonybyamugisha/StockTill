@@ -7,6 +7,7 @@ import { Badge } from '../../../shared/ui/Badge';
 import { Table } from '../../../shared/ui/Table';
 import { Modal } from '../../../shared/ui/Modal';
 import { Input } from '../../../shared/ui/Input';
+import { Select } from '../../../shared/ui/Select';
 import { formatDateTime } from '../../../shared/utils/date';
 
 export function SalesPage() {

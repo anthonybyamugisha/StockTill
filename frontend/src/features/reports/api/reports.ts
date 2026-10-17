@@ -23,6 +23,34 @@ export interface DailySales {
   total: string;
 }
 
+export interface SalesByPaymentMethod {
+  method: string;
+  count: number;
+  total: string;
+}
+
+export interface CashierSales {
+  cashier_id: string;
+  cashier_name: string;
+  transaction_count: number;
+  total: string;
+}
+
+export interface ProfitReport {
+  date: string;
+  total_revenue: string;
+  total_cost: string;
+  gross_profit: string;
+}
+
+export interface LowStockItem {
+  product_id: string;
+  product_name: string;
+  sku: string;
+  quantity_on_hand: number;
+  minimum_level: number;
+}
+
 export async function getSalesSummary(dateFrom: string, dateTo: string): Promise<SalesSummary> {
   const res = await apiClient.get<SalesSummary>('/reporting/sales-summary/', {
     params: { date_from: dateFrom, date_to: dateTo },
@@ -41,5 +69,31 @@ export async function getDailySales(dateFrom: string, dateTo: string): Promise<D
   const res = await apiClient.get<DailySales[]>('/reporting/daily-sales/', {
     params: { date_from: dateFrom, date_to: dateTo },
   });
+  return res.data;
+}
+
+export async function getSalesByPaymentMethod(dateFrom: string, dateTo: string): Promise<SalesByPaymentMethod[]> {
+  const res = await apiClient.get<SalesByPaymentMethod[]>('/reporting/by-payment-method/', {
+    params: { date_from: dateFrom, date_to: dateTo },
+  });
+  return res.data;
+}
+
+export async function getCashierSales(dateFrom: string, dateTo: string): Promise<CashierSales[]> {
+  const res = await apiClient.get<CashierSales[]>('/reporting/cashier-sales/', {
+    params: { date_from: dateFrom, date_to: dateTo },
+  });
+  return res.data;
+}
+
+export async function getProfitReport(dateFrom: string, dateTo: string): Promise<ProfitReport[]> {
+  const res = await apiClient.get<ProfitReport[]>('/reporting/profit/', {
+    params: { date_from: dateFrom, date_to: dateTo },
+  });
+  return res.data;
+}
+
+export async function getLowStockItems(): Promise<LowStockItem[]> {
+  const res = await apiClient.get<LowStockItem[]>('/reporting/low-stock/');
   return res.data;
 }

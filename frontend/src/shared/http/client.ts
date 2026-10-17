@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 const baseURL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -10,7 +10,7 @@ export const apiClient = axios.create({
   },
 });
 
-apiClient.interceptors.request.use((config) => {
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const csrfToken = document.cookie
     .split('; ')
     .find((row) => row.startsWith('csrftoken='))
@@ -22,9 +22,9 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  (response: AxiosResponse) => response,
+  (error: unknown) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
       window.location.href = '/login';
     }
     return Promise.reject(error);

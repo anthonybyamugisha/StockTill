@@ -5,7 +5,6 @@ import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Modal } from '../../../shared/ui/Modal';
 import { Input } from '../../../shared/ui/Input';
-import { Select } from '../../../shared/ui/Select';
 import { Table } from '../../../shared/ui/Table';
 import { Badge } from '../../../shared/ui/Badge';
 
