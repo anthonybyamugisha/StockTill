@@ -93,8 +93,8 @@ StockTill is a browser-based Point of Sale (POS) and inventory management system
 retail shops. It is delivered as a \emph{modular monolith} backend written in Python 3.12
 (Django~5 and Django REST Framework) and a single-page React/TypeScript frontend. The system
 is architected with \textbf{Domain-Driven Design} (DDD) and \textbf{Clean Architecture}, and it is
-developed with a \textbf{Test-Driven Development} (TDD) discipline backed by an automated CI
-quality gate. The report explains the domain model, the enforced dependency rules, the testing
+developed with a \textbf{Test-Driven Development} (TDD) discipline backed by an automated
+quality-gate suite. The report explains the domain model, the enforced dependency rules, the testing
 strategy, the security controls, the database schema, the technology stack, and the deployment
 topology, and it maps the implementation against the competition's judging criteria.
 \end{abstract}
@@ -344,7 +344,7 @@ Interfaces & Delivery/entry points & DRF views, serializers, permission classes,
 \subsection{The dependency rule and its automated enforcement}
 
 The inviolable dependency rule is: \emph{source code dependencies only point inward}. This is not a
-convention we ask developers to remember --- it is \textbf{verified in CI} by
+convention we ask developers to remember --- it is \textbf{verified automatically} by
 \texttt{import-linter}, configured in \texttt{backend/pyproject.toml}:
 
 \begin{lstlisting}[language=Python,caption={Architecture contracts enforced by import-linter (excerpt).}]
@@ -562,10 +562,11 @@ scenarios cover login success, login failure, and completing a sale. Deepening t
 suite in the catalog, inventory and sales contexts is the top item on the quality roadmap
 (Section~\ref{sec:limitations}); the architecture is designed so those tests are cheap to add.
 
-\subsection{Continuous integration quality gate}
+\subsection{Automated quality gates}
 
-Every push and pull request runs \texttt{GitHub Actions} (`.github/workflows/ci.yml`) with a
-PostgreSQL~16 service. The backend job enforces:
+A single command (a \texttt{make} target) runs the full quality-gate suite before every push, and the
+same commands are reproduced verbatim in the README so any reviewer can run them locally. The
+backend gates are:
 
 \begin{enumerate}[leftmargin=1.4em]
   \item \textbf{Lint/format}: \texttt{ruff check} and \texttt{ruff format --check}.
@@ -573,12 +574,13 @@ PostgreSQL~16 service. The backend job enforces:
   domain and application layers; the adapter and interface modules that bind to Django and DRF are
   excluded from the strict gate but remain linted and tested.
   \item \textbf{Architecture}: \texttt{lint-imports} (import-linter) --- fails on any dependency-rule breach.
-  \item \textbf{Tests}: \texttt{pytest} with coverage.
+  \item \textbf{Tests}: \texttt{pytest} with coverage, against the same PostgreSQL~16 engine used in
+  production (an in-memory SQLite database can be substituted for speed during development).
 \end{enumerate}
 
-The frontend job runs \texttt{tsc --noEmit}, the test suite, and a production build. The pipeline
-therefore encodes three of the project's core values --- clean architecture, type safety, and tests ---
-as non-negotiable gates.
+The frontend gates are \texttt{tsc --noEmit}, the Vitest suite, and a production build. Together these
+encode three of the project's core values --- clean architecture, type safety, and tests --- as
+reproducible, non-negotiable steps that must pass before code is deployed.
 
 % ===========================================================================
 \section{Security and Access Control}
@@ -794,7 +796,7 @@ Styling & Tailwind CSS \\
 Routing & React Router \\
 Backend testing & pytest, pytest-django, pytest-cov (plus factory\_boy, hypothesis provisioned) \\
 Frontend testing & Vitest; Playwright for end-to-end \\
-Quality gates & ruff (lint/format), mypy strict (domain/application), import-linter, GitHub Actions CI \\
+Quality gates & ruff (lint/format), mypy strict (domain/application), import-linter (one \texttt{make} target) \\
 Containerisation & Docker, Docker Compose \\
 Deployment & Render (backend API + managed Postgres), Vercel (frontend SPA) \\
 \bottomrule
@@ -930,8 +932,8 @@ idempotency, audit trail, DB constraints. Section~\ref{sec:security}. \\
 Online deployment & 5\% & Live on Render + Vercel, managed Postgres, health checks, kept online.
 Section~\ref{sec:deploy}. \\
 Additional features & 5\% & Append-only ledger, idempotent sales, split payments, audit log, custom
-settings model, architecture enforcement in CI, barcode scanning, offline-first PWA, shift/cash
-reconciliation, and supplier/purchase-order management. \\
+settings model, automated architecture enforcement (import-linter), barcode scanning, offline-first
+PWA, shift/cash reconciliation, and supplier/purchase-order management. \\
 \bottomrule
 \end{tabular}
 \end{table}
