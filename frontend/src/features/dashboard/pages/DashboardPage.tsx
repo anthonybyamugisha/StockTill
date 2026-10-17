@@ -14,11 +14,13 @@ export function DashboardPage() {
   const today = new Date().toISOString().split('T')[0];
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-  const monthName = new Date().toLocaleDateString('en-US', { month: 'long' });
+  const now = new Date();
+  const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
   const { data: topProducts } = useQuery({
-    queryKey: ['topProducts', thirtyDaysAgo, today],
-    queryFn: () => getTopProducts(thirtyDaysAgo, today),
+    queryKey: ['topProducts', monthStart, today],
+    queryFn: () => getTopProducts(monthStart, today),
   });
 
   const { data: dailySales } = useQuery({
@@ -57,7 +59,7 @@ export function DashboardPage() {
         </ResponsiveContainer>
       </Card>
 
-      <Card title="Top Products" subtitle="Best sellers this month">
+      <Card title="Top Products" subtitle={`Best sellers in ${monthName}`}>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={(topProducts || []).slice(0, 5)} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
