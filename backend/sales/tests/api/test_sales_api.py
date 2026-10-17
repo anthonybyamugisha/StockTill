@@ -129,3 +129,28 @@ def test_cashier_cannot_refund(api_client, cashier_user, stocked_product):
     )
 
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_sale_list_filters_by_status(api_client, cashier_user, stocked_product):
+    api_client.force_authenticate(user=cashier_user)
+    sale = api_client.post("/api/v1/sales/", _payload(stocked_product.id), format="json")
+
+    completed = api_client.get("/api/v1/sales/?status=completed")
+    assert completed.status_code == 200, completed.data
+    assert [s["receipt_number"] for s in completed.data] == [sale.data["receipt_number"]]
+
+    voided = api_client.get("/api/v1/sales/?status=voided")
+
+    assert voided.status_code == 200
+    assert voided.data == []
+
+
+@pytest.mark.django_db
+def test_sale_list_rejects_an_unknown_status(api_client, cashier_user):
+    api_client.force_authenticate(user=cashier_user)
+
+    response = api_client.get("/api/v1/sales/?status=banana")
+
+    assert response.status_code == 400
+    assert "banana" in response.data["detail"]

@@ -15,7 +15,7 @@ from sales.application.commands import (
     VoidSaleCommand,
 )
 from sales.application.use_cases import CompleteSaleUseCase, RefundSaleUseCase, VoidSaleUseCase
-from sales.domain.entities import DiscountType, PaymentMethod
+from sales.domain.entities import DiscountType, PaymentMethod, SaleStatus
 from sales.infrastructure.adapters import CatalogAdapter, InventoryAdapter, ShiftAdapter
 from sales.infrastructure.idempotency import CacheIdempotencyPort
 from sales.infrastructure.receipt_number import DatabaseReceiptNumberPort
@@ -36,12 +36,20 @@ class SaleListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        status_param = request.query_params.get("status")
+        try:
+            status_filter = SaleStatus(status_param) if status_param else None
+        except ValueError:
+            return Response(
+                {"detail": f"'{status_param}' is not a valid sale status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         repo = DjangoSaleRepository()
         sales = repo.list_sales(
             cashier_id=UUID(request.query_params["cashier_id"])
             if request.query_params.get("cashier_id")
             else None,
-            status=request.query_params.get("status"),
+            status=status_filter,
             payment_method=request.query_params.get("payment_method"),
             date_from=request.query_params.get("date_from"),
             date_to=request.query_params.get("date_to"),
