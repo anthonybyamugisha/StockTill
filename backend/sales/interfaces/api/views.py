@@ -29,6 +29,7 @@ from sales.interfaces.api.serializers import (
 from shared.domain.clock import SystemClock
 from shared.domain.errors import DomainError
 from shared.domain.money import Money
+from shared.infrastructure.audit import build_audit_recorder
 
 
 class SaleListCreateView(APIView):
@@ -87,6 +88,7 @@ class SaleListCreateView(APIView):
             DatabaseReceiptNumberPort(),
             CacheIdempotencyPort(),
             SystemClock(),
+            build_audit_recorder(),
         )
         try:
             sale = use_case.execute(
@@ -123,7 +125,11 @@ class RefundSaleView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         use_case = RefundSaleUseCase(
-            DjangoSaleRepository(), DjangoRefundRepository(), InventoryAdapter(), SystemClock()
+            DjangoSaleRepository(),
+            DjangoRefundRepository(),
+            InventoryAdapter(),
+            SystemClock(),
+            build_audit_recorder(),
         )
         try:
             refund = use_case.execute(
@@ -150,7 +156,9 @@ class VoidSaleView(APIView):
         serializer = VoidSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        use_case = VoidSaleUseCase(DjangoSaleRepository(), InventoryAdapter(), SystemClock())
+        use_case = VoidSaleUseCase(
+            DjangoSaleRepository(), InventoryAdapter(), SystemClock(), build_audit_recorder()
+        )
         try:
             sale = use_case.execute(
                 VoidSaleCommand(

@@ -14,6 +14,7 @@ from sales.domain.errors import (
 )
 from sales.domain.repository import RefundRepository, SaleRepository
 from sales.domain.services import calculate_change, calculate_discount
+from shared.application.audit import AuditPort, NullAuditPort
 from shared.domain.clock import Clock
 
 
@@ -26,6 +27,7 @@ class CompleteSaleUseCase:
         receipt_number_port: ReceiptNumberPort,
         idempotency_port: IdempotencyPort,
         clock: Clock,
+        audit: AuditPort | None = None,
     ):
         self._sale_repo = sale_repository
         self._inventory = inventory_port
@@ -33,6 +35,7 @@ class CompleteSaleUseCase:
         self._receipt_port = receipt_number_port
         self._idempotency = idempotency_port
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: CompleteSaleCommand) -> Sale:
         if self._idempotency.exists(command.idempotency_key):
@@ -103,6 +106,18 @@ class CompleteSaleUseCase:
 
         self._sale_repo.save(sale)
         self._idempotency.store(command.idempotency_key, sale.id)
+        self._audit.record(
+            user_id=command.cashier_id,
+            action="sale.completed",
+            entity_type="sale",
+            entity_id=str(sale.id),
+            after={
+                "receipt_number": sale.receipt_number,
+                "total": str(sale.total.amount),
+                "line_count": len(sale.lines),
+                "payment_methods": sorted({payment.method.value for payment in sale.payments}),
+            },
+        )
         return sale
 
 
@@ -113,11 +128,13 @@ class RefundSaleUseCase:
         refund_repository: RefundRepository,
         inventory_port: InventoryPort,
         clock: Clock,
+        audit: AuditPort | None = None,
     ):
         self._sale_repo = sale_repository
         self._refund_repo = refund_repository
         self._inventory = inventory_port
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: RefundSaleCommand) -> Refund:
         sale = self._sale_repo.get_by_id(command.sale_id)
@@ -127,6 +144,9 @@ class RefundSaleUseCase:
             raise SaleAlreadyVoidedError("Cannot refund a voided sale")
         if sale.status == SaleStatus.REFUNDED:
             raise RefundExceedsRefundableError("Sale is already fully refunded")
+
+        original_status = sale.status.value
+        original_refundable = sale.refundable_amount.amount
 
         refundable_qty = (
             sale.refundable_quantity_for_line(command.line_id) if command.line_id else 1
@@ -170,6 +190,20 @@ class RefundSaleUseCase:
 
         self._refund_repo.save(refund)
         self._sale_repo.save(sale)
+        self._audit.record(
+            user_id=command.user_id,
+            action="sale.refunded",
+            entity_type="sale",
+            entity_id=str(sale.id),
+            before={"status": original_status, "refundable_amount": str(original_refundable)},
+            after={
+                "status": sale.status.value,
+                "amount": str(refund.amount.amount),
+                "quantity": refund.quantity,
+                "restock": refund.restock,
+                "reason": refund.reason,
+            },
+        )
         return refund
 
 
@@ -179,10 +213,12 @@ class VoidSaleUseCase:
         sale_repository: SaleRepository,
         inventory_port: InventoryPort,
         clock: Clock,
+        audit: AuditPort | None = None,
     ):
         self._sale_repo = sale_repository
         self._inventory = inventory_port
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: VoidSaleCommand) -> Sale:
         sale = self._sale_repo.get_by_id(command.sale_id)
@@ -191,9 +227,19 @@ class VoidSaleUseCase:
         if sale.status == SaleStatus.VOIDED:
             raise SaleAlreadyVoidedError("Sale is already voided")
 
+        original_status = sale.status.value
+
         for line in sale.lines:
             self._inventory.restore_stock(line.product_id, line.quantity, sale.receipt_number)
 
         sale.status = SaleStatus.VOIDED
         self._sale_repo.save(sale)
+        self._audit.record(
+            user_id=command.user_id,
+            action="sale.voided",
+            entity_type="sale",
+            entity_id=str(sale.id),
+            before={"status": original_status, "total": str(sale.total.amount)},
+            after={"status": sale.status.value, "reason": command.reason},
+        )
         return sale
