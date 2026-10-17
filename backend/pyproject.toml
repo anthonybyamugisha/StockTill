@@ -50,7 +50,7 @@ python_files = ["test_*.py", "*_test.py"]
 addopts = "--cov --cov-report=term-missing"
 
 [tool.importlinter]
-root_package = .
+root_package = "."
 
 [[tool.importlinter.contracts]]
 name = "Domain has no Django imports"
