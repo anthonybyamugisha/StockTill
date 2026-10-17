@@ -15,6 +15,8 @@ import { Table } from '../../../shared/ui/Table';
 import { Modal } from '../../../shared/ui/Modal';
 import { Input } from '../../../shared/ui/Input';
 import { Select } from '../../../shared/ui/Select';
+import { toast } from '../../../shared/ui/toast';
+import { getApiErrorMessage } from '../../../shared/http/errors';
 
 function money(value: string | null) {
   if (value === null) return '—';
@@ -37,16 +39,23 @@ export function ShiftsPage() {
 
   const openMutation = useMutation({
     mutationFn: openShift,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['currentShift'] }),
+    onSuccess: (opened) => {
+      queryClient.invalidateQueries({ queryKey: ['currentShift'] });
+      toast.success(`Shift opened with a float of ${money(opened.opening_float)}`);
+    },
   });
 
   const movementMutation = useMutation({
     mutationFn: recordCashMovement,
-    onSuccess: () => {
+    onSuccess: (movement) => {
       queryClient.invalidateQueries({ queryKey: ['currentShift'] });
       queryClient.invalidateQueries({ queryKey: ['shiftReport'] });
       setShowMovement(false);
+      toast.success(
+        `${movement.type === 'payout' ? 'Payout' : 'Cash in'} of ${money(movement.amount)} recorded`,
+      );
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not record the cash movement')),
   });
 
   const closeMutation = useMutation({
@@ -55,7 +64,14 @@ export function ShiftsPage() {
       setClosedReport(result);
       setShowClose(false);
       queryClient.invalidateQueries({ queryKey: ['currentShift'] });
+      const variance = Number(result.variance ?? 0);
+      toast.success(
+        variance === 0
+          ? 'Shift closed — the drawer balanced'
+          : `Shift closed — variance of ${money(result.variance)}`,
+      );
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not close the shift')),
   });
 
   if (!shift) {
