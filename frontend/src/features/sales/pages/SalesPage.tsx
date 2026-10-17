@@ -19,14 +19,16 @@ export function SalesPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [receiptSearch, setReceiptSearch] = useState('');
   const [showDetail, setShowDetail] = useState<any>(null);
 
-  const { data: sales, isLoading } = useQuery({
-    queryKey: ['sales', dateFrom, dateTo, statusFilter],
+  const { data: sales, isLoading, isError, error } = useQuery({
+    queryKey: ['sales', dateFrom, dateTo, statusFilter, receiptSearch],
     queryFn: () => listSales({
       date_from: dateFrom || undefined,
       date_to: dateTo || undefined,
       status: statusFilter || undefined,
+      receipt_number: receiptSearch || undefined,
     }),
   });
 
@@ -57,15 +59,34 @@ export function SalesPage() {
     voided: 'neutral',
   };
 
+  const statusOptions = [
+    { value: '', label: 'All statuses' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'partially_refunded', label: 'Partially refunded' },
+    { value: 'refunded', label: 'Refunded' },
+    { value: 'voided', label: 'Voided' },
+  ];
+
   return (
     <div className="space-y-4">
       <Card>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
           <Input label="From Date" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           <Input label="To Date" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          <Input label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} placeholder="e.g. completed" />
+          <Select
+            label="Status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            options={statusOptions}
+          />
+          <Input
+            label="Receipt"
+            value={receiptSearch}
+            onChange={(e) => setReceiptSearch(e.target.value)}
+            placeholder="e.g. 000012"
+          />
           <div className="flex items-end">
-            <Button variant="secondary" onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter(''); }}>
+            <Button variant="secondary" onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter(''); setReceiptSearch(''); }}>
               Clear Filters
             </Button>
           </div>
@@ -75,6 +96,10 @@ export function SalesPage() {
       <Card>
         {isLoading ? (
           <p className="py-8 text-center text-surface-400">Loading sales...</p>
+        ) : isError ? (
+          <p className="py-8 text-center text-error">
+            {getApiErrorMessage(error, 'Could not load sales')}
+          </p>
         ) : (
           <Table
             columns={[
@@ -91,7 +116,11 @@ export function SalesPage() {
             data={sales || []}
             keyExtractor={(s) => s.id}
             onRowClick={(s) => setShowDetail(s)}
-            emptyMessage="No sales found"
+            emptyMessage={
+              dateFrom || dateTo || statusFilter || receiptSearch
+                ? 'No sales match these filters'
+                : 'No sales found'
+            }
           />
         )}
       </Card>

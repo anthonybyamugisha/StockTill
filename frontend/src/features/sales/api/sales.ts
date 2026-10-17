@@ -29,6 +29,7 @@ export async function listSales(params?: {
   status?: string;
   date_from?: string;
   date_to?: string;
+  receipt_number?: string;
 }): Promise<Sale[]> {
   const res = await apiClient.get<Sale[]>('/sales/', { params });
   return res.data;
