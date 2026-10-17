@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { completeSale, CartItem } from '../api/pos';
+import { queueSale } from '../offline/saleQueue';
+import { isNetworkError } from '../offline/networkError';
 import { Modal } from '../../../shared/ui/Modal';
 import { Button } from '../../../shared/ui/Button';
 
@@ -15,6 +17,11 @@ const paymentSchema = z.object({
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
+
+interface PaymentResult {
+  receipt_number: string;
+  queued: boolean;
+}
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -31,11 +38,11 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
   });
 
   const method = watch('method');
-  const [receipt, setReceipt] = useState<string | null>(null);
+  const [result, setResult] = useState<PaymentResult | null>(null);
 
   const mutation = useMutation({
-    mutationFn: (data: PaymentFormData) =>
-      completeSale({
+    mutationFn: async (data: PaymentFormData): Promise<PaymentResult> => {
+      const payload = {
         lines: items.map((i) => ({
           product_id: i.product_id,
           quantity: i.quantity,
@@ -50,22 +57,52 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
           provider: data.provider,
         }],
         idempotency_key: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      }),
-    onSuccess: (sale) => {
-      setReceipt(sale.receipt_number);
+      };
+
+      try {
+        const sale = await completeSale(payload);
+        return { receipt_number: sale.receipt_number, queued: false };
+      } catch (error) {
+        if (isNetworkError(error)) {
+          queueSale(payload);
+          return { receipt_number: 'PENDING', queued: true };
+        }
+        throw error;
+      }
     },
+    onSuccess: (completed) => setResult(completed),
   });
 
-  if (receipt) {
+  if (result) {
     return (
-      <Modal isOpen={isOpen} onClose={onComplete} title="Sale Complete">
+      <Modal isOpen={isOpen} onClose={onComplete} title={result.queued ? 'Sale Saved Offline' : 'Sale Complete'}>
         <div className="text-center py-8">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-            <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+          <div
+            className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
+              result.queued ? 'bg-amber-100' : 'bg-green-100'
+            }`}
+          >
+            {result.queued ? (
+              <svg className="h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            ) : (
+              <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
           </div>
-          <p className="text-lg font-semibold text-surface-600">Receipt: {receipt}</p>
+          {result.queued ? (
+            <>
+              <p className="text-lg font-semibold text-surface-600">Saved for later</p>
+              <p className="mt-1 text-sm text-surface-400">
+                No connection. This sale is stored on the device and will be sent automatically
+                when the connection returns.
+              </p>
+            </>
+          ) : (
+            <p className="text-lg font-semibold text-surface-600">Receipt: {result.receipt_number}</p>
+          )}
           <Button onClick={onComplete} className="mt-4">New Sale</Button>
         </div>
       </Modal>
