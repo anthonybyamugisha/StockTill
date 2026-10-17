@@ -1,6 +1,4 @@
 import { Route, Routes, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter } from 'react-router-dom';
 import { useAuth } from './features/auth/hooks/useAuth';
 import { AppLayout } from './app/layout/AppLayout';
 import { LoginPage } from './features/auth/pages/LoginPage';
@@ -13,15 +11,6 @@ import { ReportsPage } from './features/reports/pages/ReportsPage';
 import { UsersPage } from './features/users/pages/UsersPage';
 import { SettingsPage } from './features/settings/pages/SettingsPage';
 import { AuditLogPage } from './features/audit/pages/AuditLogPage';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      retry: 1,
-    },
-  },
-});
 
 function Protected({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
   const { user, isLoading } = useAuth();
@@ -76,13 +65,7 @@ function AppRoutes() {
 }
 
 function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </QueryClientProvider>
-  );
+  return <AppRoutes />;
 }
 
 export default App;
