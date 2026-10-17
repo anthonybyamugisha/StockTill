@@ -9,6 +9,8 @@ import { Modal } from '../../../shared/ui/Modal';
 import { Input } from '../../../shared/ui/Input';
 import { Select } from '../../../shared/ui/Select';
 import { formatDateTime } from '../../../shared/utils/date';
+import { Receipt } from '../../../shared/ui/Receipt';
+import { getSettings } from '../../settings/api/settings';
 
 export function SalesPage() {
   const queryClient = useQueryClient();
@@ -111,6 +113,7 @@ function SaleDetailModal({ sale, onClose, onRefund, onVoid, isLoading }: {
   const [activeTab, setActiveTab] = useState<'details' | 'refund' | 'void'>('details');
   const [refundForm, setRefundForm] = useState({ line_id: '', quantity: 1, reason: '', restock: true });
   const [voidReason, setVoidReason] = useState('');
+  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
 
   return (
     <Modal
@@ -143,25 +146,14 @@ function SaleDetailModal({ sale, onClose, onRefund, onVoid, isLoading }: {
             <div><span className="text-surface-400">Status:</span> <Badge variant="success">{sale.status}</Badge></div>
             <div><span className="text-surface-400">Total:</span> UGX {sale.total}</div>
           </div>
-          <div>
-            <h4 className="mb-2 text-sm font-medium text-surface-600">Items</h4>
-            <div className="divide-y divide-surface-100">
-              {sale.lines.map((line: any) => (
-                <div key={line.id} className="flex justify-between py-2 text-sm">
-                  <span>{line.product_name}</span>
-                  <span>{line.quantity} x UGX {line.unit_price}</span>
-                </div>
-              ))}
-            </div>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-surface-600">Receipt</h4>
+            <Button variant="secondary" size="sm" onClick={() => window.print()}>
+              Print Receipt
+            </Button>
           </div>
-          <div>
-            <h4 className="mb-2 text-sm font-medium text-surface-600">Payments</h4>
-            {sale.payments.map((p: any) => (
-              <div key={p.id} className="flex justify-between py-1 text-sm">
-                <span className="capitalize">{p.method.replace('_', ' ')}</span>
-                <span>UGX {p.amount}</span>
-              </div>
-            ))}
+          <div className="flex justify-center rounded border border-surface-200 bg-surface-50 py-4">
+            <Receipt sale={sale} business={settings} />
           </div>
         </div>
       )}
