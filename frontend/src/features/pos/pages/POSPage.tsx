@@ -3,6 +3,7 @@ import { useCart } from '../hooks/useCart';
 import { Cart } from '../components/Cart';
 import { ProductSearch } from '../components/ProductSearch';
 import { PaymentModal } from '../components/PaymentModal';
+import { BarcodeCameraModal } from '../components/BarcodeCameraModal';
 import { Card } from '../../../shared/ui/Card';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import { lookupProductByBarcode } from '../api/pos';
@@ -15,6 +16,7 @@ interface ScanFeedback {
 export function POSPage() {
   const { items, addItem, removeItem, updateQuantity, clearCart, subtotal } = useCart();
   const [showPayment, setShowPayment] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null);
 
   const handleScan = useCallback(
@@ -75,6 +77,13 @@ export function POSPage() {
           <p className="mt-2 text-xs text-gray-400">
             Scan a barcode with a USB/Bluetooth scanner, or type a barcode and press Enter.
           </p>
+          <button
+            type="button"
+            onClick={() => setShowCamera(true)}
+            className="btn-secondary mt-3 w-full"
+          >
+            Scan with camera
+          </button>
         </Card>
       </div>
 
@@ -110,6 +119,12 @@ export function POSPage() {
           }}
         />
       )}
+
+      <BarcodeCameraModal
+        isOpen={showCamera}
+        onClose={() => setShowCamera(false)}
+        onDetected={handleScan}
+      />
     </div>
   );
 }
