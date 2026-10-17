@@ -1,51 +1,111 @@
 import { useQuery } from '@tanstack/react-query';
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getDashboardStats } from '../api/dashboard';
+import { getTopProducts, getSalesByPaymentMethod, getDailySales } from '../../reports/api/reports';
+import { Card } from '../../../shared/ui/Card';
+import { Spinner } from '../../../shared/ui/Spinner';
+
+const COLORS = ['#0078d4', '#106ebe', '#005a9e', '#004578', '#50e6ff', '#107c10', '#ffb900', '#d13438'];
 
 export function DashboardPage() {
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboardStats,
   });
 
-  if (isLoading) return <div className="p-6">Loading...</div>;
+  const today = new Date().toISOString().split('T')[0];
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  const { data: topProducts } = useQuery({
+    queryKey: ['topProducts', thirtyDaysAgo, today],
+    queryFn: () => getTopProducts(thirtyDaysAgo, today),
+  });
+
+  const { data: paymentMethods } = useQuery({
+    queryKey: ['paymentMethods', thirtyDaysAgo, today],
+    queryFn: () => getSalesByPaymentMethod(thirtyDaysAgo, today),
+  });
+
+  const { data: dailySales } = useQuery({
+    queryKey: ['dailySales', thirtyDaysAgo, today],
+    queryFn: () => getDailySales(thirtyDaysAgo, today),
+  });
+
+  if (statsLoading) {
+    return <Spinner className="h-64" />;
+  }
+
+  const paymentChartData = (paymentMethods || []).map((pm) => ({
+    name: pm.method.replace('_', ' ').toUpperCase(),
+    value: parseFloat(pm.total),
+  }));
 
   return (
-    <div className="p-6">
-      <h1 className="mb-4 text-2xl font-bold">Dashboard</h1>
+    <div className="space-y-6">
       <div className="grid grid-cols-4 gap-4">
-        <div className="rounded border p-4">
-          <p className="text-sm text-gray-500">Today's Sales</p>
-          <p className="text-2xl font-bold">{stats?.today_sales ?? 0}</p>
-        </div>
-        <div className="rounded border p-4">
-          <p className="text-sm text-gray-500">This Week</p>
-          <p className="text-2xl font-bold">{stats?.week_sales ?? 0}</p>
-        </div>
-        <div className="rounded border p-4">
-          <p className="text-sm text-gray-500">This Month</p>
-          <p className="text-2xl font-bold">{stats?.month_sales ?? 0}</p>
-        </div>
-        <div className="rounded border p-4">
-          <p className="text-sm text-gray-500">Avg Sale Value</p>
-          <p className="text-2xl font-bold">UGX {stats?.average_sale_value ?? 0}</p>
-        </div>
-        <div className="rounded border p-4">
-          <p className="text-sm text-gray-500">Total Products</p>
-          <p className="text-2xl font-bold">{stats?.total_products ?? 0}</p>
-        </div>
-        <div className="rounded border p-4">
-          <p className="text-sm text-gray-500">Low Stock</p>
-          <p className="text-2xl font-bold">{stats?.low_stock_count ?? 0}</p>
-        </div>
-        <div className="rounded border p-4">
-          <p className="text-sm text-gray-500">Out of Stock</p>
-          <p className="text-2xl font-bold">{stats?.out_of_stock_count ?? 0}</p>
-        </div>
-        <div className="rounded border p-4">
-          <p className="text-sm text-gray-500">Gross Profit</p>
-          <p className="text-2xl font-bold">UGX {stats?.gross_profit ?? 0}</p>
-        </div>
+        <StatCard title="Today's Sales" value={`${stats?.today_sales ?? 0}`} subtitle={`UGX ${stats?.today_revenue ?? 0}`} />
+        <StatCard title="This Week" value={`${stats?.week_sales ?? 0}`} subtitle={`UGX ${stats?.week_revenue ?? 0}`} />
+        <StatCard title="This Month" value={`${stats?.month_sales ?? 0}`} subtitle={`UGX ${stats?.month_revenue ?? 0}`} />
+        <StatCard title="Gross Profit" value={`UGX ${stats?.gross_profit ?? 0}`} subtitle={`Avg: UGX ${stats?.average_sale_value ?? 0}`} />
       </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <StatCard title="Total Products" value={`${stats?.total_products ?? 0}`} />
+        <StatCard title="Low Stock" value={`${stats?.low_stock_count ?? 0}`} warning />
+        <StatCard title="Out of Stock" value={`${stats?.out_of_stock_count ?? 0}`} error />
+      </div>
+
+      <div className="grid grid-cols-2 gap-6">
+        <Card title="Sales Over Time" subtitle="Last 30 days">
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={dailySales || []}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Line type="monotone" dataKey="total" stroke="#0078d4" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card title="Payment Methods" subtitle="Last 30 days">
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie data={paymentChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                {paymentChartData.map((_, index) => (
+                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      <Card title="Top Products" subtitle="Best sellers this month">
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={(topProducts || []).slice(0, 5)} layout="vertical">
+            <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
+            <XAxis type="number" tick={{ fontSize: 12 }} />
+            <YAxis type="category" dataKey="product_name" tick={{ fontSize: 12 }} width={120} />
+            <Tooltip />
+            <Bar dataKey="quantity_sold" fill="#0078d4" />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+    </div>
+  );
+}
+
+function StatCard({ title, value, subtitle, warning, error }: { title: string; value: string; subtitle?: string; warning?: boolean; error?: boolean }) {
+  return (
+    <div className="card">
+      <p className="text-sm text-surface-400">{title}</p>
+      <p className={`mt-1 text-2xl font-semibold ${error ? 'text-error' : warning ? 'text-warning' : 'text-surface-600'}`}>
+        {value}
+      </p>
+      {subtitle && <p className="mt-1 text-xs text-surface-400">{subtitle}</p>}
     </div>
   );
 }

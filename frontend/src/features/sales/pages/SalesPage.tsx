@@ -1,34 +1,200 @@
-import { useQuery } from '@tanstack/react-query';
-import { listSales } from '../api/sales';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { listSales, refundSale, voidSale } from '../api/sales';
+import { Card } from '../../../shared/ui/Card';
+import { Button } from '../../../shared/ui/Button';
+import { Badge } from '../../../shared/ui/Badge';
+import { Table } from '../../../shared/ui/Table';
+import { Modal } from '../../../shared/ui/Modal';
+import { Input } from '../../../shared/ui/Input';
+import { formatDateTime } from '../../../shared/utils/date';
 
 export function SalesPage() {
-  const { data: sales, isLoading } = useQuery({ queryKey: ['sales'], queryFn: listSales });
+  const queryClient = useQueryClient();
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [showDetail, setShowDetail] = useState<any>(null);
 
-  if (isLoading) return <div className="p-6">Loading...</div>;
+  const { data: sales, isLoading } = useQuery({
+    queryKey: ['sales', dateFrom, dateTo, statusFilter],
+    queryFn: () => listSales({
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
+      status: statusFilter || undefined,
+    }),
+  });
+
+  const refundMutation = useMutation({
+    mutationFn: refundSale,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      setShowDetail(null);
+    },
+  });
+
+  const voidMutation = useMutation({
+    mutationFn: voidSale,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      setShowDetail(null);
+    },
+  });
+
+  const statusColors: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
+    completed: 'success',
+    partially_refunded: 'warning',
+    refunded: 'error',
+    voided: 'neutral',
+  };
 
   return (
-    <div className="p-6">
-      <h1 className="mb-4 text-2xl font-bold">Sales</h1>
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">Receipt</th>
-            <th className="py-2">Status</th>
-            <th className="py-2">Total</th>
-            <th className="py-2">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sales?.map((s) => (
-            <tr key={s.id} className="border-b">
-              <td className="py-2">{s.receipt_number}</td>
-              <td className="py-2">{s.status}</td>
-              <td className="py-2">UGX {s.total}</td>
-              <td className="py-2">{new Date(s.created_at).toLocaleDateString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-4">
+      <Card>
+        <div className="grid grid-cols-4 gap-4">
+          <Input label="From Date" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <Input label="To Date" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <Input label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} placeholder="e.g. completed" />
+          <div className="flex items-end">
+            <Button variant="secondary" onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter(''); }}>
+              Clear Filters
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        {isLoading ? (
+          <p className="py-8 text-center text-surface-400">Loading sales...</p>
+        ) : (
+          <Table
+            columns={[
+              { key: 'receipt', header: 'Receipt', render: (s: any) => <span className="font-medium">{s.receipt_number}</span> },
+              { key: 'date', header: 'Date', render: (s: any) => formatDateTime(s.created_at) },
+              { key: 'total', header: 'Total', render: (s: any) => `UGX ${s.total}` },
+              { key: 'status', header: 'Status', render: (s: any) => (
+                <Badge variant={statusColors[s.status] || 'neutral'}>{s.status.replace('_', ' ')}</Badge>
+              )},
+              { key: 'actions', header: '', render: (s: any) => (
+                <Button variant="ghost" size="sm" onClick={() => setShowDetail(s)}>View</Button>
+              )},
+            ]}
+            data={sales || []}
+            keyExtractor={(s) => s.id}
+            onRowClick={(s) => setShowDetail(s)}
+            emptyMessage="No sales found"
+          />
+        )}
+      </Card>
+
+      {showDetail && (
+        <SaleDetailModal
+          sale={showDetail}
+          onClose={() => setShowDetail(null)}
+          onRefund={(data) => refundMutation.mutate(data)}
+          onVoid={(data) => voidMutation.mutate(data)}
+          isLoading={refundMutation.isPending || voidMutation.isPending}
+        />
+      )}
     </div>
+  );
+}
+
+function SaleDetailModal({ sale, onClose, onRefund, onVoid, isLoading }: {
+  sale: any;
+  onClose: () => void;
+  onRefund: (data: any) => void;
+  onVoid: (data: any) => void;
+  isLoading: boolean;
+}) {
+  const [activeTab, setActiveTab] = useState<'details' | 'refund' | 'void'>('details');
+  const [refundForm, setRefundForm] = useState({ line_id: '', quantity: 1, reason: '', restock: true });
+  const [voidReason, setVoidReason] = useState('');
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={`Sale ${sale.receipt_number}`}
+      size="lg"
+    >
+      <div className="mb-4 flex gap-2 border-b border-surface-100">
+        {(['details', 'refund', 'void'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-surface-400 hover:text-surface-600'
+            }`}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'details' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div><span className="text-surface-400">Receipt:</span> {sale.receipt_number}</div>
+            <div><span className="text-surface-400">Date:</span> {formatDateTime(sale.created_at)}</div>
+            <div><span className="text-surface-400">Status:</span> <Badge variant="success">{sale.status}</Badge></div>
+            <div><span className="text-surface-400">Total:</span> UGX {sale.total}</div>
+          </div>
+          <div>
+            <h4 className="mb-2 text-sm font-medium text-surface-600">Items</h4>
+            <div className="divide-y divide-surface-100">
+              {sale.lines.map((line: any) => (
+                <div key={line.id} className="flex justify-between py-2 text-sm">
+                  <span>{line.product_name}</span>
+                  <span>{line.quantity} x UGX {line.unit_price}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h4 className="mb-2 text-sm font-medium text-surface-600">Payments</h4>
+            {sale.payments.map((p: any) => (
+              <div key={p.id} className="flex justify-between py-1 text-sm">
+                <span className="capitalize">{p.method.replace('_', ' ')}</span>
+                <span>UGX {p.amount}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'refund' && (
+        <div className="space-y-4">
+          <p className="text-sm text-surface-400">Refundable amount: UGX {sale.refundable_amount || sale.total}</p>
+          <Select
+            label="Line Item"
+            value={refundForm.line_id}
+            onChange={(e) => setRefundForm({ ...refundForm, line_id: e.target.value })}
+            options={sale.lines.map((l: any) => ({ value: l.id, label: `${l.product_name} (${l.quantity} sold)` }))}
+          />
+          <Input label="Quantity" type="number" value={refundForm.quantity} onChange={(e) => setRefundForm({ ...refundForm, quantity: parseInt(e.target.value) })} />
+          <Input label="Reason" value={refundForm.reason} onChange={(e) => setRefundForm({ ...refundForm, reason: e.target.value })} required />
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={refundForm.restock} onChange={(e) => setRefundForm({ ...refundForm, restock: e.target.checked })} />
+            Restock returned items
+          </label>
+          <Button onClick={() => onRefund({ sale_id: sale.id, ...refundForm })} disabled={isLoading}>
+            {isProcessing ? 'Processing...' : 'Issue Refund'}
+          </Button>
+        </div>
+      )}
+
+      {activeTab === 'void' && (
+        <div className="space-y-4">
+          <p className="text-sm text-warning">Voiding a sale will reverse all stock movements and cannot be undone.</p>
+          <Input label="Reason" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} required />
+          <Button variant="danger" onClick={() => onVoid({ sale_id: sale.id, reason: voidReason })} disabled={isLoading}>
+            {isProcessing ? 'Processing...' : 'Void Sale'}
+          </Button>
+        </div>
+      )}
+    </Modal>
   );
 }

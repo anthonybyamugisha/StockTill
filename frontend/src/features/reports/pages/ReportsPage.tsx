@@ -1,66 +1,231 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getDailySales, getSalesSummary, getTopProducts } from '../api/reports';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems } from '../api/reports';
+import { Card } from '../../../shared/ui/Card';
+import { Button } from '../../../shared/ui/Button';
+import { Input } from '../../../shared/ui/Input';
+import { Table } from '../../../shared/ui/Table';
+import { Badge } from '../../../shared/ui/Badge';
+import { daysAgoISO, todayISO } from '../../../shared/utils/date';
 
 export function ReportsPage() {
-  const today = new Date().toISOString().split('T')[0];
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const [activeReport, setActiveReport] = useState('sales');
+  const [dateFrom, setDateFrom] = useState(daysAgoISO(30));
+  const [dateTo, setDateTo] = useState(todayISO());
 
+  const reports = [
+    { id: 'sales', label: 'Sales Report' },
+    { id: 'profit', label: 'Profit Report' },
+    { id: 'inventory', label: 'Inventory Report' },
+    { id: 'products', label: 'Best Sellers' },
+    { id: 'lowstock', label: 'Low Stock' },
+    { id: 'cashier', label: 'Sales by Cashier' },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        {reports.map((r) => (
+          <button
+            key={r.id}
+            onClick={() => setActiveReport(r.id)}
+            className={`rounded px-4 py-2 text-sm font-medium transition-colors ${
+              activeReport === r.id
+                ? 'bg-primary-500 text-white'
+                : 'bg-white text-surface-600 border border-surface-200 hover:bg-surface-50'
+            }`}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
+      <Card>
+        <div className="flex items-end gap-4">
+          <Input label="From" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <Input label="To" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <Button variant="secondary" onClick={() => {
+            const link = document.createElement('a');
+            link.href = `/api/v1/reporting/sales-report/csv/?date_from=${dateFrom}&date_to=${dateTo}`;
+            link.download = 'sales_report.csv';
+            link.click();
+          }}>
+            Export CSV
+          </Button>
+        </div>
+      </Card>
+
+      {activeReport === 'sales' && <SalesReport dateFrom={dateFrom} dateTo={dateTo} />}
+      {activeReport === 'profit' && <ProfitReport dateFrom={dateFrom} dateTo={dateTo} />}
+      {activeReport === 'inventory' && <InventoryReport />}
+      {activeReport === 'products' && <BestSellers dateFrom={dateFrom} dateTo={dateTo} />}
+      {activeReport === 'lowstock' && <LowStockReport />}
+      {activeReport === 'cashier' && <CashierReport dateFrom={dateFrom} dateTo={dateTo} />}
+    </div>
+  );
+}
+
+function SalesReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const { data: summary } = useQuery({
-    queryKey: ['salesSummary', thirtyDaysAgo, today],
-    queryFn: () => getSalesSummary(thirtyDaysAgo, today),
+    queryKey: ['salesSummary', dateFrom, dateTo],
+    queryFn: () => getSalesSummary(dateFrom, dateTo),
   });
 
   const { data: dailySales } = useQuery({
-    queryKey: ['dailySales', thirtyDaysAgo, today],
-    queryFn: () => getDailySales(thirtyDaysAgo, today),
-  });
-
-  const { data: topProducts } = useQuery({
-    queryKey: ['topProducts', thirtyDaysAgo, today],
-    queryFn: () => getTopProducts(thirtyDaysAgo, today),
+    queryKey: ['dailySales', dateFrom, dateTo],
+    queryFn: () => getDailySales(dateFrom, dateTo),
   });
 
   return (
-    <div className="p-6">
-      <h1 className="mb-4 text-2xl font-bold">Reports</h1>
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded border p-4">
-          <p className="text-sm text-gray-500">Total Sales</p>
-          <p className="text-2xl font-bold">{summary?.total_sales ?? 0}</p>
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-4">
+        <div className="card">
+          <p className="text-sm text-surface-400">Total Sales</p>
+          <p className="mt-1 text-2xl font-semibold text-surface-600">{summary?.total_sales ?? 0}</p>
         </div>
-        <div className="rounded border p-4">
-          <p className="text-sm text-gray-500">Revenue</p>
-          <p className="text-2xl font-bold">UGX {summary?.total_revenue ?? 0}</p>
+        <div className="card">
+          <p className="text-sm text-surface-400">Revenue</p>
+          <p className="mt-1 text-2xl font-semibold text-surface-600">UGX {summary?.total_revenue ?? 0}</p>
         </div>
-        <div className="rounded border p-4">
-          <p className="text-sm text-gray-500">Gross Profit</p>
-          <p className="text-2xl font-bold">UGX {summary?.gross_profit ?? 0}</p>
+        <div className="card">
+          <p className="text-sm text-surface-400">Cost</p>
+          <p className="mt-1 text-2xl font-semibold text-surface-600">UGX {summary?.total_cost ?? 0}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-surface-400">Gross Profit</p>
+          <p className="mt-1 text-2xl font-semibold text-success">{summary?.gross_profit ?? 0}</p>
         </div>
       </div>
-      <div className="mt-6">
-        <h2 className="mb-2 text-lg font-semibold">Sales Over Time</h2>
+      <Card title="Daily Sales Trend">
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={dailySales ?? []}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
+          <LineChart data={dailySales || []}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12 }} />
             <Tooltip />
-            <Line type="monotone" dataKey="total" stroke="#2563eb" />
+            <Line type="monotone" dataKey="total" stroke="#0078d4" strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
+      </Card>
+    </div>
+  );
+}
+
+function ProfitReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { data: profit } = useQuery({
+    queryKey: ['profit', dateFrom, dateTo],
+    queryFn: () => getProfitReport(dateFrom, dateTo),
+  });
+
+  return (
+    <Card title="Daily Profit">
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={profit || []}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
+          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+          <YAxis tick={{ fontSize: 12 }} />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="total_revenue" fill="#0078d4" name="Revenue" />
+          <Bar dataKey="gross_profit" fill="#107c10" name="Profit" />
+        </BarChart>
+      </ResponsiveContainer>
+    </Card>
+  );
+}
+
+function InventoryReport() {
+  const { data: summary } = useQuery({
+    queryKey: ['salesSummary', daysAgoISO(30), todayISO()],
+    queryFn: () => getSalesSummary(daysAgoISO(30), todayISO()),
+  });
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      <div className="card">
+        <p className="text-sm text-surface-400">Total Products</p>
+        <p className="mt-1 text-2xl font-semibold text-surface-600">{summary?.total_sales ?? 0}</p>
       </div>
-      <div className="mt-6">
-        <h2 className="mb-2 text-lg font-semibold">Top Products</h2>
-        <ul className="space-y-1">
-          {topProducts?.map((p) => (
-            <li key={p.product_id} className="flex justify-between border-b py-1">
-              <span>{p.product_name}</span>
-              <span>{p.quantity_sold} sold</span>
-            </li>
-          ))}
-        </ul>
+      <div className="card">
+        <p className="text-sm text-surface-400">Inventory Value</p>
+        <p className="mt-1 text-2xl font-semibold text-surface-600">UGX {summary?.total_cost ?? 0}</p>
+      </div>
+      <div className="card">
+        <p className="text-sm text-surface-400">Low Stock Items</p>
+        <p className="mt-1 text-2xl font-semibold text-warning">0</p>
       </div>
     </div>
+  );
+}
+
+function BestSellers({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { data: products } = useQuery({
+    queryKey: ['topProducts', dateFrom, dateTo],
+    queryFn: () => getTopProducts(dateFrom, dateTo),
+  });
+
+  return (
+    <Card title="Best Selling Products">
+      <Table
+        columns={[
+          { key: 'product', header: 'Product', render: (p: any) => p.product_name },
+          { key: 'quantity', header: 'Qty Sold', render: (p: any) => p.quantity_sold },
+          { key: 'revenue', header: 'Revenue', render: (p: any) => `UGX ${p.revenue}` },
+        ]}
+        data={products || []}
+        keyExtractor={(p) => p.product_id}
+        emptyMessage="No sales data"
+      />
+    </Card>
+  );
+}
+
+function LowStockReport() {
+  const { data: items } = useQuery({
+    queryKey: ['lowStock'],
+    queryFn: () => getLowStockItems(),
+  });
+
+  return (
+    <Card title="Low Stock Alert">
+      <Table
+        columns={[
+          { key: 'product', header: 'Product', render: (i: any) => (
+            <div>
+              <p className="font-medium">{i.product_name}</p>
+              <p className="text-xs text-surface-400">{i.sku}</p>
+            </div>
+          )},
+          { key: 'quantity', header: 'In Stock', render: (i: any) => <Badge variant="warning">{i.quantity_on_hand}</Badge> },
+          { key: 'minimum', header: 'Min Level', render: (i: any) => i.minimum_level },
+        ]}
+        data={items || []}
+        keyExtractor={(i) => i.product_id}
+        emptyMessage="No low stock items"
+      />
+    </Card>
+  );
+}
+
+function CashierReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { data: cashiers } = useQuery({
+    queryKey: ['cashierSales', dateFrom, dateTo],
+    queryFn: () => getCashierSales(dateFrom, dateTo),
+  });
+
+  return (
+    <Card title="Sales by Cashier">
+      <Table
+        columns={[
+          { key: 'cashier', header: 'Cashier', render: (c: any) => c.cashier_id.slice(0, 8) },
+          { key: 'count', header: 'Transactions', render: (c: any) => c.transaction_count },
+          { key: 'total', header: 'Total', render: (c: any) => `UGX ${c.total}` },
+        ]}
+        data={cashiers || []}
+        keyExtractor={(c) => c.cashier_id}
+        emptyMessage="No cashier data"
+      />
+    </Card>
   );
 }
