@@ -14,3 +14,18 @@ class AdjustStockCommand:
     reference: str | None = None
     unit_cost: Money | None = None
     user_id: UUID | None = None
+    notes: str = ""
+
+
+@dataclass(frozen=True)
+class ReserveStockCommand:
+    product_id: UUID
+    quantity: int
+    reference: str
+
+
+@dataclass(frozen=True)
+class ReleaseStockCommand:
+    product_id: UUID
+    quantity: int
+    reference: str

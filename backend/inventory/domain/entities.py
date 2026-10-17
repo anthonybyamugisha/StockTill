@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
-from shared.domain.base import Entity
+from shared.domain.base import Entity, AggregateRoot
 from shared.domain.money import Money
 
 
@@ -27,6 +27,7 @@ class StockMovement(Entity):
     unit_cost: Money = field(default_factory=Money.zero)
     user_id: UUID | None = None
     timestamp: datetime | None = None
+    notes: str = ""
 
 
 @dataclass
