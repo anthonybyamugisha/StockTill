@@ -15,12 +15,13 @@ class DatabaseReceiptNumberPort(ReceiptNumberPort):
 
         now = datetime.now()
         prefix = f"ST-{now.year}-"
-        last = SaleModel.objects.filter(receipt_number__startswith=prefix).order_by("-id").first()
-        if last:
+        highest = 0
+        numbers = SaleModel.objects.filter(receipt_number__startswith=prefix).values_list(
+            "receipt_number", flat=True
+        )
+        for number in numbers:
             try:
-                seq = int(last.receipt_number.split("-")[-1]) + 1
+                highest = max(highest, int(number.split("-")[-1]))
             except (ValueError, IndexError):
-                seq = 1
-        else:
-            seq = 1
-        return f"{prefix}{seq:06d}"
+                continue
+        return f"{prefix}{highest + 1:06d}"
