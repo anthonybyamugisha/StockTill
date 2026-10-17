@@ -52,7 +52,9 @@ class CurrentShiftView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        shift = GetCurrentShiftUseCase(DjangoShiftRepository()).execute(request.user.id)
+        shift = GetCurrentShiftUseCase(
+            DjangoShiftRepository(), DjangoCashMovementRepository()
+        ).execute(request.user.id)
         return Response({"shift": ShiftSerializer(shift).data if shift else None})
 
 
@@ -84,7 +86,12 @@ class CloseShiftView(APIView):
         serializer = CloseShiftSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        use_case = CloseShiftUseCase(DjangoShiftRepository(), SalesSummaryAdapter(), SystemClock())
+        use_case = CloseShiftUseCase(
+            DjangoShiftRepository(),
+            DjangoCashMovementRepository(),
+            SalesSummaryAdapter(),
+            SystemClock(),
+        )
         try:
             shift, totals = use_case.execute(
                 CloseShiftCommand(

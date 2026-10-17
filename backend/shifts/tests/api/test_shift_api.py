@@ -113,6 +113,27 @@ def test_closing_a_shift_reports_variance(api_client, cashier_user):
 
 
 @pytest.mark.django_db
+def test_closing_includes_recorded_cash_movements(api_client, cashier_user):
+    api_client.force_authenticate(user=cashier_user)
+    opened = api_client.post("/api/v1/shifts/open/", {"opening_float": "100000.00"})
+    shift_id = opened.data["id"]
+    api_client.post(
+        "/api/v1/shifts/cash-movement/",
+        {"shift_id": shift_id, "type": "payout", "amount": "25000.00", "reason": "transport"},
+    )
+
+    response = api_client.post(
+        "/api/v1/shifts/close/",
+        {"shift_id": shift_id, "counted_cash": "74000.00"},
+    )
+
+    assert response.status_code == 200
+    assert str(response.data["net_cash_movements"]) == "-25000.00"
+    assert str(response.data["expected_cash"]) == "75000.00"
+    assert str(response.data["variance"]) == "-1000.00"
+
+
+@pytest.mark.django_db
 def test_report_for_unknown_shift_returns_404(api_client, cashier_user):
     api_client.force_authenticate(user=cashier_user)
     response = api_client.get("/api/v1/shifts/00000000-0000-0000-0000-000000000000/")

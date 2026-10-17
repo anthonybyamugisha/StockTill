@@ -31,21 +31,31 @@ class OpenShiftUseCase:
 
 
 class GetCurrentShiftUseCase:
-    def __init__(self, shift_repository: ShiftRepository):
+    def __init__(
+        self,
+        shift_repository: ShiftRepository,
+        movement_repository: CashMovementRepository,
+    ):
         self._shift_repo = shift_repository
+        self._movement_repo = movement_repository
 
     def execute(self, cashier_id: UUID) -> Shift | None:
-        return self._shift_repo.get_open_for_cashier(cashier_id)
+        shift = self._shift_repo.get_open_for_cashier(cashier_id)
+        if shift is not None:
+            shift.cash_movements = self._movement_repo.list_by_shift(shift.id)
+        return shift
 
 
 class CloseShiftUseCase:
     def __init__(
         self,
         shift_repository: ShiftRepository,
+        movement_repository: CashMovementRepository,
         sales_port: SalesSummaryPort,
         clock: Clock,
     ):
         self._shift_repo = shift_repository
+        self._movement_repo = movement_repository
         self._sales_port = sales_port
         self._clock = clock
 
@@ -53,6 +63,7 @@ class CloseShiftUseCase:
         shift = self._shift_repo.get_by_id(command.shift_id)
         if shift is None:
             raise NoOpenShiftError("Shift not found")
+        shift.cash_movements = self._movement_repo.list_by_shift(shift.id)
         totals = self._sales_port.cash_totals(shift.id)
         shift.close(command.counted_cash, self._clock.now(), command.notes)
         self._shift_repo.save(shift)
