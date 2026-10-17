@@ -12,15 +12,15 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR.parent / "frontend" / "dist"]
-
-MIDDLEWARE.insert(0, "whitenoise.middleware.WhiteNoiseMiddleware")
-
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
 ALLOWED_HOSTS = [".onrender.com", "localhost"]
 
+CORS_ALLOWED_ORIGINS = [
+    "https://stocktill.vercel.app",
+    "https://*.vercel.app",
+]
+CORS_ALLOW_CREDENTIALS = True
+
 CSRF_TRUSTED_ORIGINS = [
-    "https://stocktill.onrender.com",
+    "https://stocktill.vercel.app",
+    "https://*.vercel.app",
 ]
