@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { listProducts, createProduct, updateProduct, deactivateProduct } from '../api/catalog';
+import { listProducts, createProduct, updateProduct, deactivateProduct, Product } from '../api/catalog';
 import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Modal } from '../../../shared/ui/Modal';
+import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Input } from '../../../shared/ui/Input';
 import { Table } from '../../../shared/ui/Table';
 import { Badge } from '../../../shared/ui/Badge';
@@ -12,7 +13,8 @@ export function CatalogPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productToDeactivate, setProductToDeactivate] = useState<Product | null>(null);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['products', search],
@@ -28,7 +30,7 @@ export function CatalogPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => updateProduct(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<Product> }) => updateProduct(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setShowModal(false);
@@ -37,32 +39,35 @@ export function CatalogPage() {
 
   const deactivateMutation = useMutation({
     mutationFn: deactivateProduct,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setProductToDeactivate(null);
+    },
   });
 
   const columns = [
-    { key: 'name', header: 'Product', render: (p: any) => (
+    { key: 'name', header: 'Product', render: (p: Product) => (
       <div>
         <p className="font-medium">{p.name}</p>
         <p className="text-xs text-surface-400">{p.sku}</p>
       </div>
     )},
-    { key: 'price', header: 'Price', render: (p: any) => `UGX ${p.selling_price}` },
-    { key: 'cost', header: 'Cost', render: (p: any) => `UGX ${p.buying_cost}` },
-    { key: 'margin', header: 'Margin', render: (p: any) => {
+    { key: 'price', header: 'Price', render: (p: Product) => `UGX ${p.selling_price}` },
+    { key: 'cost', header: 'Cost', render: (p: Product) => `UGX ${p.buying_cost}` },
+    { key: 'margin', header: 'Margin', render: (p: Product) => {
       const margin = parseFloat(p.selling_price) - parseFloat(p.buying_cost);
       return `UGX ${margin.toFixed(2)}`;
     }},
-    { key: 'status', header: 'Status', render: (p: any) => (
+    { key: 'status', header: 'Status', render: (p: Product) => (
       <Badge variant={p.is_active ? 'success' : 'neutral'}>{p.is_active ? 'Active' : 'Inactive'}</Badge>
     )},
-    { key: 'actions', header: '', render: (p: any) => (
+    { key: 'actions', header: '', render: (p: Product) => (
       <div className="flex gap-1">
         <button onClick={() => { setEditingProduct(p); setShowModal(true); }} className="btn-ghost btn-sm">
           Edit
         </button>
         {p.is_active && (
-          <button onClick={() => deactivateMutation.mutate(p.id)} className="btn-danger btn-sm">
+          <button onClick={() => setProductToDeactivate(p)} className="btn-danger btn-sm">
             Deactivate
           </button>
         )}
@@ -122,6 +127,33 @@ export function CatalogPage() {
           isLoading={createMutation.isPending || updateMutation.isPending}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={productToDeactivate !== null}
+        title="Deactivate product?"
+        message={
+          <>
+            <p>
+              Are you sure you want to deactivate{' '}
+              <span className="font-medium text-surface-700">{productToDeactivate?.name}</span>?
+            </p>
+            <p className="mt-2">
+              It will no longer appear in the POS and cannot be sold. Its stock history and past sales
+              are kept, and you can reactivate it later.
+            </p>
+          </>
+        }
+        confirmLabel="Yes, deactivate"
+        cancelLabel="Keep active"
+        isLoading={deactivateMutation.isPending}
+        onConfirm={() => {
+          if (productToDeactivate) deactivateMutation.mutate(productToDeactivate.id);
+        }}
+        onCancel={() => {
+          deactivateMutation.reset();
+          setProductToDeactivate(null);
+        }}
+      />
     </div>
   );
 }
@@ -143,10 +175,10 @@ function extractError(error: unknown): string | null {
 }
 
 function ProductModal({ product, error, onClose, onSubmit, isLoading }: {
-  product: any;
+  product: Product | null;
   error: string | null;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: Partial<Product> & { opening_stock?: number }) => void;
   isLoading: boolean;
 }) {
   const [form, setForm] = useState({
@@ -163,7 +195,7 @@ function ProductModal({ product, error, onClose, onSubmit, isLoading }: {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload: Record<string, unknown> = {
+    const payload: Partial<Product> & { opening_stock?: number } = {
       name: form.name,
       sku: form.sku,
       selling_price: form.selling_price,
