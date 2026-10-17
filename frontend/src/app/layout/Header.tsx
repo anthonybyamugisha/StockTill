@@ -37,8 +37,8 @@ export function Header() {
           <p className="text-xs text-surface-400">{roleLabels[user.role] || user.role}</p>
         </div>
         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-primary-700 text-sm font-semibold">
-          {user.first_name[0]}
-          {user.last_name[0]}
+          {user.first_name?.[0] ?? ''}
+          {user.last_name?.[0] ?? ''}
         </div>
         <button onClick={handleLogout} className="btn-secondary btn-sm">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

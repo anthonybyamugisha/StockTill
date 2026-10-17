@@ -24,5 +24,9 @@ export async function logout(): Promise<void> {
 
 export async function getCurrentUser(): Promise<User> {
   const res = await apiClient.get<User>('/accounts/me/');
-  return res.data;
+  const data = res.data;
+  if (data && typeof data === 'object' && 'email' in data) {
+    return data;
+  }
+  throw new Error('Not authenticated');
 }
