@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getLowStock, getOutOfStock, adjustStock } from '../api/inventory';
+import { getLowStock, getOutOfStock, adjustStock, StockItem } from '../api/inventory';
 import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Badge } from '../../../shared/ui/Badge';
@@ -45,13 +45,13 @@ export function InventoryPage() {
       <Card title="Low Stock Products">
         <Table
           columns={[
-            { key: 'product', header: 'Product', render: (item: any) => (
+            { key: 'product', header: 'Product', render: (item: StockItem) => (
               <div>
-                <p className="font-medium">Product {item.product_id.slice(0, 8)}</p>
-                <p className="text-xs text-surface-400">ID: {item.product_id.slice(0, 8)}</p>
+                <p className="font-medium text-surface-700">{item.product_name}</p>
+                <p className="text-xs text-surface-400">{item.sku ? `SKU: ${item.sku}` : 'No SKU'}</p>
               </div>
             )},
-            { key: 'quantity', header: 'In Stock', render: (item: any) => <Badge variant="warning">{item.quantity_on_hand}</Badge> },
+            { key: 'quantity', header: 'In Stock', render: (item: StockItem) => <Badge variant="warning">{item.quantity_on_hand}</Badge> },
             { key: 'status', header: 'Status', render: () => <Badge variant="warning">Low Stock</Badge> },
           ]}
           data={lowStock || []}
@@ -63,8 +63,11 @@ export function InventoryPage() {
       <Card title="Out of Stock Products">
         <Table
           columns={[
-            { key: 'product', header: 'Product', render: (item: any) => (
-              <p className="font-medium">Product {item.product_id.slice(0, 8)}</p>
+            { key: 'product', header: 'Product', render: (item: StockItem) => (
+              <div>
+                <p className="font-medium text-surface-700">{item.product_name}</p>
+                <p className="text-xs text-surface-400">{item.sku ? `SKU: ${item.sku}` : 'No SKU'}</p>
+              </div>
             )},
             { key: 'status', header: 'Status', render: () => <Badge variant="error">Out of Stock</Badge> },
           ]}

@@ -1,6 +1,7 @@
+from collections.abc import Iterable
 from uuid import UUID
 
-from inventory.application.ports import ProductInfoPort
+from inventory.application.ports import ProductInfoPort, ProductLabel
 
 
 class CatalogProductInfoAdapter(ProductInfoPort):
@@ -19,3 +20,14 @@ class CatalogProductInfoAdapter(ProductInfoPort):
             return ProductModel.objects.get(id=product_id).minimum_stock_level
         except ProductModel.DoesNotExist:
             return 0
+
+    def get_product_labels(self, product_ids: Iterable[UUID]) -> dict[UUID, ProductLabel]:
+        from catalog.infrastructure.models import ProductModel
+
+        ids = list(product_ids)
+        if not ids:
+            return {}
+        return {
+            product.id: ProductLabel(name=product.name, sku=product.sku)
+            for product in ProductModel.objects.filter(id__in=ids)
+        }

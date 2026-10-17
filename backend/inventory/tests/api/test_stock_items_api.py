@@ -54,7 +54,59 @@ def test_list_stock_items_returns_stocked_products(api_client, manager_user, pro
     assert response.status_code == 200
     assert len(response.data) == 1
     assert response.data[0]["product_id"] == str(product.id)
+    assert response.data[0]["product_name"] == "Rice 5kg"
+    assert response.data[0]["sku"] == "RIC-005"
     assert response.data[0]["available_quantity"] == 7
+
+
+@pytest.mark.django_db
+def test_low_stock_items_include_product_name(api_client, manager_user, db):
+    product = ProductModel.objects.create(name="Sugar 1kg", sku="SUG-001", minimum_stock_level=10)
+    api_client.force_authenticate(user=manager_user)
+    api_client.post(
+        "/api/v1/inventory/adjust/",
+        {
+            "product_id": str(product.id),
+            "quantity": 4,
+            "movement_type": "opening",
+            "reason": "Opening stock",
+        },
+    )
+
+    response = api_client.get("/api/v1/inventory/low-stock/")
+
+    assert response.status_code == 200
+    assert response.data[0]["product_name"] == "Sugar 1kg"
+    assert response.data[0]["sku"] == "SUG-001"
+
+
+@pytest.mark.django_db
+def test_out_of_stock_items_include_product_name(api_client, manager_user, product):
+    api_client.force_authenticate(user=manager_user)
+    api_client.post(
+        "/api/v1/inventory/adjust/",
+        {
+            "product_id": str(product.id),
+            "quantity": 5,
+            "movement_type": "opening",
+            "reason": "Opening stock",
+        },
+    )
+    api_client.post(
+        "/api/v1/inventory/adjust/",
+        {
+            "product_id": str(product.id),
+            "quantity": 5,
+            "movement_type": "adjustment_out",
+            "reason": "Sold out",
+        },
+    )
+
+    response = api_client.get("/api/v1/inventory/out-of-stock/")
+
+    assert response.status_code == 200
+    assert response.data[0]["product_name"] == "Rice 5kg"
+    assert response.data[0]["sku"] == "RIC-005"
 
 
 @pytest.mark.django_db

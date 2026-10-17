@@ -30,9 +30,19 @@ class StockMovementSerializer(serializers.Serializer):
 
 class StockItemSerializer(serializers.Serializer):
     product_id = serializers.UUIDField()
+    product_name = serializers.SerializerMethodField()
+    sku = serializers.SerializerMethodField()
     quantity_on_hand = serializers.IntegerField()
     reserved_quantity = serializers.IntegerField()
     available_quantity = serializers.IntegerField(read_only=True)
+
+    def get_product_name(self, obj) -> str:
+        label = self.context.get("labels", {}).get(obj.product_id)
+        return label.name if label else "Unknown product"
+
+    def get_sku(self, obj) -> str | None:
+        label = self.context.get("labels", {}).get(obj.product_id)
+        return label.sku if label else None
 
 
 class ValuationSerializer(serializers.Serializer):

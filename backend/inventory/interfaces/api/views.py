@@ -55,13 +55,18 @@ class StockAdjustmentView(APIView):
         return Response(StockMovementSerializer(movement).data, status=status.HTTP_201_CREATED)
 
 
+def _serialize_items(items) -> list[dict]:
+    labels = CatalogProductInfoAdapter().get_product_labels(item.product_id for item in items)
+    return StockItemSerializer(items, many=True, context={"labels": labels}).data
+
+
 class StockItemListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         repo = DjangoStockItemRepository()
         items = repo.list_all()
-        return Response(StockItemSerializer(items, many=True).data)
+        return Response(_serialize_items(items))
 
 
 class StockItemDetailView(APIView):
@@ -72,7 +77,7 @@ class StockItemDetailView(APIView):
         item = repo.get_by_product(product_id)
         if item is None:
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-        return Response(StockItemSerializer(item).data)
+        return Response(_serialize_items([item])[0])
 
 
 class StockHistoryView(APIView):
@@ -90,7 +95,7 @@ class LowStockView(APIView):
     def get(self, request):
         repo = DjangoStockItemRepository()
         items = repo.list_low_stock()
-        return Response(StockItemSerializer(items, many=True).data)
+        return Response(_serialize_items(items))
 
 
 class OutOfStockView(APIView):
@@ -99,7 +104,7 @@ class OutOfStockView(APIView):
     def get(self, request):
         repo = DjangoStockItemRepository()
         items = repo.list_out_of_stock()
-        return Response(StockItemSerializer(items, many=True).data)
+        return Response(_serialize_items(items))
 
 
 class InventoryValuationView(APIView):

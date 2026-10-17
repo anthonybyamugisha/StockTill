@@ -2,6 +2,8 @@ import { apiClient } from '../../../shared/http/client';
 
 export interface StockItem {
   product_id: string;
+  product_name: string;
+  sku: string | null;
   quantity_on_hand: number;
   reserved_quantity: number;
   available_quantity: number;
