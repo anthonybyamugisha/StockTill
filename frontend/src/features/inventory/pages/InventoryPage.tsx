@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getLowStock, getOutOfStock, adjustStock, StockItem } from '../api/inventory';
+import { getLowStock, getOutOfStock, adjustStock, AdjustStockRequest, StockItem } from '../api/inventory';
 import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Badge } from '../../../shared/ui/Badge';
@@ -8,7 +8,9 @@ import { Table } from '../../../shared/ui/Table';
 import { Modal } from '../../../shared/ui/Modal';
 import { Input } from '../../../shared/ui/Input';
 import { Select } from '../../../shared/ui/Select';
-import { listProducts } from '../../catalog/api/catalog';
+import { listProducts, Product } from '../../catalog/api/catalog';
+import { toast } from '../../../shared/ui/toast';
+import { getApiErrorMessage } from '../../../shared/http/errors';
 
 export function InventoryPage() {
   const queryClient = useQueryClient();
@@ -16,14 +18,25 @@ export function InventoryPage() {
 
   const { data: lowStock } = useQuery({ queryKey: ['lowStock'], queryFn: getLowStock });
   const { data: outOfStock } = useQuery({ queryKey: ['outOfStock'], queryFn: getOutOfStock });
+  const { data: products = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: () => listProducts(),
+  });
 
   const adjustMutation = useMutation({
     mutationFn: adjustStock,
-    onSuccess: () => {
+    onSuccess: (_movement, variables) => {
       queryClient.invalidateQueries({ queryKey: ['lowStock'] });
       queryClient.invalidateQueries({ queryKey: ['outOfStock'] });
+      queryClient.invalidateQueries({ queryKey: ['stockItems'] });
       setShowAdjustModal(false);
+      const name = products.find((product: Product) => product.id === variables.product_id)?.name;
+      const removed = variables.movement_type === 'adjustment_out' || variables.movement_type === 'write_off';
+      toast.success(
+        `Stock ${removed ? 'reduced' : 'increased'} by ${variables.quantity} for "${name ?? 'product'}"`,
+      );
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not adjust stock')),
   });
 
   return (
@@ -79,6 +92,7 @@ export function InventoryPage() {
 
       {showAdjustModal && (
         <AdjustStockModal
+          products={products}
           onClose={() => setShowAdjustModal(false)}
           onSubmit={(data) => adjustMutation.mutate(data)}
           isLoading={adjustMutation.isPending}
@@ -88,13 +102,13 @@ export function InventoryPage() {
   );
 }
 
-function AdjustStockModal({ onClose, onSubmit, isLoading }: {
+function AdjustStockModal({ products, onClose, onSubmit, isLoading }: {
+  products: Product[];
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: AdjustStockRequest) => void;
   isLoading: boolean;
 }) {
-  const { data: products } = useQuery({ queryKey: ['products'], queryFn: () => listProducts() });
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<AdjustStockRequest>({
     product_id: '',
     quantity: 1,
     movement_type: 'adjustment_in',
@@ -123,7 +137,7 @@ function AdjustStockModal({ onClose, onSubmit, isLoading }: {
           label="Product"
           value={form.product_id}
           onChange={(e) => setForm({ ...form, product_id: e.target.value })}
-          options={(products || []).map((p: any) => ({ value: p.id, label: p.name }))}
+          options={products.map((p) => ({ value: p.id, label: p.name }))}
         />
         <Select
           label="Movement Type"
