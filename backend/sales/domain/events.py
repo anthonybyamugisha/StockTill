@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 
@@ -7,7 +8,7 @@ from uuid import UUID
 class SaleCompleted:
     sale_id: UUID
     receipt_number: str
-    total: str
+    total: Decimal
     cashier_id: UUID
     timestamp: datetime
 
@@ -16,7 +17,7 @@ class SaleCompleted:
 class SaleRefunded:
     sale_id: UUID
     refund_id: UUID
-    amount: str
+    amount: Decimal
     user_id: UUID
     timestamp: datetime
 

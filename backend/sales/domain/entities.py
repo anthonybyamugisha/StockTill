@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from shared.domain.base import AggregateRoot, Entity
-from shared.domain.money import Money
+from shared.domain.money import CENT, ZERO, Money
 
 
 class DiscountType(str, Enum):
@@ -29,13 +30,13 @@ class SaleStatus(str, Enum):
 @dataclass(frozen=True)
 class Discount:
     type: DiscountType
-    value: float
-    amount: Money = field(default_factory=Money.zero)
+    value: Decimal
+    amount: Money
 
 
 @dataclass
 class SaleLine(Entity):
-    product_id: UUID = field(default_factory=UUID)
+    product_id: UUID = field(default_factory=uuid4)
     product_name: str = ""
     quantity: int = 0
     unit_price: Money = field(default_factory=Money.zero)
@@ -43,10 +44,22 @@ class SaleLine(Entity):
     discount: Discount | None = None
 
     @property
+    def gross_total(self) -> Money:
+        return self.unit_price.multiply(Decimal(self.quantity))
+
+    @property
     def total(self) -> Money:
         if self.discount:
-            return self.unit_price.multiply(Decimal(self.quantity)).subtract(self.discount.amount)
-        return self.unit_price.multiply(Decimal(self.quantity))
+            return self.gross_total.subtract(self.discount.amount)
+        return self.gross_total
+
+    @property
+    def cost_total(self) -> Money:
+        return self.unit_cost.multiply(Decimal(self.quantity))
+
+    @property
+    def profit(self) -> Money:
+        return self.total.subtract(self.cost_total)
 
 
 @dataclass
@@ -58,10 +71,16 @@ class Payment(Entity):
     reference: str | None = None
     provider: str | None = None
 
+    def calculate_change(self) -> Money:
+        if self.method != PaymentMethod.CASH or self.tendered is None:
+            return Money.zero()
+        change = self.tendered.subtract(self.amount)
+        return max(change, Money.zero())
+
 
 @dataclass
 class Refund(Entity):
-    sale_id: UUID = field(default_factory=UUID)
+    sale_id: UUID = field(default_factory=uuid4)
     line_id: UUID | None = None
     quantity: int = 0
     amount: Money = field(default_factory=Money.zero)
@@ -80,10 +99,11 @@ class Sale(AggregateRoot):
     refunds: list[Refund] = field(default_factory=list)
     status: SaleStatus = SaleStatus.COMPLETED
     created_at: datetime | None = None
+    notes: str = ""
 
     @property
     def subtotal(self) -> Money:
-        return sum((line.total for line in self.lines), Money.zero())
+        return sum((line.gross_total for line in self.lines), Money.zero())
 
     @property
     def total_discount(self) -> Money:
@@ -94,7 +114,7 @@ class Sale(AggregateRoot):
 
     @property
     def total(self) -> Money:
-        return self.subtotal.subtract(self.total_discount)
+        return sum((line.total for line in self.lines), Money.zero())
 
     @property
     def amount_paid(self) -> Money:
@@ -108,5 +128,17 @@ class Sale(AggregateRoot):
     def refundable_amount(self) -> Money:
         return self.total.subtract(self.total_refunded)
 
+    @property
+    def cost_total(self) -> Money:
+        return sum((line.cost_total for line in self.lines), Money.zero())
 
-from decimal import Decimal  # noqa: E402
+    @property
+    def gross_profit(self) -> Money:
+        return self.total.subtract(self.cost_total)
+
+    def refundable_quantity_for_line(self, line_id: UUID) -> int:
+        line = next((l for l in self.lines if l.id == line_id), None)
+        if line is None:
+            return 0
+        already_refunded = sum(r.quantity for r in self.refunds if r.line_id == line_id)
+        return line.quantity - already_refunded

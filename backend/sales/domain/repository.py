@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from sales.domain.entities import Refund, Sale, SaleLine
+from sales.domain.entities import Refund, Sale, SaleStatus
 
 
 class SaleRepository(ABC):
@@ -22,10 +22,16 @@ class SaleRepository(ABC):
         self,
         *,
         cashier_id: UUID | None = None,
-        status: str | None = None,
+        status: SaleStatus | None = None,
+        payment_method: str | None = None,
         date_from: str | None = None,
         date_to: str | None = None,
+        receipt_number: str | None = None,
     ) -> list[Sale]:
+        pass
+
+    @abstractmethod
+    def exists_by_idempotency_key(self, key: str) -> bool:
         pass
 
 
