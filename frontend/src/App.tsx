@@ -13,6 +13,7 @@ import { ReportsPage } from './features/reports/pages/ReportsPage';
 import { UsersPage } from './features/users/pages/UsersPage';
 import { SettingsPage } from './features/settings/pages/SettingsPage';
 import { AuditLogPage } from './features/audit/pages/AuditLogPage';
+import { Toaster } from './shared/ui/Toaster';
 
 function Protected({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
   const { user, isLoading } = useAuth();
@@ -42,29 +43,32 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
-      <Route
-        element={
-          <Protected>
-            <AppLayout />
-          </Protected>
-        }
-      >
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/pos" element={<POSPage />} />
-        <Route path="/catalog" element={<CatalogPage />} />
-        <Route path="/inventory" element={<InventoryPage />} />
-        <Route path="/purchasing" element={<PurchasingPage />} />
-        <Route path="/sales" element={<SalesPage />} />
-        <Route path="/shifts" element={<ShiftsPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/users" element={<UsersPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/audit-log" element={<AuditLogPage />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Toaster />
+      <Routes>
+        <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route
+          element={
+            <Protected>
+              <AppLayout />
+            </Protected>
+          }
+        >
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/pos" element={<POSPage />} />
+          <Route path="/catalog" element={<CatalogPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/purchasing" element={<PurchasingPage />} />
+          <Route path="/sales" element={<SalesPage />} />
+          <Route path="/shifts" element={<ShiftsPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/audit-log" element={<AuditLogPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

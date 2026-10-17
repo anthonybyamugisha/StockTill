@@ -76,6 +76,21 @@
   .nav-item-active {
     @apply bg-primary-50 text-primary-600 hover:bg-primary-50 hover:text-primary-600;
   }
+
+  .toast-item {
+    animation: toast-in 180ms ease-out;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @page {
