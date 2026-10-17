@@ -1,3 +1,5 @@
+from typing import Any
+
 from catalog.application.commands import (
     CreateCategoryCommand,
     CreateProductCommand,
@@ -8,7 +10,21 @@ from catalog.application.commands import (
 from catalog.application.ports import OpeningStockPort
 from catalog.domain.entities import Category, Product
 from catalog.domain.repository import CategoryRepository, ProductRepository
+from shared.application.audit import AuditPort, NullAuditPort
 from shared.domain.clock import Clock
+
+
+def _product_snapshot(product: Product) -> dict[str, Any]:
+    return {
+        "name": product.name,
+        "sku": product.sku,
+        "barcode": product.barcode,
+        "category_id": str(product.category_id) if product.category_id else None,
+        "buying_cost": str(product.buying_cost.amount),
+        "selling_price": str(product.selling_price.amount),
+        "minimum_stock_level": product.minimum_stock_level,
+        "is_active": product.is_active,
+    }
 
 
 class CreateProductUseCase:
@@ -17,10 +33,12 @@ class CreateProductUseCase:
         product_repository: ProductRepository,
         clock: Clock,
         opening_stock_port: OpeningStockPort | None = None,
+        audit: AuditPort | None = None,
     ):
         self._repo = product_repository
         self._clock = clock
         self._opening_stock = opening_stock_port
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: CreateProductCommand) -> Product:
         if self._repo.sku_exists(command.sku):
@@ -48,18 +66,36 @@ class CreateProductUseCase:
                 unit_cost=command.buying_cost,
                 user_id=command.user_id,
             )
+
+        after = _product_snapshot(product)
+        after["opening_stock"] = command.opening_stock
+        self._audit.record(
+            user_id=command.user_id,
+            action="product.created",
+            entity_type="product",
+            entity_id=str(product.id),
+            after=after,
+        )
         return product
 
 
 class UpdateProductUseCase:
-    def __init__(self, product_repository: ProductRepository, clock: Clock):
+    def __init__(
+        self,
+        product_repository: ProductRepository,
+        clock: Clock,
+        audit: AuditPort | None = None,
+    ):
         self._repo = product_repository
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: UpdateProductCommand) -> Product:
         product = self._repo.get_by_id(command.product_id)
         if product is None:
             raise ValueError("Product not found")
+
+        before = _product_snapshot(product)
 
         if command.sku is not None and command.sku != product.sku:
             if self._repo.sku_exists(command.sku, exclude_id=product.id):
@@ -90,13 +126,31 @@ class UpdateProductUseCase:
             product.update_cost(command.buying_cost, command.user_id or product.id)
 
         self._repo.save(product)
+
+        after = _product_snapshot(product)
+        changed = {key: value for key, value in after.items() if value != before[key]}
+        if changed:
+            self._audit.record(
+                user_id=command.user_id,
+                action="product.updated",
+                entity_type="product",
+                entity_id=str(product.id),
+                before={key: before[key] for key in changed},
+                after=changed,
+            )
         return product
 
 
 class DeactivateProductUseCase:
-    def __init__(self, product_repository: ProductRepository, clock: Clock):
+    def __init__(
+        self,
+        product_repository: ProductRepository,
+        clock: Clock,
+        audit: AuditPort | None = None,
+    ):
         self._repo = product_repository
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: DeactivateProductCommand) -> Product:
         product = self._repo.get_by_id(command.product_id)
@@ -105,12 +159,21 @@ class DeactivateProductUseCase:
 
         product.is_active = False
         self._repo.save(product)
+        self._audit.record(
+            user_id=command.user_id,
+            action="product.deactivated",
+            entity_type="product",
+            entity_id=str(product.id),
+            before={"is_active": True},
+            after={"is_active": False, "name": product.name, "sku": product.sku},
+        )
         return product
 
 
 class CreateCategoryUseCase:
-    def __init__(self, category_repository: CategoryRepository):
+    def __init__(self, category_repository: CategoryRepository, audit: AuditPort | None = None):
         self._repo = category_repository
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: CreateCategoryCommand) -> Category:
         category = Category(
@@ -119,6 +182,13 @@ class CreateCategoryUseCase:
             parent_id=command.parent_id,
         )
         self._repo.save(category)
+        self._audit.record(
+            user_id=command.user_id,
+            action="category.created",
+            entity_type="category",
+            entity_id=str(category.id),
+            after={"name": category.name},
+        )
         return category
 
 
@@ -131,8 +201,9 @@ class ListCategoriesUseCase:
 
 
 class DeactivateCategoryUseCase:
-    def __init__(self, category_repository: CategoryRepository):
+    def __init__(self, category_repository: CategoryRepository, audit: AuditPort | None = None):
         self._repo = category_repository
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: DeactivateCategoryCommand) -> Category:
         category = self._repo.get_by_id(command.category_id)
@@ -141,4 +212,12 @@ class DeactivateCategoryUseCase:
 
         category.is_active = False
         self._repo.save(category)
+        self._audit.record(
+            user_id=command.user_id,
+            action="category.deactivated",
+            entity_type="category",
+            entity_id=str(category.id),
+            before={"is_active": True, "name": category.name},
+            after={"is_active": False},
+        )
         return category

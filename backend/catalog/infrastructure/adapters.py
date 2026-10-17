@@ -11,6 +11,7 @@ from inventory.infrastructure.repository import (
 )
 from shared.domain.clock import SystemClock
 from shared.domain.money import Money
+from shared.infrastructure.audit import build_audit_recorder
 
 
 class InventoryOpeningStockAdapter(OpeningStockPort):
@@ -22,6 +23,7 @@ class InventoryOpeningStockAdapter(OpeningStockPort):
             DjangoStockMovementRepository(),
             CatalogProductInfoAdapter(),
             SystemClock(),
+            build_audit_recorder(),
         )
         use_case.execute(
             AdjustStockCommand(

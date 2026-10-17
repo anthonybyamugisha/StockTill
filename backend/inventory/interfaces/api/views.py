@@ -20,6 +20,7 @@ from inventory.interfaces.api.serializers import (
 )
 from shared.domain.clock import SystemClock
 from shared.domain.money import Money
+from shared.infrastructure.audit import build_audit_recorder
 
 
 class StockAdjustmentView(APIView):
@@ -34,6 +35,7 @@ class StockAdjustmentView(APIView):
             DjangoStockMovementRepository(),
             CatalogProductInfoAdapter(),
             SystemClock(),
+            build_audit_recorder(),
         )
         try:
             movement = use_case.execute(

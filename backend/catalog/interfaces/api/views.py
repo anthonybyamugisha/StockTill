@@ -33,6 +33,7 @@ from catalog.interfaces.api.serializers import (
 )
 from shared.domain.clock import SystemClock
 from shared.domain.money import Money
+from shared.infrastructure.audit import build_audit_recorder
 
 
 class ProductListCreateView(APIView):
@@ -65,7 +66,10 @@ class ProductListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         use_case = CreateProductUseCase(
-            DjangoProductRepository(), SystemClock(), InventoryOpeningStockAdapter()
+            DjangoProductRepository(),
+            SystemClock(),
+            InventoryOpeningStockAdapter(),
+            build_audit_recorder(),
         )
         try:
             product = use_case.execute(
@@ -125,7 +129,9 @@ class ProductDetailView(APIView):
         serializer = UpdateProductSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        use_case = UpdateProductUseCase(DjangoProductRepository(), SystemClock())
+        use_case = UpdateProductUseCase(
+            DjangoProductRepository(), SystemClock(), build_audit_recorder()
+        )
         try:
             product = use_case.execute(
                 UpdateProductCommand(
@@ -148,9 +154,16 @@ class ProductDetailView(APIView):
         return Response(ProductDetailSerializer(product).data)
 
     def delete(self, request, product_id):
-        use_case = DeactivateProductUseCase(DjangoProductRepository(), SystemClock())
+        use_case = DeactivateProductUseCase(
+            DjangoProductRepository(), SystemClock(), build_audit_recorder()
+        )
         try:
-            use_case.execute(DeactivateProductCommand(product_id=product_id))
+            use_case.execute(
+                DeactivateProductCommand(
+                    product_id=product_id,
+                    user_id=request.user.id if request.user.is_authenticated else None,
+                )
+            )
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -171,12 +184,13 @@ class CategoryListCreateView(APIView):
         serializer = CreateCategorySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        use_case = CreateCategoryUseCase(DjangoCategoryRepository())
+        use_case = CreateCategoryUseCase(DjangoCategoryRepository(), build_audit_recorder())
         category = use_case.execute(
             CreateCategoryCommand(
                 name=data["name"],
                 description=data.get("description", ""),
                 parent_id=data.get("parent_id"),
+                user_id=request.user.id if request.user.is_authenticated else None,
             )
         )
         return Response(CategorySerializer(category).data, status=status.HTTP_201_CREATED)
@@ -186,7 +200,7 @@ class CategoryDetailView(APIView):
     permission_classes = [IsManager]
 
     def delete(self, request, category_id):
-        use_case = DeactivateCategoryUseCase(DjangoCategoryRepository())
+        use_case = DeactivateCategoryUseCase(DjangoCategoryRepository(), build_audit_recorder())
         try:
             use_case.execute(
                 DeactivateCategoryCommand(

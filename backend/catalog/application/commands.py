@@ -46,6 +46,7 @@ class CreateCategoryCommand:
     name: str
     description: str = ""
     parent_id: UUID | None = None
+    user_id: UUID | None = None
 
 
 @dataclass(frozen=True)
