@@ -8,10 +8,12 @@ from inventory.interfaces.api.views import (
     StockAdjustmentView,
     StockHistoryView,
     StockItemDetailView,
+    StockItemListView,
 )
 
 urlpatterns = [
     path("adjust/", StockAdjustmentView.as_view(), name="stock-adjust"),
+    path("items/", StockItemListView.as_view(), name="stock-item-list"),
     path("items/<uuid:product_id>/", StockItemDetailView.as_view(), name="stock-item-detail"),
     path("history/<uuid:product_id>/", StockHistoryView.as_view(), name="stock-history"),
     path("low-stock/", LowStockView.as_view(), name="low-stock"),

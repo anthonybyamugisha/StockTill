@@ -53,6 +53,15 @@ class StockAdjustmentView(APIView):
         return Response(StockMovementSerializer(movement).data, status=status.HTTP_201_CREATED)
 
 
+class StockItemListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        repo = DjangoStockItemRepository()
+        items = repo.list_all()
+        return Response(StockItemSerializer(items, many=True).data)
+
+
 class StockItemDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
