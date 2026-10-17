@@ -33,9 +33,24 @@ class LoginSerializer(serializers.Serializer):
 class AuditLogSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     user_id = serializers.UUIDField(allow_null=True)
+    user_name = serializers.SerializerMethodField()
+    user_email = serializers.SerializerMethodField()
     action = serializers.CharField()
     entity_type = serializers.CharField()
     entity_id = serializers.CharField()
     before = serializers.JSONField(allow_null=True)
     after = serializers.JSONField(allow_null=True)
     timestamp = serializers.DateTimeField()
+
+    def _user(self, obj):
+        return self.context.get("users", {}).get(obj.user_id)
+
+    def get_user_name(self, obj) -> str | None:
+        user = self._user(obj)
+        if user is None:
+            return None
+        return f"{user.first_name} {user.last_name}".strip() or user.email
+
+    def get_user_email(self, obj) -> str | None:
+        user = self._user(obj)
+        return user.email if user is not None else None

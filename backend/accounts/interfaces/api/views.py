@@ -19,6 +19,7 @@ from accounts.application.use_cases import (
 )
 from accounts.domain.entities import Role
 from accounts.infrastructure.audit_repository import DjangoAuditRepository
+from accounts.infrastructure.models import UserModel
 from accounts.infrastructure.password_hasher import DjangoPasswordHasher
 from accounts.infrastructure.repository import DjangoUserRepository
 from accounts.interfaces.api.permissions import IsAdmin
@@ -130,8 +131,6 @@ class LoginView(APIView):
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
-        from accounts.infrastructure.models import UserModel
-
         model = UserModel.objects.get(id=user.id)
         django_login(request, model)
         return Response(UserSerializer(model).data)
@@ -174,5 +173,7 @@ class AuditLogView(APIView):
             action=request.query_params.get("action") or None,
             date_from=request.query_params.get("date_from") or None,
             date_to=request.query_params.get("date_to") or None,
-        )
-        return Response(AuditLogSerializer(entries[:100], many=True).data)
+        )[:100]
+        user_ids = {entry.user_id for entry in entries if entry.user_id is not None}
+        users = {user.id: user for user in UserModel.objects.filter(id__in=user_ids)}
+        return Response(AuditLogSerializer(entries, many=True, context={"users": users}).data)

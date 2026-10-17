@@ -40,12 +40,11 @@ def cashier_user(db):
 
 
 @pytest.mark.django_db
-def test_admin_can_read_audit_log(api_client, admin_user):
-    user_id = uuid4()
+def test_admin_can_read_audit_log(api_client, admin_user, cashier_user):
     DjangoAuditRepository().save(
         AuditEntry(
             id=uuid4(),
-            user_id=user_id,
+            user_id=cashier_user.id,
             action="sale.voided",
             entity_type="sale",
             entity_id="ST-2026-000001",
@@ -61,7 +60,9 @@ def test_admin_can_read_audit_log(api_client, admin_user):
     assert len(response.data) == 1
     entry = response.data[0]
     assert entry["action"] == "sale.voided"
-    assert entry["user_id"] == str(user_id)
+    assert entry["user_id"] == str(cashier_user.id)
+    assert entry["user_name"] == "cashier User"
+    assert entry["user_email"] == "cashier@shop.com"
     assert entry["entity_type"] == "sale"
     assert entry["before"] == {"status": "completed"}
     assert entry["timestamp"] is not None
