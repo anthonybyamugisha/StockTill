@@ -93,7 +93,7 @@ function AdjustStockModal({ onClose, onSubmit, isLoading }: {
   onSubmit: (data: any) => void;
   isLoading: boolean;
 }) {
-  const { data: products } = useQuery({ queryKey: ['products'], queryFn: listProducts });
+  const { data: products } = useQuery({ queryKey: ['products'], queryFn: () => listProducts() });
   const [form, setForm] = useState({
     product_id: '',
     quantity: 1,

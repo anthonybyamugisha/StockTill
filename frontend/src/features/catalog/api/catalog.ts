@@ -14,8 +14,10 @@ export interface Product {
   is_active: boolean;
 }
 
-export async function listProducts(): Promise<Product[]> {
-  const res = await apiClient.get<Product[]>('/catalog/products/');
+export async function listProducts(options: { activeOnly?: boolean } = {}): Promise<Product[]> {
+  const res = await apiClient.get<Product[]>('/catalog/products/', {
+    params: { active_only: options.activeOnly ?? true },
+  });
   return res.data;
 }
 

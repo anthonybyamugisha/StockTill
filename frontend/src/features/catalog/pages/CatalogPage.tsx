@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listProducts, createProduct, updateProduct, deactivateProduct, Product } from '../api/catalog';
 import { Card } from '../../../shared/ui/Card';
@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Input } from '../../../shared/ui/Input';
 import { Table } from '../../../shared/ui/Table';
 import { Badge } from '../../../shared/ui/Badge';
+import { matchesProductQuery } from '../../../shared/utils/productSearch';
 
 export function CatalogPage() {
   const queryClient = useQueryClient();
@@ -17,14 +18,24 @@ export function CatalogPage() {
   const [productToDeactivate, setProductToDeactivate] = useState<Product | null>(null);
 
   const { data: products, isLoading } = useQuery({
-    queryKey: ['products', search],
-    queryFn: () => listProducts(),
+    queryKey: ['catalog-products'],
+    queryFn: () => listProducts({ activeOnly: false }),
   });
+
+  const visible = useMemo(
+    () => (products ?? []).filter((product) => matchesProductQuery(product, search)),
+    [products, search],
+  );
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['catalog-products'] });
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+  };
 
   const createMutation = useMutation({
     mutationFn: createProduct,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+      refresh();
       setShowModal(false);
     },
   });
@@ -32,7 +43,7 @@ export function CatalogPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Product> }) => updateProduct(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+      refresh();
       setShowModal(false);
     },
   });
@@ -40,9 +51,14 @@ export function CatalogPage() {
   const deactivateMutation = useMutation({
     mutationFn: deactivateProduct,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+      refresh();
       setProductToDeactivate(null);
     },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id: string) => updateProduct(id, { is_active: true }),
+    onSuccess: refresh,
   });
 
   const columns = [
@@ -66,9 +82,17 @@ export function CatalogPage() {
         <button onClick={() => { setEditingProduct(p); setShowModal(true); }} className="btn-ghost btn-sm">
           Edit
         </button>
-        {p.is_active && (
+        {p.is_active ? (
           <button onClick={() => setProductToDeactivate(p)} className="btn-danger btn-sm">
             Deactivate
+          </button>
+        ) : (
+          <button
+            onClick={() => reactivateMutation.mutate(p.id)}
+            disabled={reactivateMutation.isPending}
+            className="btn-secondary btn-sm"
+          >
+            Reactivate
           </button>
         )}
       </div>
@@ -99,12 +123,20 @@ export function CatalogPage() {
         {isLoading ? (
           <p className="py-8 text-center text-surface-400">Loading products...</p>
         ) : (
-          <Table
-            columns={columns}
-            data={products || []}
-            keyExtractor={(p) => p.id}
-            emptyMessage="No products found"
-          />
+          <>
+            {search.trim() && (
+              <p className="mb-3 text-xs text-surface-400">
+                {visible.length} of {products?.length ?? 0} product
+                {(products?.length ?? 0) === 1 ? '' : 's'} match &ldquo;{search.trim()}&rdquo;
+              </p>
+            )}
+            <Table
+              columns={columns}
+              data={visible}
+              keyExtractor={(p) => p.id}
+              emptyMessage={search.trim() ? 'No products match your search' : 'No products found'}
+            />
+          </>
         )}
       </Card>
 

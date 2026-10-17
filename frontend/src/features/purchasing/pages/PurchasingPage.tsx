@@ -334,7 +334,7 @@ function PurchaseOrderForm({
   }) => void;
   isLoading: boolean;
 }) {
-  const { data: products } = useQuery({ queryKey: ['products'], queryFn: listProducts });
+  const { data: products } = useQuery({ queryKey: ['products'], queryFn: () => listProducts() });
   const [supplierId, setSupplierId] = useState(suppliers[0]?.id ?? '');
   const [reference, setReference] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([{ product_id: '', quantity: 1, unit_cost: '0' }]);
