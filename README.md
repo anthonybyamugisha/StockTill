@@ -52,23 +52,43 @@ docker compose up -d --build
 ## Project Structure
 
 ```
-backend/
-  accounts/      Users, roles, authentication, audit log
-  catalog/       Products, categories, pricing
-  inventory/     Append-only stock ledger, valuation
-  sales/         Sales, payments, refunds, voids
-  shifts/        Shifts, cash movements, drawer reconciliation
-  purchasing/    Suppliers, purchase orders, goods receiving
-  reporting/     Read-only projections: dashboards, reports, CSV
-  settings/      Business configuration
-  shared/        Money, entities, clock, unit of work, base errors
-    └ each context: domain/  application/  infrastructure/  interfaces/
-
-frontend/src/
-  app/           Router, layout, providers
-  features/      One folder per capability (pos, catalog, sales, shifts, purchasing, ...)
-  shared/        HTTP client, UI components, utils
-  e2e/           Playwright tests
+StockTill/
+│
+├─ backend/                                        Django + DRF modular monolith
+│  ├─ config/                                      Settings, root URLs, WSGI/ASGI
+│  │  └─ settings/                                 Base · dev · test · prod
+│  ├─ shared/                                      Cross-cutting kernel
+│  │  └─ domain/                                   Money · entities · clock · errors
+│  ├─ accounts/  catalog/  inventory/              Eight bounded contexts;
+│  ├─ shifts/  sales/  purchasing/                 Each is laid out as:
+│  ├─ reporting/  settings/
+│  │     ├─ domain/                                Entities, value objects, interfaces
+│  │     ├─ application/                           Use cases, commands, ports
+│  │     ├─ infrastructure/                        Django models, migrations, adapters
+│  │     └─ interfaces/                            DRF views, serializers, urls
+│  ├─ manage.py
+│  ├─ pyproject.toml                               Ruff · mypy · import-linter · pytest
+│  └─ requirements.txt
+│
+├─ frontend/                                       React + TypeScript SPA (Vite)
+│  ├─ src/
+│  │  ├─ app/                                      Router, providers, layout, PWA
+│  │  ├─ features/                                 One folder per capability
+│  │  │  ├─ pos/                                   api · components · hooks · pages
+│  │  │  ├─ catalog/  inventory/  sales/  shifts/
+│  │  │  ├─ purchasing/  reports/  dashboard/
+│  │  │  └─ users/  audit/  auth/  settings/       Same layering as above
+│  │  ├─ shared/                                   HTTP client · UI kit · PWA
+│  │  └─ App.tsx  main.tsx  index.css
+│  ├─ public/                                      Manifest · sw.js · icons
+│  ├─ e2e/                                         Playwright specs (auth, POS)
+│  └─ vite.config.ts · vercel.json
+│
+├─ deploy/                                         backup.sh · restore.sh · env.template
+├─ docker-compose.yml                              Local dev stack (api · db · web)
+├─ Makefile                                        up · test · lint · typecheck
+├─ render.yaml                                     Render blueprint (production API)
+└─ main.tex                                        Competition write-up
 ```
 
 ## Development
