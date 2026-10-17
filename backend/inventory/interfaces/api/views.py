@@ -1,19 +1,21 @@
+from uuid import UUID
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from inventory.application.commands import AdjustStockCommand
-from inventory.application.use_cases import AdjustStockUseCase
+from inventory.application.use_cases import AdjustStockUseCase, RebuildStockCacheUseCase
 from inventory.domain.entities import MovementType
-from inventory.infrastructure.repository import (
-    DjangoStockItemRepository,
-    DjangoStockMovementRepository,
-)
+from inventory.infrastructure.adapters import CatalogProductInfoAdapter
+from inventory.infrastructure.repository import DjangoStockItemRepository, DjangoStockMovementRepository
 from inventory.interfaces.api.serializers import (
     StockAdjustmentSerializer,
     StockItemSerializer,
     StockMovementSerializer,
+    ValuationSerializer,
 )
+from shared.domain.clock import SystemClock
 from shared.domain.money import Money
 
 
@@ -23,19 +25,26 @@ class StockAdjustmentView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         use_case = AdjustStockUseCase(
-            DjangoStockItemRepository(), DjangoStockMovementRepository()
+            DjangoStockItemRepository(),
+            DjangoStockMovementRepository(),
+            CatalogProductInfoAdapter(),
+            SystemClock(),
         )
-        movement = use_case.execute(
-            AdjustStockCommand(
-                product_id=data["product_id"],
-                quantity=data["quantity"],
-                movement_type=MovementType(data["movement_type"]),
-                reason=data["reason"],
-                reference=data.get("reference"),
-                unit_cost=Money(data["unit_cost"]) if data.get("unit_cost") else None,
-                user_id=request.user.id if request.user.is_authenticated else None,
+        try:
+            movement = use_case.execute(
+                AdjustStockCommand(
+                    product_id=data["product_id"],
+                    quantity=data["quantity"],
+                    movement_type=MovementType(data["movement_type"]),
+                    reason=data["reason"],
+                    reference=data.get("reference"),
+                    unit_cost=Money(data["unit_cost"]) if data.get("unit_cost") else None,
+                    user_id=request.user.id if request.user.is_authenticated else None,
+                    notes=data.get("notes", ""),
+                )
             )
-        )
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(StockMovementSerializer(movement).data, status=status.HTTP_201_CREATED)
 
 
@@ -46,6 +55,13 @@ class StockItemDetailView(APIView):
         if item is None:
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
         return Response(StockItemSerializer(item).data)
+
+
+class StockHistoryView(APIView):
+    def get(self, request, product_id):
+        repo = DjangoStockMovementRepository()
+        movements = repo.list_by_product(product_id)
+        return Response(StockMovementSerializer(movements, many=True).data)
 
 
 class LowStockView(APIView):
@@ -60,3 +76,19 @@ class OutOfStockView(APIView):
         repo = DjangoStockItemRepository()
         items = repo.list_out_of_stock()
         return Response(StockItemSerializer(items, many=True).data)
+
+
+class InventoryValuationView(APIView):
+    def get(self, request):
+        repo = DjangoStockItemRepository()
+        valuation = repo.get_valuation()
+        return Response(ValuationSerializer(valuation).data)
+
+
+class RebuildStockCacheView(APIView):
+    def post(self, request):
+        use_case = RebuildStockCacheUseCase(
+            DjangoStockItemRepository(), DjangoStockMovementRepository()
+        )
+        count = use_case.execute()
+        return Response({"rebuilt": count})
