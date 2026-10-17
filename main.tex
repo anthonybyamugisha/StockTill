@@ -115,11 +115,152 @@ reporting layer that turns transactions into business insight.
 The remainder of this report is organised as follows. Section~\ref{sec:submission} states the
 submission essentials. Section~\ref{sec:features} maps the implemented features to the required
 POS capabilities. Section~\ref{sec:architecture} explains the DDD / Clean Architecture design in
-depth. Section~\ref{sec:tdd} documents the TDD and quality-engineering practice. Section~\ref{sec:security}
+depth, and Section~\ref{sec:domain} details the domain model and the exact business rules.
+Section~\ref{sec:tdd} documents the TDD and quality-engineering practice. Section~\ref{sec:security}
 describes the security posture. Section~\ref{sec:schema} presents the database schema. Section~\ref{sec:stack}
 lists the technology stack. Section~\ref{sec:deploy} gives setup and deployment instructions.
 Section~\ref{sec:criteria} maps the work to the judging criteria, and Section~\ref{sec:limitations}
 records honest limitations and the roadmap.
+
+\subsection{The problem}
+
+A small retail shop lives or dies on the accuracy of three facts: what stock it holds, what it
+sold, and what it earned. In the target market these facts are usually reconstructed after the
+event from a paper receipt book and a hand-written stock card. That process has four recurring
+failure modes. First, \emph{stock is invisible} --- the owner cannot answer ``how many of item~X are
+left?'' without walking the shelves, so they over-buy fast movers and run out of others. Second,
+\emph{sales are unattributable} --- when several people serve customers from one till there is no
+reliable record of who sold what. Third, \emph{cash cannot be reconciled} --- if the drawer is short
+at the end of the day, there is no way to tell whether the cause was a refund, a payout, a pricing
+error or theft. Fourth, \emph{the business cannot be analysed} --- there is no way to see the best
+sellers, the profit margin, or the trend of takings over time, so purchasing and pricing decisions
+are guesswork.
+
+StockTill addresses each failure mode directly, and it does so with a design whose central
+conviction is that these facts are \emph{business rules}, not presentation concerns. The system is a
+browser-based Point of Sale and inventory manager whose two halves cooperate: a fast cashier screen
+that records a sale in seconds, and an auditable back office that turns those sales into stock
+levels, drawer reconciliation, and reports.
+
+\subsection{Goals and non-goals}
+
+The goals of the project are stated explicitly so that every design decision can be judged against
+them:
+
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Make a sale fast and safe.} A cashier must be able to search or scan a product, build
+  a cart, take one or several payments, and produce a receipt without ambiguity, and the system must
+  never record a sale that the shop did not actually make (payments must cover the total) or sell
+  stock that does not exist (stock may never go negative).
+  \item \textbf{Make stock explainable.} Every quantity change must be traceable to a who, a what and
+  a when, and the current figure must always be reconstructible from that history.
+  \item \textbf{Make the drawer reconcilable.} The expected cash in the drawer must be a derived,
+  verifiable number, so that a shortfall or surplus is visible and attributable.
+  \item \textbf{Make the business analysable.} Sales, profit, best sellers, cashier performance and
+  stock value must be available on demand and exportable.
+  \item \textbf{Protect the data and the people.} Authentication, roles, lockout and an audit trail
+  must be first-class, not afterthoughts.
+  \item \textbf{Be maintainable and demonstrably correct.} The business rules must be readable in
+  isolation and covered by tests that run in milliseconds.
+\end{enumerate}
+
+Equally important are the deliberate \emph{non-goals} for this iteration, so that scope remains
+honest: multi-branch/multi-tenant operation, offline-first conflict resolution across devices,
+fiscal-device integration, loyalty programmes, and a supplier-facing portal are all out of scope.
+Where a non-goal is adjacent to something we did build (for example offline selling), the report
+states plainly what is and is not handled (Section~\ref{sec:limitations}).
+
+\subsection{Stakeholders and personas}
+
+The design is anchored on three personas who map exactly onto the three roles in the system.
+
+\begin{table}[htbp]\centering
+\small
+\caption{Personas and what they need from the system.}
+\begin{tabular}{@{}p{0.17\textwidth}p{0.30\textwidth}p{0.47\textwidth}@{}}
+\toprule
+\textbf{Persona} & \textbf{Context} & \textbf{Needs the design must serve} \\
+\midrule
+\textbf{Cashier} & Serves customers at the till under time pressure, often during a rush. &
+A keyboard- and scanner-driven screen with almost no clicks per sale; tolerant of a flaky
+network; will not tolerate being blocked by a slow page. \\
+\textbf{Manager} & Runs the shop day to day; owns stock and staff productivity. &
+Adjust stock with an audit trail; see low-stock alerts; validate the drawer at shift close;
+read sales and profit reports. \\
+\textbf{Administrator} & Owns the account, the catalogue conventions and the configuration. &
+Create and deactivate users and products; set roles; configure business name, currency,
+receipt text and discount policy; review the audit log. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Requirements analysis}
+\label{sec:requirements}
+
+The competition brief describes a point-of-sale system with product, inventory, sales, reporting,
+security and deployment expectations. Rather than transcribe the brief, we restate it as a set of
+\emph{testable} functional requirements (FR) and non-functional requirements (NFR), because each one
+becomes either a domain invariant or an automated test (traceability is summarised in
+Table~\ref{tab:requirements}).
+
+\begin{table}[htbp]\centering
+\small
+\caption{Functional requirements and where each is realised.}
+\label{tab:requirements}
+\begin{tabular}{@{}p{0.07\textwidth}p{0.55\textwidth}p{0.32\textwidth}@{}}
+\toprule
+\textbf{ID} & \textbf{Requirement (abridged)} & \textbf{Realised by} \\
+\midrule
+FR1 & Authenticate users and keep a session. & accounts: \texttt{AuthenticateUserUseCase}, session auth \\
+FR2 & Distinguish administrator, manager and cashier. & accounts: \texttt{Role}, \texttt{IsAdmin}/\texttt{IsManager} \\
+FR3 & Lock an account after repeated failures. & accounts: \texttt{User.register\_failed\_login} \\
+FR4 & Create, edit, search and deactivate products. & catalog: \texttt{Product}, \texttt{CreateProductUseCase} \\
+FR5 & Organise products into categories. & catalog: \texttt{Category} with parent \\
+FR6 & Hold a price and a cost per product. & catalog: \texttt{Money} fields, \texttt{profit\_margin} \\
+FR7 & Record stock in, out and adjustments. & inventory: \texttt{AdjustStockUseCase} \\
+FR8 & Never hold negative stock. & inventory: \texttt{InsufficientStockError} + DB constraint \\
+FR9 & Keep a per-product stock history. & inventory: append-only \texttt{StockMovement} ledger \\
+FR10 & Report low/out-of-stock and valuation. & inventory + reporting query builders \\
+FR11 & Ring up a sale with several lines. & sales: \texttt{Sale} aggregate, \texttt{CompleteSaleUseCase} \\
+FR12 & Apply line discounts. & sales: \texttt{calculate\_discount} domain service \\
+FR13 & Accept cash, mobile money, card, bank transfer. & sales: \texttt{PaymentMethod} \\
+FR14 & Support \textbf{split} payments. & sales: many \texttt{Payment} per \texttt{Sale} \\
+FR15 & Compute cash tendered and change. & sales: \texttt{calculate\_change} domain service \\
+FR16 & Price a sale and derive profit. & sales: \texttt{Sale.total}, \texttt{Sale.gross\_profit} \\
+FR17 & Issue a unique receipt number. & sales: \texttt{ReceiptNumberPort} \\
+FR18 & Prevent duplicate sales on retry. & sales: \texttt{IdempotencyPort} + unique key \\
+FR19 & Refund a sale partially or fully. & sales: \texttt{RefundSaleUseCase} \\
+FR20 & Void a sale. & sales: \texttt{VoidSaleUseCase} \\
+FR21 & Search and filter sales. & sales: \texttt{DjangoSaleRepository.list\_sales} \\
+FR22 & Dashboard KPIs and charts. & reporting: \texttt{get\_dashboard\_stats} \\
+FR23 & Sales, profit, inventory and best-seller reports. & reporting: query builders \\
+FR24 & Export a report. & reporting: CSV export of the sales report \\
+FR25 & Bonus: shifts and cash reconciliation. & shifts: \texttt{Shift}, \texttt{expected\_cash} \\
+FR26 & Bonus: suppliers and purchase orders. & purchasing: \texttt{PurchaseOrder} state machine \\
+FR27 & Bonus: receive goods into stock. & purchasing: \texttt{StockIntakePort} \\
+FR28 & Configurable business settings. & settings: \texttt{BusinessSettings} singleton \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+The non-functional requirements are equally load-bearing, and the architecture section argues
+explicitly how each is met:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{NFR1 --- Correctness of money.} Monetary arithmetic must be exact and must never use
+  binary floating point. \emph{Met by the \texttt{Money} value object} (Section~\ref{sec:domain}).
+  \item \textbf{NFR2 --- Auditability.} Stock and privileged changes must be attributable. \emph{Met
+  by the append-only ledger and the audit log.}
+  \item \textbf{NFR3 --- Testability.} Business rules must be testable without a database or an HTTP
+  stack. \emph{Met by Clean Architecture layering.}
+  \item \textbf{NFR4 --- Security.} Transport, session, CSRF/CORS and role controls must be in place.
+  \emph{Met by the controls in Section~\ref{sec:security}.}
+  \item \textbf{NFR5 --- Portability.} The domain must not depend on Django, so the framework is a
+  replaceable detail. \emph{Met by the enforced dependency rule.}
+  \item \textbf{NFR6 --- Deployability.} The system must run online and be reproducible. \emph{Met by
+  \texttt{render.yaml}, \texttt{vercel.json} and Docker.}
+\end{itemize}
 
 % ===========================================================================
 \section{Submission Summary}
@@ -293,6 +434,38 @@ The design follows three organising principles:
   as abstract \emph{ports} in the inner layers and satisfied by \emph{adapters} in the outer layers.
 \end{enumerate}
 
+\subsection{Architecture overview and request lifecycle}
+\label{sec:overview}
+
+Every request travels through the same four-layer pipeline, and the layers may only call inward. A
+concrete example makes the shape clear. When a cashier completes a sale, the browser sends
+\texttt{POST /api/v1/sales/} with the lines, the payments and an idempotency key.
+
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Interfaces.} The DRF view \texttt{SaleListCreateView.post} validates the payload with
+  \texttt{CompleteSaleSerializer}, converts the validated primitives into an application
+  \emph{command} (\texttt{CompleteSaleCommand} with \texttt{LineItem} and \texttt{PaymentInput}
+  records), and constructs the use case. This is the only layer that knows about HTTP, JSON and
+  status codes.
+  \item \textbf{Application.} \texttt{CompleteSaleUseCase.execute} orchestrates the transaction. It
+  asks the \texttt{IdempotencyPort} whether the key was seen before, builds the \texttt{Sale}
+  aggregate, delegates pricing to the domain, checks that payments cover the total, calls
+  \texttt{InventoryPort.deduct\_stock} for every line, persists through the repository and records
+  the key. It contains \emph{no} SQL and \emph{no} Django import.
+  \item \textbf{Domain.} The \texttt{Sale}, \texttt{SaleLine}, \texttt{Payment} entities and the
+  \texttt{calculate\_discount} / \texttt{calculate\_change} domain services compute the money. They
+  are ordinary Python objects and know nothing about the request that created them.
+  \item \textbf{Infrastructure.} \texttt{DjangoSaleRepository}, the inventory/catalog adapters, the
+  database receipt-number port and the cache-backed idempotency port perform the I/O and translate
+  between domain entities and ORM rows.
+\end{enumerate}
+
+\noindent
+The same pipeline serves the reverse direction: the repository reads rows and reconstructs domain
+entities, and the view serialises those entities back to JSON. Because the domain objects are the
+pivot point, the same calculation is reused by the API, the reports and the tests --- there is no
+second implementation to drift.
+
 \subsection{Why DDD, Clean Architecture and TDD --- and not the framework alone}
 
 A recurring question for a Django project is why we did not simply put the rules on the models, let the
@@ -427,6 +600,29 @@ stay decoupled; the deliberately small \texttt{ignore\_imports} list documents t
 sanctioned cross-context wiring --- the sales adapters that call into catalog/inventory through their
 application ports. Any other cross-context import fails the build.
 
+\noindent
+The rule is stated precisely, layer by layer, in Table~\ref{tab:imports}. ``Inward'' means the
+domain is the innermost ring and interfaces the outermost.
+
+\begin{table}[htbp]\centering
+\small
+\caption{What each layer may import (the dependency rule, made concrete).}
+\label{tab:imports}
+\begin{tabular}{@{}p{0.16\textwidth}p{0.40\textwidth}p{0.38\textwidth}@{}}
+\toprule
+\textbf{Layer} & \textbf{May import} & \textbf{Must not import} \\
+\midrule
+Domain & Standard library, sibling domain modules, the shared kernel & Django, DRF, any other layer,
+any other context \\
+Application & Its own context's domain; the shared kernel; its own ports & Django ORM, DRF, other
+contexts' internals \\
+Infrastructure & Its context's domain/application, Django/DRF, \emph{sanctioned} adapters of other
+contexts & Other contexts' application/domain except through the whitelisted adapters \\
+Interfaces & Its context's application + infrastructure, DRF & Other contexts' internals \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Tactical DDD building blocks}
 
 \textbf{Entities and identity.} A shared \texttt{Entity} base assigns every object a UUID identity and
@@ -499,6 +695,35 @@ satisfied by an inventory adapter, which writes a \texttt{PURCHASE} movement per
 reads another's tables directly; the cross-context imports live only in the outermost adapters and
 are whitelisted in the import-linter contract.
 
+\subsection{Consistency, transactions and concurrency}
+\label{sec:consistency}
+
+The modular monolith earns a genuine advantage here: a sale, its stock deductions and its
+idempotency record can share a single database transaction, which would require sagas or two-phase
+commit across services. StockTill expresses that boundary with a \emph{Unit of Work}
+(\texttt{shared/domain/unit\_of\_work.py} plus a Django implementation), so the application layer can
+reason about ``all of this, or none of this'' without naming Django.
+
+Two concurrency concerns are handled deliberately:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Double submission.} The client always sends a client-generated
+  \texttt{idempotency\_key}. The use case consults the \texttt{IdempotencyPort} before doing any
+  work, and the database enforces a \emph{unique} constraint on the key as a backstop. A retried or
+  double-clicked request therefore returns the original sale rather than charging twice --- important
+  because the offline queue (Section~\ref{sec:ui}) deliberately replays failed sales.
+  \item \textbf{Concurrent stock changes.} Stock deduction is expressed as an append followed by a
+  guarded cache update: if the requested quantity would exceed what is available, the use case raises
+  \texttt{InsufficientStockError} and the transaction is abandoned. The non-negative
+  \texttt{CheckConstraint} on the stock-item table means a bug in the application layer cannot push
+  stock below zero at the database boundary either.
+\end{itemize}
+
+\noindent
+The system is honest about the limit of this model: it is a \emph{single-writer-per-row} design suited
+to one shop on one database, which matches the stated non-goals. Horizontal read scaling and
+per-context databases are noted as future work rather than pretended today.
+
 \subsection{Architecture Decision Records}
 
 Two decisions were made early and drive much of the design.
@@ -525,6 +750,368 @@ The React SPA mirrors the backend's feature orientation. Code is organised under
 \texttt{src/shared/} and app-level wiring (router, layout, providers) under \texttt{src/app/}. All
 network access goes through a single configured axios client with credentials enabled and CSRF header
 injection, and server state is managed with TanStack Query.
+
+% ===========================================================================
+\section{The Domain Model in Detail}
+\label{sec:domain}
+% ===========================================================================
+
+This section is the technical heart of the report. It walks the domain context by context and states
+the rules that were implemented, the reasoning behind each, and the exact formula or code that
+enforces it. The intent is that a reader could re-derive the system's behaviour from this section
+alone, and could point at the line of code responsible for any figure it produces.
+
+\subsection{The model at a glance}
+
+The whole business reduces to a small number of concepts, each owned by exactly one context. Figure-free
+and in one paragraph: a \textbf{product} belongs to a \textbf{category}, carries a buying
+\textbf{cost} and a selling \textbf{price}, and has its quantity tracked by an append-only
+\textbf{stock movement} ledger with a cached \textbf{stock item} on top. A \textbf{sale} is an
+aggregate of \textbf{lines} and \textbf{payments}; it may later be reduced by \textbf{refunds} or
+cancelled by a \textbf{void}. Sales are grouped by \textbf{shift}, during which the drawer may be
+adjusted with \textbf{cash movements}. Stock is replenished by receiving a \textbf{purchase order}
+from a \textbf{supplier}. \textbf{Users} with roles act as \textbf{cashiers}, \textbf{managers} or
+\textbf{administrators}. Every monetary figure is a \textbf{Money} value object.
+
+\subsection{The Money value object}
+
+Money is the most reused type in the system, so its design matters disproportionately. It is an
+immutable, framework-free value object backed by \texttt{Decimal} --- \emph{never} \texttt{float} ---
+and it quantises on construction so that a value can never silently carry sub-cent noise.
+
+\begin{lstlisting}[language=Python,caption={The Money value object (abridged: \texttt{shared/domain/money.py}).}]
+@dataclass(frozen=True)
+class Money:
+    amount: Decimal
+    currency: str = "UGX"
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "amount",
+                           self.amount.quantize(CENT, rounding=ROUND_HALF_UP))
+
+    def add(self, other): return Money(self.amount + other.amount, self.currency)
+    def subtract(self, other): return Money(self.amount - other.amount, self.currency)
+    def multiply(self, factor): return Money(self.amount * factor, self.currency)
+    def is_zero(self): return self.amount == ZERO
+\end{lstlisting}
+
+\noindent
+Four decisions are embedded here. First, \textbf{exactness}: \texttt{Decimal} avoids the classic
+\texttt{0.1 + 0.2} error that makes tills disagree with receipts. Second, \textbf{immutability}: a
+\texttt{frozen} dataclass cannot be mutated in place, so money flows by value and a function cannot
+accidentally change a price it was merely inspecting. Third, \textbf{rounding policy}:
+\texttt{ROUND\_HALF\_UP} is the convention a shopkeeper expects, applied once at construction.
+Fourth, \textbf{currency awareness}: every amount carries its currency, which makes the eventual
+multi-currency case a local change rather than a global one. Because these rules live in the domain,
+they are proven by a dedicated value-object test suite (Section~\ref{sec:tdd}) and reused by sales,
+inventory, purchasing and reporting without duplication.
+
+\subsection{The Sale aggregate and the pricing pipeline}
+
+\texttt{Sale} is the central aggregate root. It owns its lines, payments and refunds, and it exposes
+the entire money story as computed properties, so that callers never recompute a total themselves.
+The pipeline runs bottom-up, from a single line to the profit of the sale.
+
+The line-level quantities are:
+\begin{align}
+\text{gross\_total(line)} &= \text{unit\_price} \times \text{quantity} \\
+\text{line.total} &= \text{gross\_total} - \text{discount.amount} \\
+\text{cost\_total(line)} &= \text{unit\_cost} \times \text{quantity} \\
+\text{profit(line)} &= \text{line.total} - \text{cost\_total(line)}
+\end{align}
+
+The sale-level aggregates are the sums of those, plus the payment and refund views:
+\begin{align}
+\text{subtotal} &= \sum_{\text{lines}} \text{gross\_total} \\
+\text{total\_discount} &= \sum_{\text{lines}} \text{discount.amount} \\
+\text{total} &= \sum_{\text{lines}} \text{line.total} \\
+\text{amount\_paid} &= \sum_{\text{payments}} \text{payment.amount} \\
+\text{total\_refunded} &= \sum_{\text{refunds}} \text{refund.amount} \\
+\text{refundable\_amount} &= \text{total} - \text{total\_refunded} \\
+\text{gross\_profit} &= \text{total} - \sum_{\text{lines}} \text{cost\_total(line)}
+\end{align}
+
+Because these are properties on the aggregate rather than stored duplicates, there is no way for the
+API, the reports and the receipt to disagree: they all call the same method. The invariants the
+aggregate protects are:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Payments must cover the total.} \texttt{CompleteSaleUseCase} refuses to persist a
+  sale when $\text{amount\_paid} < \text{total}$, raising \texttt{InvalidPaymentError}. Overpayment
+  is permitted (it is cash tendering), underpayment is not.
+  \item \textbf{Refunds cannot exceed what is refundable.} The aggregate computes the refundable
+  quantity per line and the refundable amount, and the use case rejects anything larger.
+  \item \textbf{A terminal state is terminal.} A voided sale cannot be refunded or voided again; a
+  fully refunded sale cannot be refunded again.
+\end{itemize}
+
+\begin{lstlisting}[language=Python,caption={Refundable quantity is computed by the aggregate, not by the caller.}]
+def refundable_quantity_for_line(self, line_id: UUID) -> int:
+    line = next((item for item in self.lines if item.id == line_id), None)
+    if line is None:
+        return 0
+    already_refunded = sum(r.quantity for r in self.refunds if r.line_id == line_id)
+    return line.quantity - already_refunded
+\end{lstlisting}
+
+\subsection{Discounts}
+
+Discounting is where POS systems most often go wrong, so it is modelled explicitly rather than
+inlined. A \texttt{Discount} is a frozen value object carrying its \emph{type}
+(\texttt{percentage} or \texttt{fixed}), the raw \emph{value} the cashier entered, and the
+\emph{computed amount}. A stateless domain service performs the calculation:
+
+\begin{lstlisting}[language=Python,caption={The discount domain service (\texttt{sales/domain/services.py}).}]
+def calculate_discount(unit_price, quantity, discount_type, value) -> Discount:
+    line_total = unit_price.multiply(Decimal(quantity))
+    if discount_type == DiscountType.PERCENTAGE:
+        discount_amount = line_total.multiply(value / Decimal(100))
+    else:
+        discount_amount = Money(value)
+    discount_amount = min(discount_amount, line_total)   # never exceed the line
+    discount_amount = max(discount_amount, Money.zero())  # never negative
+    return Discount(type=discount_type, value=value, amount=discount_amount)
+\end{lstlisting}
+
+\noindent
+Two clamps make the rule safe against nonsense input. A percentage over 100\% or a fixed discount
+larger than the line cannot push a line negative, because the amount is capped at
+$\text{line\_total}$; and a negative discount cannot be used to \emph{inflate} a price, because the
+amount is floored at zero. Because the service is pure, it is unit-tested directly, and the same
+function is reused by the POS preview and by the persisted aggregate. The \texttt{cashier\_discount\_limit}
+field on \texttt{BusinessSettings} (Section~\ref{sec:stack}) records the shop's policy for a future
+authorisation check; today the role model enforces who may process discounts at all.
+
+\subsection{Payments, tendering and change}
+
+A sale may be paid with one payment or several (a \emph{split} payment). Each \texttt{Payment} is an
+entity with a \texttt{method} drawn from \texttt{PaymentMethod} (cash, mobile money, card, bank
+transfer), an \texttt{amount}, an optional \texttt{tendered} figure, a computed \texttt{change}, and
+free-form \texttt{reference}/\texttt{provider} fields for the non-cash rails (for example a mobile
+money transaction id).
+
+Change is meaningful only for cash: a card does not ``hand over'' more than the amount due. The
+domain service encodes exactly that intent:
+\begin{equation}
+\text{change} =
+\begin{cases}
+\max(\text{tendered} - \text{amount},\ 0) & \text{if method} = \text{cash and tendered is set}\\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+
+The \texttt{max(\dots, 0)} guard means that if the cashier records less tendered than the amount (a
+data-entry slip), the system shows no change rather than a negative one. Change is persisted on the
+payment only for cash, keeping the stored data honest.
+
+\subsection{Refunds and voids}
+
+The sales context distinguishes two reversals, and the difference is a \emph{business} distinction,
+not a CRUD one.
+
+\textbf{Refund.} A refund reverses part or all of a sale. It references an optional line, a
+quantity, a mandatory reason, and a \texttt{restock} flag. When restocking is requested, the use
+case calls \texttt{InventoryPort.restore\_stock}, which writes a \texttt{REFUND\_RETURN} movement so
+the returned goods re-enter sellable stock; otherwise the goods are treated as damaged and stay out.
+After the refund is recorded, the aggregate recomputes its own status:
+
+\[
+\text{status} =
+\begin{cases}
+\text{refunded} & \text{if refundable\_amount} = 0\\
+\text{partially\_refunded} & \text{otherwise}
+\end{cases}
+\]
+
+\textbf{Void.} A void cancels an entire sale (for example, it was rung up twice). It restores
+\emph{every} line to stock and moves the sale to the terminal \texttt{voided} state. A voided sale is
+still visible --- history is never deleted --- but it can no longer be refunded or re-voided.
+
+Both operations are restricted to managers and above (Section~\ref{sec:security}), reflecting the
+fraud exposure of reversals. The refundable quantity and amount are always computed by the
+aggregate, so a sequence of partial refunds can never over-refund: each request is validated against
+the remaining refundable quantity for its line and the remaining refundable amount for the sale.
+
+\subsection{The inventory ledger}
+\label{sec:ledger}
+
+Inventory is deliberately \emph{event-sourced in miniature}. The source of truth is an append-only
+\texttt{StockMovement} table: every change is a new immutable row with a signed quantity, a
+\texttt{movement\_type}, a reason, an optional reference (the receipt number for a sale), the unit
+cost at the time, the acting user and a timestamp. The seven movement types express intent
+explicitly:
+
+\begin{center}\small
+\texttt{opening}, \texttt{purchase}, \texttt{sale}, \texttt{refund\_return},
+\texttt{adjustment\_in}, \texttt{adjustment\_out}, \texttt{write\_off}.
+\end{center}
+
+A \texttt{StockItem} holds the cached \texttt{quantity\_on\_hand} and \texttt{reserved\_quantity}
+for fast reads, with $\text{available} = \text{quantity\_on\_hand} - \text{reserved\_quantity}$. The
+\texttt{AdjustStockUseCase} is the single write path, and it encodes two rules:
+
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Direction follows type.} \texttt{sale}, \texttt{adjustment\_out} and \texttt{write\_off}
+  \emph{decrease} stock; every other type increases it.
+  \item \textbf{You cannot sell what you do not have.} For decreasing movements, if
+  $\text{available} < \text{quantity}$ the use case raises \texttt{InsufficientStockError} and does
+  not write the movement. The database's \texttt{stock\_non\_negative} check constraint is a second
+  line of defence.
+\end{enumerate}
+
+\begin{lstlisting}[language=Python,caption={The guarded decrement at the heart of the stock use case.}]
+if command.movement_type in (MovementType.SALE, MovementType.ADJUSTMENT_OUT, MovementType.WRITE_OFF):
+    if item.available_quantity < qty:
+        raise InsufficientStockError(
+            f"Insufficient stock for product {command.product_id}. "
+            f"Available: {item.available_quantity}, Requested: {qty}")
+    item.quantity_on_hand -= qty
+else:
+    item.quantity_on_hand += qty
+\end{lstlisting}
+
+\noindent
+Because the ledger is the truth, the cache is always reconstructible. The
+\texttt{RebuildStockCacheUseCase} replays every movement in order --- subtracting for the decreasing
+types and adding otherwise --- and rewrites the cache, returning the number of products rebuilt. This
+turns a suspected corruption into a one-endpoint repair, and it is exercised by an API test. Valuation
+is derived the same way: for every stock item, value is
+\begin{equation}
+\text{value}(\text{item}) = \text{buying\_cost} \times \text{quantity\_on\_hand},
+\qquad \text{total} = \sum_{\text{items}} \text{value}(\text{item}).
+\end{equation}
+
+Low-stock detection is a join between the cache and the product's \texttt{minimum\_stock\_level}: an
+item is low when $0 < \text{minimum\_stock\_level}$ and
+$\text{quantity\_on\_hand} \le \text{minimum\_stock\_level}$, and out-of-stock when
+$\text{quantity\_on\_hand} = 0$. Products with a zero minimum are excluded from the low-stock list by
+design (they have opted out of alerts).
+
+\subsection{Shifts and cash reconciliation}
+
+A \texttt{Shift} is a cashier's trading session at a till. It is an aggregate root with an
+\texttt{opening\_float}, a status of \texttt{open} or \texttt{closed}, an optional
+\texttt{counted\_cash} recorded at close, and a list of \texttt{CashMovement} entities. A cash
+movement is either a \texttt{payout} (cash leaving the drawer, for example to pay a supplier) or a
+\texttt{cash\_in} (cash added, for example breaking a large note). Its signed contribution is:
+
+\[
+\text{signed\_amount} =
+\begin{cases}
++\text{amount} & \text{type} = \text{cash\_in}\\
+-\text{amount} & \text{type} = \text{payout}
+\end{cases}
+\]
+
+The reason the drawer can be trusted is that expected cash is a \emph{derived} figure assembled
+from four independent sources:
+\begin{equation}
+\text{expected\_cash} = \text{opening\_float} + \text{cash\_sales}
+- \text{cash\_refunds} + \sum \text{signed\_amount(movement)}.
+\end{equation}
+
+\noindent
+Cash sales and cash refunds are not read from the shifts tables at all: the \texttt{shifts} context
+asks the \texttt{sales} context for them through the \texttt{SalesSummaryPort}, satisfied by
+\texttt{SalesSummaryAdapter}, which sums the \texttt{cash} payments and the refunds attached to the
+sales of that shift. At close, the cashier records the physical count and the variance falls out:
+\begin{equation}
+\text{variance} = \text{counted\_cash} - \text{expected\_cash}.
+\end{equation}
+
+A positive variance is a surplus, a negative variance a shortfall, and zero a balanced drawer. The
+close operation is guarded by the aggregate: \texttt{Shift.close} raises
+\texttt{ShiftAlreadyClosedError} if the shift is not open, so a drawer cannot be reconciled twice.
+During the shift the same figures produce a live \emph{X-report}; at close they become the
+\emph{Z-report}. Sales are stamped with the shift that was open when they were rung up, through the
+\texttt{ShiftPort}, which is why reconciliation is possible at all.
+
+\subsection{Purchasing and goods receiving}
+
+The \texttt{purchasing} context models replenishment as a small state machine. A \texttt{Supplier}
+has a name (validated non-empty on construction), contact details and an active flag. A
+\texttt{PurchaseOrder} is an aggregate root whose status walks through four states:
+
+\begin{center}
+\texttt{draft} $\rightarrow$ \texttt{ordered} $\rightarrow$ \texttt{received},\quad and
+\texttt{draft}/\texttt{ordered} $\rightarrow$ \texttt{cancelled}.
+\end{center}
+
+Each transition is a method on the aggregate and is guarded, which is what makes an invalid sequence
+impossible to express:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \texttt{mark\_ordered} is legal only from \texttt{draft}, and refuses an order with no lines
+  (\texttt{EmptyPurchaseOrderError}); it stamps \texttt{ordered\_at}.
+  \item \texttt{receive} is refused if the order is already \texttt{received} or is
+  \texttt{cancelled}, and refuses an empty order; it stamps \texttt{received\_at}.
+  \item \texttt{cancel} is refused for a \texttt{received} or already-\texttt{cancelled} order; a
+  reason is appended to the notes so the cancellation is explained.
+\end{itemize}
+
+The order total is derived, $\text{total} = \sum_{\text{lines}} \text{unit\_cost} \times
+\text{quantity}$, and the \texttt{supplier\_name} is snapshotted onto the order so that history
+survives a supplier rename. Receiving is the integration seam: \texttt{ReceivePurchaseOrderUseCase}
+calls \texttt{StockIntakePort.receive\_stock} once per line, and the inventory adapter writes a
+\texttt{PURCHASE} movement with the line's unit cost. The purchasing context therefore never calls
+inventory classes directly --- it depends on a port it owns, and inventory supplies the adapter.
+
+\subsection{Accounts, roles and lockout}
+
+The \texttt{User} entity owns identity, role and the brute-force policy. Three roles
+--- \texttt{admin}, \texttt{manager}, \texttt{cashier} --- form the ubiquitous language of access
+control. Passwords are set and checked through a \texttt{PasswordHasher} port, so the entity never
+imports a framework and can be tested with a fake.
+
+The lockout policy is a domain rule with two constants, \texttt{MAX\_FAILED\_ATTEMPTS}~$=5$ and
+\texttt{LOCKOUT\_DURATION\_MINUTES}~$=30$. Each failed attempt calls
+\texttt{register\_failed\_login}, which increments the counter and, once the threshold is reached,
+sets \texttt{locked\_until} to now plus thirty minutes:
+\begin{equation}
+\text{locked} \iff \text{locked\_until} \neq \text{none} \ \wedge\ \text{now} < \text{locked\_until}.
+\end{equation}
+A successful login calls \texttt{register\_successful\_login}, which resets the counter, clears the
+lock and records \texttt{last\_login}. Because the rule is on the entity, it is impossible for one
+entry point to enforce lockout and another to forget it.
+
+\subsection{Catalog rules}
+
+The catalog owns products and categories. A \texttt{Product} carries a name, a unique \texttt{sku},
+an optional unique \texttt{barcode}, an optional category, a buying cost and a selling price (both
+\texttt{Money}), a minimum stock level, an image URL and an active flag. The entity exposes
+\texttt{profit\_margin} ($= \text{selling\_price} - \text{buying\_cost}$) and two mutators,
+\texttt{update\_price} and \texttt{update\_cost}, which return a before/after \emph{change record} for
+the audit log. A \texttt{Category} supports a nullable self-referential \texttt{parent\_id} for a
+hierarchy. Deactivation is preferred over deletion throughout the catalog, so that historical sales
+that reference a product remain intelligible.
+
+\subsection{Error taxonomy}
+\label{sec:errors}
+
+Domain failures are expressed as named errors in each context's \texttt{domain/errors.py} and are
+translated to HTTP status codes only at the interface layer, which keeps the domain free of
+transport concerns while still returning precise responses.
+
+\begin{table}[htbp]\centering
+\small
+\caption{Principal domain errors and their meaning.}
+\begin{tabular}{@{}p{0.30\textwidth}p{0.28\textwidth}p{0.36\textwidth}@{}}
+\toprule
+\textbf{Error} & \textbf{Context} & \textbf{Raised when} \\
+\midrule
+\texttt{InvalidPaymentError} & sales & Payments do not cover the sale total. \\
+\texttt{RefundExceedsRefundableError} & sales & Refund quantity or amount exceeds what remains. \\
+\texttt{SaleAlreadyVoidedError} & sales & Refunding or voiding a voided sale. \\
+\texttt{InsufficientStockError} & inventory & A decrement would take available stock below zero. \\
+\texttt{ShiftAlreadyClosedError} & shifts & Closing a shift that is not open. \\
+\texttt{EmptyPurchaseOrderError} & purchasing & Ordering/receiving a purchase order with no lines. \\
+\texttt{InvalidPurchaseOrderStateError} & purchasing & An illegal purchase-order transition. \\
+\texttt{InvalidSupplierError} & purchasing & A supplier name is empty. \\
+\texttt{PurchaseOrderNotFoundError} / \texttt{SupplierNotFoundError} & purchasing & The target does not
+exist. \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 % ===========================================================================
 \section{Test-Driven Development and Quality Engineering}
@@ -599,6 +1186,63 @@ def test_account_locks_after_5_failed_attempts(api_client, cashier_user):
     assert "locked" in response.data["detail"].lower()
 \end{lstlisting}
 
+\subsection{Worked examples of the discipline}
+
+Three further examples show the same red--green--refactor gesture applied to different kinds of rule.
+
+\paragraph{Pricing as pure arithmetic.} The sale totals are tested against hand-computed values,
+with no database in sight, because the aggregate is a plain object. A representative test assembles
+two lines (one with a fixed discount, one with a percentage discount), two payments (a split), and
+asserts the subtotal, the total discount, the total, the amount paid and the profit in one shot.
+This is the test that would catch a regression in the pricing pipeline described in
+Section~\ref{sec:domain}.
+
+\paragraph{Idempotent replay at the API edge.} The behaviour that protects a double-click lives
+partly in the use case and partly in the database constraint, so it is proven at the HTTP boundary:
+
+\begin{lstlisting}[language=Python,caption={Idempotent replay: the same key never creates two sales.}]
+@pytest.mark.django_db
+def test_sale_is_idempotent(api_client, authenticated_cashier, product_in_stock):
+    payload = build_sale_payload(product_in_stock,
+                                 idempotency_key="key-123")
+    first = api_client.post("/api/v1/sales/", payload, format="json")
+    second = api_client.post("/api/v1/sales/", payload, format="json")
+    assert first.status_code == 201
+    assert first.data["id"] == second.data["id"]
+    assert SaleModel.objects.count() == 1
+\end{lstlisting}
+
+\paragraph{Drawer reconciliation as a domain assertion.} Because \texttt{Shift.expected\_cash} is a
+method, the reconciliation rule is tested directly, without a view or a database: open a shift with
+a float, apply a cash-in and a payout, add cash sales and a cash refund, and assert the expected
+figure and the variance against a counted amount.
+
+\subsection{Test inventory}
+
+\begin{table}[htbp]\centering
+\small
+\caption{Backend test suites and what they assert.}
+\begin{tabular}{@{}p{0.30\textwidth}p{0.64\textwidth}@{}}
+\toprule
+\textbf{Suite} & \textbf{Coverage} \\
+\midrule
+accounts: domain & Password hashing/verification, lockout after five failures, reset on success. \\
+accounts: application & Authenticate and create-user use cases with in-memory fakes. \\
+accounts: infrastructure/API & Repository behaviour against the ORM; login/logout, \texttt{me},
+role-restricted user administration, lockout over HTTP. \\
+catalog: API & Product create/update/deactivate, permissions, barcode lookup, category creation. \\
+inventory: API & Stock adjustment, insufficient-stock rejection, history, low/out-of-stock,
+valuation, cache rebuild. \\
+sales: domain & \texttt{Money} arithmetic, sale totals, discounts, change, refundable quantity. \\
+sales: API & Complete sale with stock deduction, idempotent replay, refund (with and without
+restock) and void. \\
+shifts: domain/API & Expected cash and variance; open, cash-movement, close and X/Z report. \\
+purchasing: domain/API & State machine; supplier CRUD; create/order/receive/cancel with intake. \\
+settings: API & Read settings for any user, update restricted to administrators. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Tooling}
 
 \begin{itemize}[leftmargin=1.4em]
@@ -668,7 +1312,53 @@ DRF permission classes (\texttt{IsAdmin}, \texttt{IsManager}, \texttt{IsCashier}
 \texttt{accounts/interfaces/api/permissions.py}. User administration (list/create/update/deactivate)
 and the audit-log endpoint are restricted to administrators. The role model follows least privilege:
 cashiers transact, managers manage inventory and view reports, administrators manage users and
-configuration.
+configuration. Table~\ref{tab:rbac} states the matrix explicitly.
+
+\begin{table}[htbp]\centering
+\small
+\caption{Role-based access control matrix.}
+\label{tab:rbac}
+\begin{tabular}{@{}p{0.44\textwidth}p{0.14\textwidth}p{0.16\textwidth}p{0.16\textwidth}@{}}
+\toprule
+\textbf{Capability} & \textbf{Cashier} & \textbf{Manager} & \textbf{Admin} \\
+\midrule
+Sign in, view own profile & Yes & Yes & Yes \\
+Ring up sales, take payments & Yes & Yes & Yes \\
+Open/vendor a shift, cash movement & Yes & Yes & Yes \\
+Refund or void a sale & No & Yes & Yes \\
+Adjust stock, manage products/categories & No & Yes & Yes \\
+Suppliers and purchase orders & No & Yes & Yes \\
+View dashboards and reports & No & Yes & Yes \\
+Manage users and roles & No & No & Yes \\
+Update business settings & Read & Read & Read/write \\
+View the audit log & No & No & Yes \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+The matrix is enforced by \texttt{IsAdmin}, \texttt{IsManager} and \texttt{IsCashier} permission
+classes, and the frontend mirrors it by hiding navigation the role cannot use --- defence in depth,
+because the server check is the authoritative one.
+
+\subsection{Authentication flow}
+
+Authentication proceeds as follows, and every step is covered by a test:
+
+\begin{enumerate}[leftmargin=1.4em]
+  \item The client posts credentials to \texttt{/api/v1/accounts/login/}. The view hands them to
+  \texttt{AuthenticateUserUseCase}, which loads the user through the repository and asks the
+  \texttt{PasswordHasher} port to verify the password.
+  \item If the account is locked, or the password is wrong, the use case calls
+  \texttt{register\_failed\_login} and returns \textbf{401}; the API test asserts that five failures
+  lock the account.
+  \item On success the use case calls \texttt{register\_successful\_login} and Django establishes a
+  server-side session; the session id lives in an \texttt{HttpOnly} cookie.
+  \item Subsequent requests authenticate through DRF's \texttt{SessionAuthentication}; state-changing
+  requests must carry the CSRF token as \texttt{X-CSRFToken}.
+  \item \texttt{/api/v1/accounts/me/} returns the current user, and unauthenticated callers receive
+  \textbf{401} rather than a redirect, which the SPA renders as a return to the login screen.
+\end{enumerate}
 
 \subsection{Account lockout}
 
@@ -832,6 +1522,55 @@ delete). Products reference a category (nullable, \texttt{SET\_NULL}). Stock ite
 reference products by UUID. The ledger is the source of truth; the stock-item cache is reproducible
 and bounded by the non-negative constraint.
 
+\subsection{Entity relationships}
+
+The schema is normalised around the aggregate boundaries described in Section~\ref{sec:domain}:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \texttt{sales\_sale} is the parent of \texttt{sales\_sale\_line}, \texttt{sales\_payment}
+  and \texttt{sales\_refund}; all three carry a foreign key to the sale and cascade on delete, so an
+  aggregate is always loaded and removed as a unit.
+  \item \texttt{catalog\_product} has a nullable foreign key to \texttt{catalog\_category}
+  (\texttt{SET\_NULL}), and \texttt{catalog\_category} has a nullable self-referential parent,
+  giving a shallow hierarchy without a closure table.
+  \item \texttt{inventory\_stock\_item} and \texttt{inventory\_stock\_movement} reference products by
+  their UUID. The reference is intentionally \emph{by identifier}, not by ORM foreign key, so the
+  inventory context can store a movement for a product it does not itself own --- the seam that keeps
+  the two contexts decoupled while the data remains joinable.
+  \item \texttt{shifts\_cash\_movement} cascades from \texttt{shifts\_shift}, and
+  \texttt{sales\_sale.shift\_id} is a nullable index into shifts rather than a hard foreign key,
+  because a sale is valid even if no shift was open.
+  \item \texttt{purchasing\_purchase\_order} references \texttt{purchasing\_supplier} with
+  \texttt{SET\_NULL} and also snapshots \texttt{supplier\_name} and each line's \texttt{product\_name},
+  so a received order reads correctly even if the supplier or product is later renamed.
+\end{itemize}
+
+\subsection{Indexing and performance}
+
+The indexes are chosen for the read patterns the application actually has, not added speculatively:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \texttt{created\_at}, \texttt{timestamp} and \texttt{opened\_at} are indexed because every
+  report and dashboard query filters or groups by a date range, and the \texttt{TruncDate} grouping in
+  the daily-sales report benefits directly.
+  \item \texttt{catalog\_product.(is\_active, name)} supports the POS type-ahead search and the
+  product list, while \texttt{(category, is\_active)} supports category browsing.
+  \item \texttt{product.sku} and \texttt{product.barcode} are unique indexes, which both enforce the
+  domain rule (one product per code) and make barcode lookup a single indexed fetch.
+  \item \texttt{sale.idempotency\_key} is uniquely indexed, making the duplicate-prevention rule a
+  database guarantee rather than a hope.
+  \item \texttt{stock\_movement.product\_id} and \texttt{sale\_line.sale\_id} are indexed because the
+  history and receipt views traverse them.
+\end{itemize}
+
+\subsection{Migrations}
+
+Every bounded context owns its own migrations (for example \texttt{catalog/migrations/0001\_initial.py}),
+so a context's schema history is self-contained and a future extraction would carry its migrations
+with it. The migrations create the tables, the check constraint on stock, and the unique constraints
+described above; the deployment start command applies them with \texttt{manage.py migrate} before the
+server accepts traffic (Section~\ref{sec:deploy}).
+
 % ===========================================================================
 \section{Technology Stack}
 \label{sec:stack}
@@ -866,6 +1605,36 @@ Deployment & Render (backend API + managed Postgres), Vercel (frontend SPA) \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Rationale for the major choices}
+
+Technology choices are only interesting when they are argued, so each significant pick is justified
+against the alternatives it displaced:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Django + DRF.} Django provides a battle-tested ORM, authentication, migrations and a
+  mature admin, and DRF gives serialisation and permissions --- all framework \emph{details} that sit
+  at the edges of our Clean Architecture. The alternative (a micro-framework such as Flask or FastAPI)
+  would have cost us the ORM and auth layers and gained nothing the domain cares about. The important
+  point is that the business rules do not depend on this choice.
+  \item \textbf{PostgreSQL.} We need transactional integrity, a check constraint for non-negative
+  stock, and reliable date grouping for reports. PostgreSQL provides all three and is the same engine
+  in development and production, so ``works on my machine'' is the deployed machine.
+  \item \textbf{React + TypeScript + Vite.} A single-page app gives the cashier screen the
+  responsiveness a server-rendered page cannot; TypeScript catches a whole class of errors at compile
+  time; Vite produces a small, fast static build that Vercel serves from the edge.
+  \item \textbf{TanStack Query + axios.} Server state (products, sales, reports) is cached and
+  invalidated by a dedicated library rather than hand-rolled \texttt{useEffect} fetching, and a single
+  configured axios client centralises the CSRF header and credentials policy.
+  \item \textbf{Tailwind CSS.} Utility-first styling keeps the component files and the styles together
+  and avoids a parallel stylesheet whose selectors drift; it also makes the dense POS layout quick to
+  adjust responsively.
+  \item \textbf{Decimal money everywhere.} Explicitly rejecting \texttt{float} for currency is a
+  correctness decision (Section~\ref{sec:domain}), not a stylistic one.
+  \item \textbf{Quality tooling as dependencies.} ruff, mypy, import-linter and pytest are not luxuries
+  bolted on at the end: they encode the architecture and the values of the project as runnable checks
+  (Section~\ref{sec:tdd}).
+\end{itemize}
 
 % ===========================================================================
 \section{Setup and Deployment}
@@ -946,6 +1715,41 @@ A health endpoint at \texttt{GET /api/v1/health/} supports uptime checks. Backup
 are provided in \texttt{deploy/} (\texttt{backup.sh}, \texttt{restore.sh}). The backend is stateless
 apart from the database, so it can be restarted or scaled without data loss.
 
+\subsection{Release flow and quality gates}
+
+Deployment is deliberately boring: a push to \texttt{main} triggers the platform builds. The backend
+build installs dependencies and, on boot, runs \texttt{migrate}, seeds the administrator, collects
+static files and starts Gunicorn; the frontend build type-checks and bundles. Before any of that is
+pushed, the full quality-gate suite (Section~\ref{sec:tdd}) must pass locally: \texttt{ruff},
+\texttt{ruff format --check}, \texttt{mypy} strict over domain and application,
+\texttt{import-linter}, \texttt{pytest}, and on the frontend \texttt{tsc --noEmit}, Vitest and the
+production build. The architecture is therefore enforced at the same moment as the syntax.
+
+\subsection{Observability}
+
+Two signals support operations. First, a health endpoint at \texttt{GET /api/v1/health/} allows the
+platform (and a judge) to confirm liveness, which matters on a free tier that sleeps. Second, the
+Sentry SDK is wired in so that unhandled exceptions are reported with stack traces rather than
+vanishing. The audit log gives an application-level trail of privileged changes, complementing the
+infrastructure logs.
+
+\subsection{Backup, restore and recovery}
+
+Backup and restore scripts live in \texttt{deploy/} (\texttt{backup.sh}, \texttt{restore.sh}), and an
+environment template in \texttt{deploy/env.template} documents the configuration surface. Two
+properties make recovery tractable. The backend is stateless apart from the database, so it can be
+restarted or replaced without data loss. And the inventory ledger is append-only, so even in a
+disaster the current stock figure can be rebuilt from history rather than trusted as a single number.
+
+\subsection{Scaling and cost posture}
+
+The deployment targets a single shop on managed infrastructure, which is the honest shape of the
+requirement. The backend is stateless and can be scaled horizontally behind the platform's proxy if
+read load grows; the database is the shared state. The noted limits --- synchronous report
+computation, in-process caching for idempotency, and free-tier sleep --- are recorded as roadmap
+items rather than hidden, and the caching and reporting layers are isolated precisely so that they can
+be swapped (for example to Redis and a materialised read model) without touching the domain.
+
 % ===========================================================================
 \section{User Interface and Experience}
 \label{sec:ui}
@@ -956,6 +1760,60 @@ user identity and sign-out, and a content area rendered by React Router. Interac
 (loading, empty, error) are surfaced, destructive actions are confirmed, and the POS screen is
 optimised for speed: type-ahead product search, a running cart with quantity controls, and a single
 charge action that opens the payment modal. Charts on the dashboard are rendered with Recharts.
+
+\subsection{Information architecture and navigation}
+
+The navigation is a single persistent sidebar whose entries are filtered by the signed-in role, so a
+cashier never sees a link that would only return \textbf{403}. The sections are \emph{Dashboard},
+\emph{POS}, \emph{Products}, \emph{Inventory}, \emph{Sales}, \emph{Purchasing}, \emph{Shifts},
+\emph{Reports}, \emph{Users}, \emph{Settings} and \emph{Audit}, mirroring the bounded contexts. The
+content area is owned by React Router, and the layout keeps the cashier's most important control ---
+the POS link --- one click away from anywhere.
+
+\subsection{The cashier workflow}
+
+The POS screen is built around a single question: how few actions does one sale take? A product is
+found by typing into a type-ahead search (matching name, SKU or barcode) or by scanning; the item
+drops into a running cart; quantity and per-line discount are adjustable inline; and a single
+\emph{charge} action opens the payment modal. The barcode path is the fastest: a USB or Bluetooth
+scanner behaves as a keyboard, and a small framework-free \emph{scanner-burst detector} distinguishes
+the rapid keystrokes of a scanner from the slower cadence of human typing, so a scan resolves the
+product without the cashier touching the keyboard layout. A device camera is also supported through
+the browser's \texttt{BarcodeDetector} API for hardware-free scanning. The payment modal accepts one
+or several payments (split), computes change for cash, and confirms the sale; the receipt number is
+returned by the server so it is authoritative.
+
+\subsection{Back-office screens}
+
+Each back-office screen follows the same shape --- a filter or search bar, a table or card list, and a
+primary action --- which lowers the cost of learning a new screen. \emph{Products} manages the
+catalogue and categories; \emph{Inventory} shows on-hand quantities with low/out-of-stock badges and
+offers adjustments and history; \emph{Sales} lists transactions with date, cashier, payment-method,
+status and receipt filters and offers refund and void actions to permitted roles; \emph{Purchasing}
+manages suppliers and purchase orders and drives the order/receive/cancel transitions;
+\emph{Shifts} opens and closes a drawer and shows the X/Z report; \emph{Reports} presents each report
+with a date range and a CSV export; \emph{Users} administers staff and roles; \emph{Settings} edits
+business configuration; and \emph{Audit} shows the recent privileged changes.
+
+\subsection{Offline experience}
+
+Because a shop's network is not always available, the frontend is an installable Progressive Web App
+that can keep selling when the connection drops. A completed sale that cannot reach the server is
+queued on the device, keyed by its idempotency key, and an on-screen banner tells the cashier what is
+happening. When connectivity returns, the queue is replayed automatically, and server-side
+de-duplication on the idempotency key makes the replay safe: a sale that actually did reach the
+server before the connection dropped is not created twice. The design is explicit that API
+\emph{reads} are never cached --- a stale price or stock figure is worse than a spinner --- so offline
+support is scoped to completing sales, which is the one operation that must not stop.
+
+\subsection{Accessibility and responsiveness}
+
+Forms are built with \texttt{react-hook-form} and validated with \texttt{zod} schemas, so error
+messages are associated with the fields that caused them and keystroke-level validation is immediate.
+Interactive controls are real buttons with visible labels, destructive actions require confirmation,
+and the layouts reflow from a wide desktop till to a tablet without horizontal scrolling. Loading,
+empty and error states are surfaced on every data view, so the interface never presents a blank region
+without explanation.
 
 The following screenshots illustrate the working system. Drop the corresponding PNG files into the
 \texttt{screenshots/} directory; this report includes them automatically when present.
@@ -1091,6 +1949,131 @@ GET & \texttt{/reporting/low-stock/} & Low-stock report. \\
 GET/PUT & \texttt{/settings/} & Read / update business settings. \\
 \bottomrule
 \end{longtable}
+
+% ===========================================================================
+\section{Business Rule Reference}
+\label{app:rules}
+% ===========================================================================
+
+The following formulas are the executable specification of the system; each corresponds to a method
+or property in the code and to at least one test.
+
+\begin{table}[htbp]\centering
+\small
+\caption{Business rule formulas and their location.}
+\begin{tabular}{@{}p{0.42\textwidth}p{0.52\textwidth}@{}}
+\toprule
+\textbf{Rule} & \textbf{Location} \\
+\midrule
+$\text{gross\_total} = \text{unit\_price} \times \text{quantity}$ & \texttt{SaleLine.gross\_total} \\
+$\text{line.total} = \text{gross\_total} - \text{discount.amount}$ & \texttt{SaleLine.total} \\
+$\text{profit(line)} = \text{line.total} - \text{unit\_cost} \times \text{quantity}$ &
+\texttt{SaleLine.profit} \\
+$\text{subtotal} = \sum \text{gross\_total}$ & \texttt{Sale.subtotal} \\
+$\text{total} = \sum \text{line.total}$ & \texttt{Sale.total} \\
+$\text{amount\_paid} = \sum \text{payment.amount}$ & \texttt{Sale.amount\_paid} \\
+$\text{refundable\_amount} = \text{total} - \sum \text{refund.amount}$ &
+\texttt{Sale.refundable\_amount} \\
+$\text{gross\_profit} = \text{total} - \sum \text{unit\_cost} \times \text{quantity}$ &
+\texttt{Sale.gross\_profit} \\
+$\text{discount} = \min(\text{raw},\ \text{line\_total})$ then $\max(\cdot, 0)$ &
+\texttt{calculate\_discount} \\
+$\text{change} = \max(\text{tendered} - \text{amount},\ 0)$ for cash & \texttt{calculate\_change} \\
+$\text{available} = \text{quantity\_on\_hand} - \text{reserved\_quantity}$ &
+\texttt{StockItem.available\_quantity} \\
+$\text{value} = \sum \text{buying\_cost} \times \text{quantity\_on\_hand}$ &
+\texttt{DjangoStockItemRepository.get\_valuation} \\
+$\text{signed} = +\text{amount}$ (cash\_in) / $-\text{amount}$ (payout) &
+\texttt{CashMovement.signed\_amount} \\
+$\text{expected\_cash} = \text{float} + \text{cash\_sales} - \text{cash\_refunds} + \sum \text{signed}$ &
+\texttt{Shift.expected\_cash} \\
+$\text{variance} = \text{counted\_cash} - \text{expected\_cash}$ & \texttt{Shift.variance} \\
+$\text{po.total} = \sum \text{unit\_cost} \times \text{quantity}$ & \texttt{PurchaseOrder.total} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ===========================================================================
+\section{Configuration Reference}
+\label{app:config}
+% ===========================================================================
+
+\begin{table}[htbp]\centering
+\small
+\caption{Environment variables and business settings.}
+\begin{tabular}{@{}p{0.36\textwidth}p{0.58\textwidth}@{}}
+\toprule
+\textbf{Setting} & \textbf{Meaning} \\
+\midrule
+\texttt{DJANGO\_SETTINGS\_MODULE} & Which settings module to load
+(\texttt{config.settings.\{base,dev,prod,test\}}). \\
+\texttt{DJANGO\_SECRET\_KEY} & Cryptographic signing key. \\
+\texttt{DJANGO\_DEBUG} & Debug flag; \texttt{false} in production. \\
+\texttt{DATABASE\_URL} & PostgreSQL connection string, consumed by \texttt{dj-database-url}. \\
+\texttt{DJANGO\_ALLOWED\_HOSTS} & Comma-separated permitted host names. \\
+\texttt{CORS\_ALLOWED\_ORIGINS} & Origins permitted to call the API with credentials. \\
+\texttt{CSRF\_TRUSTED\_ORIGINS} & Origins trusted for CSRF-protected requests. \\
+\texttt{DJANGO\_SUPERUSER\_EMAIL} / \texttt{DJANGO\_SUPERUSER\_PASSWORD} & Seed the administrator. \\
+\texttt{SENTRY\_DSN} & Optional error-reporting destination. \\
+Business name, address, phone, e-mail & Printed on receipts and used in the UI. \\
+Currency & Default \texttt{UGX}; carried by every \texttt{Money}. \\
+Receipt header/footer & Free text printed around the receipt body. \\
+Cashier discount limit & Policy ceiling recorded for discount authorisation. \\
+Tax rate & Recorded for future tax lines. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ===========================================================================
+\section{Selected Sequence Flows}
+\label{app:sequences}
+% ===========================================================================
+
+The flows below summarise the most important interactions as ordered steps.
+
+\paragraph{Completing a sale.}
+\begin{enumerate}[leftmargin=1.4em]
+  \item Client posts lines, payments and an idempotency key.
+  \item View validates and builds a command; constructs the use case with its adapters.
+  \item Use case checks the idempotency port; returns the existing sale if the key was seen.
+  \item Domain services compute each discount and the change; the aggregate computes totals.
+  \item Use case asserts $\text{amount\_paid} \ge \text{total}$.
+  \item Use case calls \texttt{deduct\_stock} per line; inventory writes a \texttt{SALE} movement and
+  decrements the cache (failing loudly on insufficient stock).
+  \item Repository persists the sale; the idempotency key is stored; the sale is returned as
+  \textbf{201}.
+\end{enumerate}
+
+\paragraph{Refunding a sale.}
+\begin{enumerate}[leftmargin=1.4em]
+  \item Manager posts the sale id, optional line, quantity, reason and restock flag.
+  \item Use case loads the aggregate and rejects voided or fully refunded sales.
+  \item Aggregate reports the refundable quantity for the line; the request is validated against it
+  and against the refundable amount.
+  \item A \texttt{Refund} is created and appended; the aggregate recomputes its status to
+  \texttt{partially\_refunded} or \texttt{refunded}.
+  \item If restocking, inventory writes a \texttt{REFUND\_RETURN} movement.
+  \item Refund and sale are persisted.
+\end{enumerate}
+
+\paragraph{Closing a shift.}
+\begin{enumerate}[leftmargin=1.4em]
+  \item Cashier posts the shift id, the counted cash and notes.
+  \item Use case loads the shift and its cash movements; if the shift is not open, it is rejected.
+  \item The shifts context queries the sales context through \texttt{SalesSummaryPort} for cash sales
+  and cash refunds.
+  \item Expected cash and variance are derived; the shift is marked closed with the counted amount.
+  \item The Z-report is returned.
+\end{enumerate}
+
+\paragraph{Receiving a purchase order.}
+\begin{enumerate}[leftmargin=1.4em]
+  \item Manager marks the order \texttt{ordered}, then requests receipt.
+  \item Use case loads the aggregate and calls \texttt{receive}, which validates the transition.
+  \item For each line, \texttt{StockIntakePort.receive\_stock} writes a \texttt{PURCHASE} movement
+  with the line cost.
+  \item The order is persisted as \texttt{received}.
+\end{enumerate}
 
 % ===========================================================================
 \section{Domain Glossary}
