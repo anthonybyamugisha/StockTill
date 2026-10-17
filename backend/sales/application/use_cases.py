@@ -7,16 +7,16 @@ from sales.application.commands import (
     RefundSaleCommand,
     VoidSaleCommand,
 )
-from sales.application.ports import CatalogPort, InventoryPort, ReceiptNumberPort
-from sales.domain.entities import Payment, PaymentMethod, Sale, SaleLine, SaleStatus
+from sales.application.ports import CatalogPort, IdempotencyPort, InventoryPort, ReceiptNumberPort
+from sales.domain.entities import Payment, PaymentMethod, Refund, Sale, SaleLine, SaleStatus
 from sales.domain.errors import (
     InvalidPaymentError,
     RefundExceedsRefundableError,
     SaleAlreadyVoidedError,
 )
 from sales.domain.repository import RefundRepository, SaleRepository
-from sales.domain.services import calculate_change
-from shared.domain.money import Money
+from sales.domain.services import calculate_change, calculate_discount
+from shared.domain.clock import Clock
 
 
 class CompleteSaleUseCase:
@@ -26,21 +26,35 @@ class CompleteSaleUseCase:
         inventory_port: InventoryPort,
         catalog_port: CatalogPort,
         receipt_number_port: ReceiptNumberPort,
+        idempotency_port: IdempotencyPort,
+        clock: Clock,
     ):
         self._sale_repo = sale_repository
         self._inventory = inventory_port
         self._catalog = catalog_port
         self._receipt_port = receipt_number_port
+        self._idempotency = idempotency_port
+        self._clock = clock
 
     def execute(self, command: CompleteSaleCommand) -> Sale:
+        if self._idempotency.exists(command.idempotency_key):
+            existing = self._sale_repo.get_by_idempotency_key(command.idempotency_key)
+            if existing:
+                return existing
+            raise ValueError("Idempotency key already used")
+
         lines: list[SaleLine] = []
         for item in command.lines:
+            discount = None
+            if item.discount_type and item.discount_value:
+                discount = calculate_discount(item.unit_price, item.quantity, item.discount_type, item.discount_value)
             line = SaleLine(
                 product_id=item.product_id,
-                product_name="",
+                product_name=item.product_name,
                 quantity=item.quantity,
                 unit_price=item.unit_price,
                 unit_cost=item.unit_cost,
+                discount=discount,
             )
             lines.append(line)
 
@@ -49,6 +63,8 @@ class CompleteSaleUseCase:
             cashier_id=command.cashier_id,
             lines=lines,
             status=SaleStatus.COMPLETED,
+            created_at=self._clock.now(),
+            notes=command.notes,
         )
 
         for payment_input in command.payments:
@@ -73,33 +89,41 @@ class CompleteSaleUseCase:
             self._inventory.deduct_stock(line.product_id, line.quantity, sale.receipt_number)
 
         self._sale_repo.save(sale)
+        self._idempotency.store(command.idempotency_key, sale.id)
         return sale
 
 
 class RefundSaleUseCase:
-    def __init__(self, sale_repository: SaleRepository, refund_repository: RefundRepository, inventory_port: InventoryPort):
+    def __init__(
+        self,
+        sale_repository: SaleRepository,
+        refund_repository: RefundRepository,
+        inventory_port: InventoryPort,
+        clock: Clock,
+    ):
         self._sale_repo = sale_repository
         self._refund_repo = refund_repository
         self._inventory = inventory_port
+        self._clock = clock
 
-    def execute(self, command: RefundSaleCommand):
+    def execute(self, command: RefundSaleCommand) -> Refund:
         sale = self._sale_repo.get_by_id(command.sale_id)
         if sale is None:
             raise ValueError("Sale not found")
         if sale.status == SaleStatus.VOIDED:
             raise SaleAlreadyVoidedError("Cannot refund a voided sale")
+        if sale.status == SaleStatus.REFUNDED:
+            raise RefundExceedsRefundableError("Sale is already fully refunded")
 
-        line = next((l for l in sale.lines if l.id == command.line_id), None)
-        if line is None:
-            raise ValueError("Line not found")
+        refundable_qty = sale.refundable_quantity_for_line(command.line_id) if command.line_id else 1
+        if command.quantity > refundable_qty:
+            raise RefundExceedsRefundableError(
+                f"Refund quantity {command.quantity} exceeds refundable {refundable_qty}"
+            )
 
-        already_refunded = sum(
-            r.quantity for r in sale.refunds if r.line_id == command.line_id
-        )
-        if already_refunded + command.quantity > line.quantity:
-            raise RefundExceedsRefundableError("Refund quantity exceeds sold quantity")
-
+        line = next((l for l in sale.lines if l.id == command.line_id), None) if command.line_id else sale.lines[0]
         refund_amount = line.unit_price.multiply(Decimal(command.quantity))
+
         if refund_amount > sale.refundable_amount:
             raise RefundExceedsRefundableError("Refund exceeds refundable amount")
 
@@ -111,6 +135,7 @@ class RefundSaleUseCase:
             reason=command.reason,
             restock=command.restock,
             user_id=command.user_id,
+            created_at=self._clock.now(),
         )
 
         sale.refunds.append(refund)
@@ -119,7 +144,7 @@ class RefundSaleUseCase:
         else:
             sale.status = SaleStatus.PARTIALLY_REFUNDED
 
-        if command.restock:
+        if command.restock and line:
             self._inventory.restore_stock(line.product_id, command.quantity, sale.receipt_number)
 
         self._refund_repo.save(refund)
@@ -128,11 +153,17 @@ class RefundSaleUseCase:
 
 
 class VoidSaleUseCase:
-    def __init__(self, sale_repository: SaleRepository, inventory_port: InventoryPort):
+    def __init__(
+        self,
+        sale_repository: SaleRepository,
+        inventory_port: InventoryPort,
+        clock: Clock,
+    ):
         self._sale_repo = sale_repository
         self._inventory = inventory_port
+        self._clock = clock
 
-    def execute(self, command: VoidSaleCommand):
+    def execute(self, command: VoidSaleCommand) -> Sale:
         sale = self._sale_repo.get_by_id(command.sale_id)
         if sale is None:
             raise ValueError("Sale not found")

@@ -20,15 +20,21 @@ class InventoryPort(ABC):
 
 class CatalogPort(ABC):
     @abstractmethod
-    def get_product_price(self, product_id: UUID) -> Money | None:
-        pass
-
-    @abstractmethod
-    def get_product_cost(self, product_id: UUID) -> Money | None:
+    def get_product(self, product_id: UUID) -> dict | None:
         pass
 
 
 class ReceiptNumberPort(ABC):
     @abstractmethod
     def generate(self) -> str:
+        pass
+
+
+class IdempotencyPort(ABC):
+    @abstractmethod
+    def exists(self, key: str) -> bool:
+        pass
+
+    @abstractmethod
+    def store(self, key: str, sale_id: UUID) -> None:
         pass

@@ -12,6 +12,7 @@ class LineItem:
     quantity: int
     unit_price: Money
     unit_cost: Money
+    product_name: str = ""
     discount_type: DiscountType | None = None
     discount_value: Decimal | None = None
 
@@ -31,6 +32,7 @@ class CompleteSaleCommand:
     lines: list[LineItem]
     payments: list[PaymentInput]
     idempotency_key: str
+    notes: str = ""
 
 
 @dataclass(frozen=True)
