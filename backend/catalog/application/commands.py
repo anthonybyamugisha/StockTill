@@ -15,6 +15,8 @@ class CreateProductCommand:
     category_id: UUID | None = None
     minimum_stock_level: int = 0
     image_url: str | None = None
+    opening_stock: int = 0
+    user_id: UUID | None = None
 
 
 @dataclass(frozen=True)

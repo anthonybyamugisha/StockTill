@@ -136,4 +136,9 @@ ignore_imports = [
     "purchasing.infrastructure.adapters:inventory.domain.entities",
     "purchasing.infrastructure.adapters:inventory.infrastructure.adapters",
     "purchasing.infrastructure.adapters:inventory.infrastructure.repository",
+    "catalog.infrastructure.adapters:inventory.application.commands",
+    "catalog.infrastructure.adapters:inventory.application.use_cases",
+    "catalog.infrastructure.adapters:inventory.domain.entities",
+    "catalog.infrastructure.adapters:inventory.infrastructure.adapters",
+    "catalog.infrastructure.adapters:inventory.infrastructure.repository",
 ]

@@ -4,15 +4,22 @@ from catalog.application.commands import (
     DeactivateProductCommand,
     UpdateProductCommand,
 )
+from catalog.application.ports import OpeningStockPort
 from catalog.domain.entities import Category, Product
 from catalog.domain.repository import CategoryRepository, ProductRepository
 from shared.domain.clock import Clock
 
 
 class CreateProductUseCase:
-    def __init__(self, product_repository: ProductRepository, clock: Clock):
+    def __init__(
+        self,
+        product_repository: ProductRepository,
+        clock: Clock,
+        opening_stock_port: OpeningStockPort | None = None,
+    ):
         self._repo = product_repository
         self._clock = clock
+        self._opening_stock = opening_stock_port
 
     def execute(self, command: CreateProductCommand) -> Product:
         if self._repo.sku_exists(command.sku):
@@ -32,6 +39,14 @@ class CreateProductUseCase:
             image_url=command.image_url,
         )
         self._repo.save(product)
+
+        if command.opening_stock > 0 and self._opening_stock is not None:
+            self._opening_stock.record_opening_stock(
+                product_id=product.id,
+                quantity=command.opening_stock,
+                unit_cost=command.buying_cost,
+                user_id=command.user_id,
+            )
         return product
 
 

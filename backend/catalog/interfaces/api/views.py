@@ -19,6 +19,7 @@ from catalog.application.use_cases import (
     ListCategoriesUseCase,
     UpdateProductUseCase,
 )
+from catalog.infrastructure.adapters import InventoryOpeningStockAdapter
 from catalog.infrastructure.repository import DjangoCategoryRepository, DjangoProductRepository
 from catalog.interfaces.api.serializers import (
     CategorySerializer,
@@ -61,7 +62,9 @@ class ProductListCreateView(APIView):
         serializer = CreateProductSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        use_case = CreateProductUseCase(DjangoProductRepository(), SystemClock())
+        use_case = CreateProductUseCase(
+            DjangoProductRepository(), SystemClock(), InventoryOpeningStockAdapter()
+        )
         try:
             product = use_case.execute(
                 CreateProductCommand(
@@ -74,6 +77,8 @@ class ProductListCreateView(APIView):
                     category_id=data.get("category_id"),
                     minimum_stock_level=data.get("minimum_stock_level", 0),
                     image_url=data.get("image_url"),
+                    opening_stock=data.get("opening_stock", 0),
+                    user_id=request.user.id if request.user.is_authenticated else None,
                 )
             )
         except ValueError as e:

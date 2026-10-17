@@ -38,6 +38,7 @@ class CreateProductSerializer(serializers.Serializer):
     category_id = serializers.UUIDField(allow_null=True, required=False)
     minimum_stock_level = serializers.IntegerField(min_value=0, required=False)
     image_url = serializers.URLField(allow_null=True, required=False)
+    opening_stock = serializers.IntegerField(min_value=0, required=False, default=0)
 
     def validate_barcode(self, value: str | None) -> str | None:
         return value or None
