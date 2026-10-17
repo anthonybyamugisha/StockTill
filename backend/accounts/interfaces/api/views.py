@@ -28,6 +28,7 @@ from accounts.interfaces.api.serializers import (
     LoginSerializer,
     UserSerializer,
 )
+from shared.infrastructure.audit import build_audit_recorder
 
 
 def _optional_uuid(value):
@@ -50,7 +51,9 @@ class UserListCreateView(APIView):
         serializer = CreateUserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        use_case = CreateUserUseCase(DjangoUserRepository(), DjangoPasswordHasher())
+        use_case = CreateUserUseCase(
+            DjangoUserRepository(), DjangoPasswordHasher(), build_audit_recorder()
+        )
         try:
             user = use_case.execute(
                 CreateUserCommand(
@@ -59,6 +62,7 @@ class UserListCreateView(APIView):
                     last_name=data["last_name"],
                     role=Role(data["role"]),
                     password=data["password"],
+                    actor_id=request.user.id if request.user.is_authenticated else None,
                 )
             )
         except ValueError as e:
@@ -82,13 +86,14 @@ class UserDetailView(APIView):
         if user is None:
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        use_case = UpdateUserUseCase(repo)
+        use_case = UpdateUserUseCase(repo, build_audit_recorder())
         updated = use_case.execute(
             UpdateUserCommand(
                 user_id=user_id,
                 first_name=request.data.get("first_name"),
                 last_name=request.data.get("last_name"),
                 role=Role(request.data["role"]) if "role" in request.data else None,
+                actor_id=request.user.id if request.user.is_authenticated else None,
             )
         )
         return Response(UserSerializer(updated).data)
@@ -99,8 +104,13 @@ class UserDetailView(APIView):
         if user is None:
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        use_case = DeactivateUserUseCase(repo)
-        use_case.execute(DeactivateUserCommand(user_id=user_id))
+        use_case = DeactivateUserUseCase(repo, build_audit_recorder())
+        use_case.execute(
+            DeactivateUserCommand(
+                user_id=user_id,
+                actor_id=request.user.id if request.user.is_authenticated else None,
+            )
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -112,7 +122,9 @@ class LoginView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        use_case = AuthenticateUserUseCase(DjangoUserRepository(), DjangoPasswordHasher())
+        use_case = AuthenticateUserUseCase(
+            DjangoUserRepository(), DjangoPasswordHasher(), build_audit_recorder()
+        )
         try:
             user = use_case.execute(data["email"], data["password"])
         except Exception as e:
@@ -129,7 +141,17 @@ class LogoutView(APIView):
     permission_classes = []
 
     def post(self, request):
+        user_id = request.user.id if request.user.is_authenticated else None
+        email = request.user.email if request.user.is_authenticated else None
         django_logout(request)
+        if user_id is not None:
+            build_audit_recorder().record(
+                user_id=user_id,
+                action="auth.logout",
+                entity_type="user",
+                entity_id=str(user_id),
+                after={"email": email},
+            )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

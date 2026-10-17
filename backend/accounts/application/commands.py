@@ -11,6 +11,7 @@ class CreateUserCommand:
     last_name: str
     role: Role
     password: str
+    actor_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -19,8 +20,10 @@ class UpdateUserCommand:
     first_name: str | None = None
     last_name: str | None = None
     role: Role | None = None
+    actor_id: UUID | None = None
 
 
 @dataclass(frozen=True)
 class DeactivateUserCommand:
     user_id: UUID
+    actor_id: UUID | None = None
