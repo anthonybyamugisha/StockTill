@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { OfflineBanner } from './OfflineBanner';
 
 export function AppLayout() {
   return (
@@ -8,6 +9,7 @@ export function AppLayout() {
       <Sidebar />
       <div className="ml-60">
         <Header />
+        <OfflineBanner />
         <main className="p-6">
           <Outlet />
         </main>

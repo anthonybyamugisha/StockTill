@@ -4,10 +4,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './features/auth/AuthContext';
+import { syncPendingSales } from './features/pos/offline/saleSync';
 import { registerServiceWorker } from './shared/pwa/registerServiceWorker';
 import './index.css';
 
 registerServiceWorker();
+void syncPendingSales();
 
 const queryClient = new QueryClient({
   defaultOptions: {
