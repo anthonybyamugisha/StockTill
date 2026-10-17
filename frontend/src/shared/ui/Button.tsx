@@ -1,23 +1,33 @@
-import { ButtonHTMLAttributes, ReactNode } from 'react';
+import { ButtonHTMLAttributes, forwardRef } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  children: ReactNode;
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
 }
 
-const variants = {
-  primary: 'bg-blue-600 text-white hover:bg-blue-700',
-  secondary: 'bg-gray-200 text-gray-800 hover:bg-gray-300',
-  danger: 'bg-red-600 text-white hover:bg-red-700',
+const variantClasses = {
+  primary: 'btn-primary',
+  secondary: 'btn-secondary',
+  danger: 'btn-danger',
+  ghost: 'btn-ghost',
 };
 
-export function Button({ children, variant = 'primary', className = '', ...props }: ButtonProps) {
-  return (
-    <button
-      className={`rounded px-4 py-2 disabled:opacity-50 ${variants[variant]} ${className}`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-}
+const sizeClasses = {
+  sm: 'px-3 py-1.5 text-xs',
+  md: 'px-4 py-2 text-sm',
+  lg: 'px-6 py-3 text-base',
+};
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant = 'primary', size = 'md', className = '', ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        className={`${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+        {...props}
+      />
+    );
+  },
+);
+
+Button.displayName = 'Button';
