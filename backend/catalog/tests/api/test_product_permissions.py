@@ -69,3 +69,23 @@ def test_manager_can_create_product(api_client, manager_user):
     response = api_client.post("/api/v1/catalog/products/", PRODUCT_PAYLOAD)
     assert response.status_code == 201
     assert response.data["sku"] == "RIC-005"
+
+
+@pytest.mark.django_db
+def test_manager_can_create_product_with_blank_optional_fields(api_client, manager_user):
+    api_client.force_authenticate(user=manager_user)
+    payload = {**PRODUCT_PAYLOAD, "sku": "RIC-010", "description": "", "barcode": ""}
+    response = api_client.post("/api/v1/catalog/products/", payload)
+    assert response.status_code == 201
+    assert response.data["barcode"] is None
+
+
+@pytest.mark.django_db
+def test_two_products_with_blank_barcode_do_not_collide(api_client, manager_user):
+    api_client.force_authenticate(user=manager_user)
+    first = api_client.post("/api/v1/catalog/products/", {**PRODUCT_PAYLOAD, "barcode": ""})
+    second = api_client.post(
+        "/api/v1/catalog/products/", {**PRODUCT_PAYLOAD, "sku": "RIC-011", "barcode": ""}
+    )
+    assert first.status_code == 201
+    assert second.status_code == 201

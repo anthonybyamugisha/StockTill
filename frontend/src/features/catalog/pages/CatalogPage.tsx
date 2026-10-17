@@ -106,7 +106,12 @@ export function CatalogPage() {
       {showModal && (
         <ProductModal
           product={editingProduct}
-          onClose={() => setShowModal(false)}
+          error={extractError(createMutation.error ?? updateMutation.error)}
+          onClose={() => {
+            createMutation.reset();
+            updateMutation.reset();
+            setShowModal(false);
+          }}
           onSubmit={(data) => {
             if (editingProduct) {
               updateMutation.mutate({ id: editingProduct.id, data });
@@ -121,8 +126,25 @@ export function CatalogPage() {
   );
 }
 
-function ProductModal({ product, onClose, onSubmit, isLoading }: {
+function extractError(error: unknown): string | null {
+  if (!error) return null;
+  const response = (error as { response?: { data?: unknown; statusText?: string } }).response;
+  const data = response?.data;
+  if (typeof data === 'string') return data;
+  if (data && typeof data === 'object') {
+    const entries = Object.entries(data as Record<string, unknown>);
+    if (entries.length > 0) {
+      const [field, value] = entries[0];
+      const message = Array.isArray(value) ? value[0] : value;
+      return field === 'detail' ? String(message) : `${field}: ${message}`;
+    }
+  }
+  return response?.statusText ?? 'Could not save product';
+}
+
+function ProductModal({ product, error, onClose, onSubmit, isLoading }: {
   product: any;
+  error: string | null;
   onClose: () => void;
   onSubmit: (data: any) => void;
   isLoading: boolean;
@@ -140,7 +162,19 @@ function ProductModal({ product, onClose, onSubmit, isLoading }: {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(form);
+    const payload: Record<string, unknown> = {
+      name: form.name,
+      sku: form.sku,
+      selling_price: form.selling_price,
+      buying_cost: form.buying_cost,
+      description: form.description,
+      minimum_stock_level: Number.isFinite(Number(form.minimum_stock_level))
+        ? Number(form.minimum_stock_level)
+        : 0,
+    };
+    if (form.barcode) payload.barcode = form.barcode;
+    if (form.category_id) payload.category_id = form.category_id;
+    onSubmit(payload);
   };
 
   return (
@@ -158,6 +192,11 @@ function ProductModal({ product, onClose, onSubmit, isLoading }: {
       }
     >
       <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+        {error && (
+          <p role="alert" className="col-span-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
         <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         <Input label="SKU" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} required />
         <Input label="Selling Price" type="number" step="0.01" value={form.selling_price} onChange={(e) => setForm({ ...form, selling_price: e.target.value })} required />
