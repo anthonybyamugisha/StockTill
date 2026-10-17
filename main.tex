@@ -212,7 +212,8 @@ low-stock and out-of-stock lists, and inventory valuation. A \texttt{rebuild-cac
 recompute the cache from the ledger at any time. A database constraint prevents negative stock. \\[2pt]
 
 4. Sales / POS interface &
-Cashier screen with live product search, add-to-cart, quantity change, item removal, per-line
+Cashier screen with live product search (by name, SKU or barcode), add-to-cart, barcode scanning
+(USB/Bluetooth scanner, device camera, or manual entry), quantity change, item removal, per-line
 discounts (percentage or fixed), live subtotal and total, single or \textbf{split payments}, cash
 tendered/change calculation, and receipt generation. Payment methods: \textbf{cash, mobile money,
 card, bank transfer}. \\[2pt]
@@ -239,6 +240,12 @@ report. \\[2pt]
 invoices and stock receiving (listed as a bonus in the specification) are \emph{not} implemented.
 PDF export is planned but only CSV export is currently available. These are recorded in
 Section~\ref{sec:limitations}.
+
+\paragraph{Barcode scanning.} The POS accepts barcodes from a USB or Bluetooth keyboard-wedge
+scanner, from a device camera (through the browser's \texttt{BarcodeDetector} API), or by typing a
+barcode and pressing Enter. A hardware scanner is entirely optional: any standard model works with
+no configuration, and scanning resolves the code to a single active product through a dedicated
+lookup endpoint. Full instructions are in \texttt{docs/barcode-scanning.md}.
 
 % ===========================================================================
 \section{System Architecture}
