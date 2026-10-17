@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test_stocktill
+          POSTGRES_USER: stocktill
+          POSTGRES_PASSWORD: stocktill
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -e ".[dev]"
+
+      - name: Lint
+        run: |
+          cd backend
+          ruff check .
+          ruff format --check .
+
+      - name: Type check
+        run: |
+          cd backend
+          mypy .
+
+      - name: Import linter
+        run: |
+          cd backend
+          lint-imports
+
+      - name: Test
+        env:
+          DATABASE_URL: postgres://stocktill:stocktill@localhost:5432/test_stocktill
+        run: |
+          cd backend
+          pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Type check
+        run: |
+          cd frontend
+          npx tsc --noEmit
+
+      - name: Test
+        run: |
+          cd frontend
+          npm test
+
+      - name: Build
+        run: |
+          cd frontend
+          npm run build
