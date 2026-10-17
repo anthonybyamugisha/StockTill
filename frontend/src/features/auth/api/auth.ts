@@ -1,0 +1,28 @@
+import { apiClient } from '../../../shared/http/client';
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: 'admin' | 'manager' | 'cashier';
+  is_active: boolean;
+}
+
+export async function login(data: LoginRequest): Promise<void> {
+  await apiClient.post('/accounts/login/', data);
+}
+
+export async function logout(): Promise<void> {
+  await apiClient.post('/accounts/logout/');
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const res = await apiClient.get<User>('/accounts/me/');
+  return res.data;
+}
