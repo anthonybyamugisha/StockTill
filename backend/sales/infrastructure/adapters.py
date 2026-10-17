@@ -9,8 +9,9 @@ from inventory.infrastructure.repository import (
     DjangoStockItemRepository,
     DjangoStockMovementRepository,
 )
-from sales.application.ports import CatalogPort, InventoryPort
+from sales.application.ports import CatalogPort, InventoryPort, ShiftPort
 from shared.domain.clock import SystemClock
+from shifts.infrastructure.models import ShiftModel
 
 
 class InventoryAdapter(InventoryPort):
@@ -64,3 +65,13 @@ class CatalogAdapter(CatalogPort):
             }
         except ProductModel.DoesNotExist:
             return None
+
+
+class ShiftAdapter(ShiftPort):
+    def open_shift_id(self, cashier_id: UUID) -> UUID | None:
+        shift = (
+            ShiftModel.objects.filter(cashier_id=cashier_id, status="open")
+            .order_by("-opened_at")
+            .first()
+        )
+        return shift.id if shift else None

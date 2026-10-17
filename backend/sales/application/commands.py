@@ -33,6 +33,7 @@ class CompleteSaleCommand:
     payments: list[PaymentInput]
     idempotency_key: str
     notes: str = ""
+    shift_id: UUID | None = None
 
 
 @dataclass(frozen=True)

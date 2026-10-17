@@ -94,6 +94,7 @@ class Refund(Entity):
 class Sale(AggregateRoot):
     receipt_number: str = ""
     cashier_id: UUID | None = None
+    shift_id: UUID | None = None
     lines: list[SaleLine] = field(default_factory=list)
     payments: list[Payment] = field(default_factory=list)
     refunds: list[Refund] = field(default_factory=list)

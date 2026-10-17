@@ -7,6 +7,7 @@ class SaleModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     receipt_number = models.CharField(max_length=50, unique=True, db_index=True)
     cashier_id = models.UUIDField(db_index=True)
+    shift_id = models.UUIDField(db_index=True, null=True, blank=True)
     status = models.CharField(max_length=30, default="completed", db_index=True)
     subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     total_discount = models.DecimalField(max_digits=14, decimal_places=2, default=0)

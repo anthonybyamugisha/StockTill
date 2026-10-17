@@ -61,6 +61,7 @@ class CompleteSaleUseCase:
         sale = Sale(
             receipt_number=self._receipt_port.generate(),
             cashier_id=command.cashier_id,
+            shift_id=command.shift_id,
             lines=lines,
             status=SaleStatus.COMPLETED,
             created_at=self._clock.now(),

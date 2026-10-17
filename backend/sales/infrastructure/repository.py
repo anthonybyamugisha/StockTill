@@ -47,6 +47,7 @@ class DjangoSaleRepository(SaleRepository):
             defaults={
                 "receipt_number": sale.receipt_number,
                 "cashier_id": sale.cashier_id,
+                "shift_id": sale.shift_id,
                 "status": sale.status.value,
                 "subtotal": sale.subtotal.amount,
                 "total_discount": sale.total_discount.amount,
@@ -159,6 +160,7 @@ class DjangoSaleRepository(SaleRepository):
             id=m.id,
             receipt_number=m.receipt_number,
             cashier_id=m.cashier_id,
+            shift_id=m.shift_id,
             lines=lines,
             payments=payments,
             refunds=refunds,

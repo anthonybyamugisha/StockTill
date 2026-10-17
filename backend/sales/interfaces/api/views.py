@@ -16,7 +16,7 @@ from sales.application.commands import (
 )
 from sales.application.use_cases import CompleteSaleUseCase, RefundSaleUseCase, VoidSaleUseCase
 from sales.domain.entities import DiscountType, PaymentMethod
-from sales.infrastructure.adapters import CatalogAdapter, InventoryAdapter
+from sales.infrastructure.adapters import CatalogAdapter, InventoryAdapter, ShiftAdapter
 from sales.infrastructure.idempotency import CacheIdempotencyPort
 from sales.infrastructure.receipt_number import DatabaseReceiptNumberPort
 from sales.infrastructure.repository import DjangoRefundRepository, DjangoSaleRepository
@@ -96,6 +96,7 @@ class SaleListCreateView(APIView):
                     payments=payments,
                     idempotency_key=data["idempotency_key"],
                     notes=data.get("notes", ""),
+                    shift_id=ShiftAdapter().open_shift_id(request.user.id),
                 )
             )
         except (ValueError, DomainError) as e:

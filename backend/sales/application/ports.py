@@ -36,3 +36,9 @@ class IdempotencyPort(ABC):
     @abstractmethod
     def store(self, key: str, sale_id: UUID) -> None:
         pass
+
+
+class ShiftPort(ABC):
+    @abstractmethod
+    def open_shift_id(self, cashier_id: UUID) -> UUID | None:
+        pass
