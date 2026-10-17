@@ -8,6 +8,16 @@ export interface CartItem {
   unit_cost: string;
 }
 
+export interface ProductLookup {
+  id: string;
+  name: string;
+  sku: string;
+  barcode: string | null;
+  selling_price: string;
+  buying_cost: string;
+  image_url: string | null;
+}
+
 export interface PaymentInput {
   method: 'cash' | 'mobile_money' | 'card' | 'bank_transfer';
   amount: string;
@@ -53,7 +63,14 @@ export async function completeSale(data: CompleteSaleRequest): Promise<Sale> {
   return res.data;
 }
 
-export async function searchProducts(query: string) {
-  const res = await apiClient.get('/catalog/products/', { params: { q: query } });
+export async function searchProducts(query: string): Promise<ProductLookup[]> {
+  const res = await apiClient.get<ProductLookup[]>('/catalog/products/', { params: { q: query } });
+  return res.data;
+}
+
+export async function lookupProductByBarcode(barcode: string): Promise<ProductLookup> {
+  const res = await apiClient.get<ProductLookup>('/catalog/products/by-barcode/', {
+    params: { barcode },
+  });
   return res.data;
 }
