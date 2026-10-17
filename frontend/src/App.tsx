@@ -11,6 +11,8 @@ import { InventoryPage } from './features/inventory/pages/InventoryPage';
 import { SalesPage } from './features/sales/pages/SalesPage';
 import { ReportsPage } from './features/reports/pages/ReportsPage';
 import { UsersPage } from './features/users/pages/UsersPage';
+import { SettingsPage } from './features/settings/pages/SettingsPage';
+import { AuditLogPage } from './features/audit/pages/AuditLogPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,6 +67,8 @@ function AppRoutes() {
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/users" element={<UsersPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/audit-log" element={<AuditLogPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

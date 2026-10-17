@@ -181,7 +181,7 @@ function SaleDetailModal({ sale, onClose, onRefund, onVoid, isLoading }: {
             Restock returned items
           </label>
           <Button onClick={() => onRefund({ sale_id: sale.id, ...refundForm })} disabled={isLoading}>
-            {isProcessing ? 'Processing...' : 'Issue Refund'}
+            {isLoading ? 'Processing...' : 'Issue Refund'}
           </Button>
         </div>
       )}
@@ -191,7 +191,7 @@ function SaleDetailModal({ sale, onClose, onRefund, onVoid, isLoading }: {
           <p className="text-sm text-warning">Voiding a sale will reverse all stock movements and cannot be undone.</p>
           <Input label="Reason" value={voidReason} onChange={(e) => setVoidReason(e.target.value)} required />
           <Button variant="danger" onClick={() => onVoid({ sale_id: sale.id, reason: voidReason })} disabled={isLoading}>
-            {isProcessing ? 'Processing...' : 'Void Sale'}
+            {isLoading ? 'Processing...' : 'Void Sale'}
           </Button>
         </div>
       )}

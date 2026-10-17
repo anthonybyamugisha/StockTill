@@ -9,6 +9,8 @@ const navigation = [
   { name: 'Sales', path: '/sales', icon: 'sales', roles: ['admin', 'manager', 'cashier'] },
   { name: 'Reports', path: '/reports', icon: 'reports', roles: ['admin', 'manager'] },
   { name: 'Users', path: '/users', icon: 'users', roles: ['admin'] },
+  { name: 'Settings', path: '/settings', icon: 'settings', roles: ['admin'] },
+  { name: 'Audit Log', path: '/audit-log', icon: 'audit', roles: ['admin'] },
 ];
 
 function getIcon(icon: string) {
