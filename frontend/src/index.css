@@ -77,3 +77,28 @@
     @apply bg-primary-50 text-primary-600 hover:bg-primary-50 hover:text-primary-600;
   }
 }
+
+@page {
+  margin: 8mm;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #receipt-print-area,
+  #receipt-print-area * {
+    visibility: visible;
+  }
+
+  #receipt-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+}
