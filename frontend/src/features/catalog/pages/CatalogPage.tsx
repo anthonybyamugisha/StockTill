@@ -9,6 +9,8 @@ import { Input } from '../../../shared/ui/Input';
 import { Table } from '../../../shared/ui/Table';
 import { Badge } from '../../../shared/ui/Badge';
 import { matchesProductQuery } from '../../../shared/utils/productSearch';
+import { toast } from '../../../shared/ui/toast';
+import { getApiErrorMessage } from '../../../shared/http/errors';
 
 export function CatalogPage() {
   const queryClient = useQueryClient();
@@ -34,17 +36,19 @@ export function CatalogPage() {
 
   const createMutation = useMutation({
     mutationFn: createProduct,
-    onSuccess: () => {
+    onSuccess: (product) => {
       refresh();
       setShowModal(false);
+      toast.success(`Product "${product.name}" added successfully`);
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Product> }) => updateProduct(id, data),
-    onSuccess: () => {
+    onSuccess: (product) => {
       refresh();
       setShowModal(false);
+      toast.success(`Product "${product.name}" updated`);
     },
   });
 
@@ -52,13 +56,19 @@ export function CatalogPage() {
     mutationFn: deactivateProduct,
     onSuccess: () => {
       refresh();
+      toast.success(`Product "${productToDeactivate?.name ?? ''}" deactivated`);
       setProductToDeactivate(null);
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not deactivate product')),
   });
 
   const reactivateMutation = useMutation({
     mutationFn: (id: string) => updateProduct(id, { is_active: true }),
-    onSuccess: refresh,
+    onSuccess: (product) => {
+      refresh();
+      toast.success(`Product "${product.name}" is active again`);
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not reactivate product')),
   });
 
   const columns = [
