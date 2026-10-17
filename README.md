@@ -5,6 +5,7 @@ Browser-based Point of Sale and inventory management system for retail shops.
 ## Features
 
 - **POS** — Fast cashier interface with product search, cart, discounts, split payments, and receipt printing
+- **Barcode Scanning** — USB/Bluetooth scanners, camera scanning, and manual entry on the cashier screen
 - **Inventory** — Append-only stock ledger, low-stock alerts, valuation, adjustments
 - **Sales Management** — Search, filter, refund, void, reprint receipts
 - **Dashboard** — Real-time KPIs, charts, best sellers, payment breakdown
@@ -65,3 +66,10 @@ make typecheck   # Type check both sides
 ## Architecture
 
 Clean Architecture / DDD modular monolith. Each bounded context has four layers: Domain, Application, Infrastructure, Interfaces. Dependencies point inward. Cross-context calls go through ports and adapters.
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Domain model](docs/domain.md)
+- [Deployment](docs/deployment.md)
+- [Barcode scanning](docs/barcode-scanning.md)
