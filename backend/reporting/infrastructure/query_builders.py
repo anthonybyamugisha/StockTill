@@ -72,20 +72,30 @@ class SalesQueryBuilder:
         )
 
     def get_top_products(self, date_from: date, date_to: date, limit: int = 10) -> list[TopProduct]:
-        lines = (
+        rows = list(
             SaleLineModel.objects.filter(sale__created_at__date__range=(date_from, date_to))
-            .values("product_id", "product_name")
+            .values("product_id")
             .annotate(total_qty=Sum("quantity"), total_rev=Sum(F("quantity") * F("unit_price")))
             .order_by("-total_qty")[:limit]
         )
+        product_ids = [row["product_id"] for row in rows]
+        names = dict(ProductModel.objects.filter(id__in=product_ids).values_list("id", "name"))
+        returned_names: dict = {}
+        for product_id, line_name in SaleLineModel.objects.filter(
+            product_id__in=product_ids
+        ).values_list("product_id", "product_name"):
+            if line_name:
+                returned_names.setdefault(product_id, line_name)
         return [
             TopProduct(
                 product_id=row["product_id"],
-                product_name=row["product_name"],
+                product_name=names.get(row["product_id"])
+                or returned_names.get(row["product_id"])
+                or "Unknown product",
                 quantity_sold=row["total_qty"],
                 revenue=row["total_rev"],
             )
-            for row in lines
+            for row in rows
         ]
 
     def get_sales_by_payment_method(

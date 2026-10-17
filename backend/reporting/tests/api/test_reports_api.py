@@ -121,6 +121,36 @@ def test_profit_report_computes_cost_and_profit(api_client, manager_user, sale):
 
 
 @pytest.mark.django_db
+def test_top_products_uses_catalog_name_when_line_blank(
+    api_client, manager_user, product, cashier_user
+):
+    s = SaleModel.objects.create(
+        receipt_number="ST-2026-000099",
+        cashier_id=cashier_user.id,
+        status="completed",
+        subtotal="1500.00",
+        total_discount="0.00",
+        total="1500.00",
+    )
+    SaleLineModel.objects.create(
+        sale=s,
+        product_id=product.id,
+        product_name="",
+        quantity=2,
+        unit_price="1500.00",
+        unit_cost="1000.00",
+    )
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.get(
+        "/api/v1/reporting/top-products/",
+        {"date_from": "2000-01-01", "date_to": "2100-01-01"},
+    )
+    assert response.status_code == 200
+    assert response.data[0]["product_name"] == "Sugar 1kg"
+    assert response.data[0]["quantity_sold"] == 2
+
+
+@pytest.mark.django_db
 def test_sales_report_includes_cashier_name(api_client, manager_user, cashier_user, sale):
     api_client.force_authenticate(user=manager_user)
     response = api_client.get(

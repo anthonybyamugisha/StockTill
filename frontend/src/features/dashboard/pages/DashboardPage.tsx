@@ -60,7 +60,7 @@ export function DashboardPage() {
           <BarChart data={(topProducts || []).slice(0, 5)} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
             <XAxis type="number" tick={{ fontSize: 12 }} />
-            <YAxis type="category" dataKey="product_name" tick={{ fontSize: 12 }} width={120} />
+            <YAxis type="category" dataKey="product_name" tick={{ fontSize: 12 }} width={170} interval={0} />
             <Tooltip />
             <Bar dataKey="quantity_sold" fill="#0078d4" />
           </BarChart>
