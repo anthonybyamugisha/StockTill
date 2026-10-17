@@ -131,7 +131,7 @@ API base URL & \url{https://stocktill.onrender.com/api/v1/} \\
 API documentation & \url{https://stocktill.onrender.com/api/docs/} \\
 Source repository & \url{https://github.com/anthonybyamugisha/StockTill} \\
 Test account (email) & \texttt{admin@stocktill.com} \\
-Test account (password) & \textit{(set on the server; see note below)} \\
+Test account (password) & \texttt{Anthony@2026.\#} \\
 Database engine & PostgreSQL~16 \\
 Backend host & Render (Gunicorn + WhiteNoise) \\
 Frontend host & Vercel (Vite static build) \\
@@ -141,10 +141,24 @@ Frontend host & Vercel (Vite static build) \\
 
 \noindent\textbf{Test credentials.} The administrator account is seeded automatically on deploy
 via a management command (\texttt{seed\_admin}) using the \texttt{DJANGO\_SUPERUSER\_EMAIL} and
-\texttt{DJANGO\_SUPERUSER\_PASSWORD} environment variables. The password chosen for judging is
-recorded here at submission time: \textbf{\texttt{<PROVIDE\_PASSWORD>}}. The system remains online
-throughout the judging period; the backend and database run on managed infrastructure with
-health checks at \texttt{/api/v1/health/}.
+\texttt{DJANGO\_SUPERUSER\_PASSWORD} environment variables. The credentials to use for judging are
+\textbf{email} \texttt{admin@stocktill.com} and \textbf{password} \texttt{Anthony@2026.\#}. The
+system remains online throughout the judging period; the backend and database run on managed
+infrastructure with health checks at \texttt{/api/v1/health/}.
+
+\noindent\textbf{A respectful note for the judges.} We would be very grateful if you could keep two
+characteristics of our hosting arrangements in mind while reviewing the live system:
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt,topsep=3pt]
+  \item \textbf{Initial load time.} The API runs on Render's free tier, which suspends the service
+  after a period of inactivity. The very first request after the instance has been idle may take up
+  to a minute while the instance wakes up; thereafter the application responds quickly. We kindly
+  ask for your patience during that first request, and we sincerely thank you for it.
+  \item \textbf{Database expiry.} The managed PostgreSQL instance provided for this submission is a
+  free-tier database that is scheduled to \textbf{expire on 17~November~2026}. We respectfully ask
+  that the live system be evaluated before that date. The complete source code and the deployment
+  instructions (Section~\ref{sec:deploy}) remain available afterwards, and the system can be
+  redeployed against a fresh database at any time.
+\end{itemize}
 
 % ===========================================================================
 \section{Implemented Features}
