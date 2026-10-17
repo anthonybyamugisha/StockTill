@@ -1,0 +1,974 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------------------------------------------------------------------------
+% StockTill -- Technical Submission Report
+% ---------------------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  urlcolor=blue!60!black,
+  citecolor=blue!50!black,
+  pdftitle={StockTill Technical Report},
+  pdfauthor={StockTill Team}
+}
+
+\definecolor{codebg}{RGB}{247,247,249}
+\definecolor{codekey}{RGB}{0,80,140}
+\definecolor{codecomment}{RGB}{110,110,110}
+
+\lstdefinestyle{st}{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{codekey}\bfseries,
+  commentstyle=\color{codecomment}\itshape,
+  stringstyle=\color{teal},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=8pt,
+  frame=single,
+  rulecolor=\color{gray!30},
+  breaklines=true,
+  showstringspaces=false,
+  captionpos=b,
+  tabsize=2,
+}
+\lstset{style=st}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small StockTill -- Technical Report}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Screenshot helper: include the file if present, otherwise show a placeholder.
+\newcommand{\shot}[2]{%
+  \begin{figure}[htbp]\centering
+  \IfFileExists{screenshots/#1}{%
+    \includegraphics[width=0.82\textwidth]{screenshots/#1}%
+  }{%
+    \fbox{\parbox[c][5.2cm][c]{0.82\textwidth}{\centering\itshape\color{gray}%
+    Placeholder --- add \texttt{screenshots/#1}}}%
+  }
+  \caption{#2}
+  \end{figure}%
+}
+
+\title{\vspace{-2.2cm}\textbf{StockTill}\\[0.3em]
+  \large A Point of Sale and Inventory Management System\\[0.3em]
+  \normalsize Technical Submission Report\\[0.6em]
+  \normalsize\emph{Built with Domain-Driven Design, Clean Architecture, and Test-Driven Development}}
+\author{StockTill Team}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+StockTill is a browser-based Point of Sale (POS) and inventory management system for
+retail shops. It is delivered as a \emph{modular monolith} backend written in Python 3.12
+(Django~5 and Django REST Framework) and a single-page React/TypeScript frontend. The system
+is architected with \textbf{Domain-Driven Design} (DDD) and \textbf{Clean Architecture}, and it is
+developed with a \textbf{Test-Driven Development} (TDD) discipline backed by an automated CI
+quality gate. The report explains the domain model, the enforced dependency rules, the testing
+strategy, the security controls, the database schema, the technology stack, and the deployment
+topology, and it maps the implementation against the competition's judging criteria.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ===========================================================================
+\section{Introduction}
+\label{sec:intro}
+% ===========================================================================
+
+Retail shops in the target market run on paper receipts and manual stock books. This makes it
+hard to know what is in stock, what was sold, who sold it, and what profit was made. StockTill
+replaces those manual processes with a fast cashier interface, an auditable stock ledger, and a
+reporting layer that turns transactions into business insight.
+
+The remainder of this report is organised as follows. Section~\ref{sec:submission} states the
+submission essentials. Section~\ref{sec:features} maps the implemented features to the required
+POS capabilities. Section~\ref{sec:architecture} explains the DDD / Clean Architecture design in
+depth. Section~\ref{sec:tdd} documents the TDD and quality-engineering practice. Section~\ref{sec:security}
+describes the security posture. Section~\ref{sec:schema} presents the database schema. Section~\ref{sec:stack}
+lists the technology stack. Section~\ref{sec:deploy} gives setup and deployment instructions.
+Section~\ref{sec:criteria} maps the work to the judging criteria, and Section~\ref{sec:limitations}
+records honest limitations and the roadmap.
+
+% ===========================================================================
+\section{Submission Summary}
+\label{sec:submission}
+% ===========================================================================
+
+\begin{table}[htbp]\centering
+\small
+\caption{Submission essentials.}
+\begin{tabular}{@{}p{0.28\textwidth}p{0.66\textwidth}@{}}
+\toprule
+\textbf{Item} & \textbf{Value} \\
+\midrule
+Live application URL & \url{https://stock-till.vercel.app} \\
+API base URL & \url{https://stocktill.onrender.com/api/v1/} \\
+API documentation & \url{https://stocktill.onrender.com/api/docs/} \\
+Source repository & \url{https://github.com/anthonybyamugisha/StockTill} \\
+Test account (email) & \texttt{admin@stocktill.com} \\
+Test account (password) & \textit{(set on the server; see note below)} \\
+Database engine & PostgreSQL~16 \\
+Backend host & Render (Gunicorn + WhiteNoise) \\
+Frontend host & Vercel (Vite static build) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Test credentials.} The administrator account is seeded automatically on deploy
+via a management command (\texttt{seed\_admin}) using the \texttt{DJANGO\_SUPERUSER\_EMAIL} and
+\texttt{DJANGO\_SUPERUSER\_PASSWORD} environment variables. The password chosen for judging is
+recorded here at submission time: \textbf{\texttt{<PROVIDE\_PASSWORD>}}. The system remains online
+throughout the judging period; the backend and database run on managed infrastructure with
+health checks at \texttt{/api/v1/health/}.
+
+% ===========================================================================
+\section{Implemented Features}
+\label{sec:features}
+% ===========================================================================
+
+The table below maps StockTill's features to the required core POS capabilities. The system is
+implemented as a working application accessible online; judges can log in and use every capability
+described here.
+
+\begin{longtable}{@{}p{0.30\textwidth}p{0.64\textwidth}@{}}
+\caption{Feature coverage against the requirement specification.}\\
+\toprule
+\textbf{Requirement area} & \textbf{Implementation} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Requirement area} & \textbf{Implementation} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+
+1. Authentication \& users &
+Email/password login with server-side sessions. Three roles: \textbf{Administrator} (full access),
+\textbf{Manager} (inventory, reports, catalog), \textbf{Cashier} (POS, sales). Users can be created,
+listed, updated (name/role) and deactivated. Failed logins are counted and lock the account. \\[2pt]
+
+2. Product management &
+Create, update, search and deactivate products; categories (hierarchical, with parent); SKU and
+barcode (unique); buying cost and selling price (decimal money); minimum stock level; image URL;
+profit margin computed on the domain entity. \\[2pt]
+
+3. Inventory management &
+All stock changes are recorded in an \textbf{append-only ledger}. On-hand quantity is derived and
+cached. Supports stock additions, reductions, adjustments, write-offs, per-product history,
+low-stock and out-of-stock lists, and inventory valuation. A \texttt{rebuild-cache} endpoint can
+recompute the cache from the ledger at any time. A database constraint prevents negative stock. \\[2pt]
+
+4. Sales / POS interface &
+Cashier screen with live product search, add-to-cart, quantity change, item removal, per-line
+discounts (percentage or fixed), live subtotal and total, single or \textbf{split payments}, cash
+tendered/change calculation, and receipt generation. Payment methods: \textbf{cash, mobile money,
+card, bank transfer}. \\[2pt]
+
+6. Sales management &
+List and search sales; filter by date range, cashier, payment method, status and receipt number;
+view individual receipts; \textbf{partial or full refunds} (optionally restocking) and \textbf{voids};
+refundable quantities are computed by the domain aggregate. \\[2pt]
+
+7. Dashboard &
+KPIs for today / this week / last 30 days revenue and transaction counts, all-time transactions,
+total products, low-stock and out-of-stock counts, average sale value and gross profit, plus
+charts (sales trend, best sellers, payment-method breakdown) rendered with Recharts. \\[2pt]
+
+8. Reports &
+Sales report, profit report, inventory report, best-selling products, low-stock report, sales by
+cashier and sales by payment method, with date filtering and \textbf{CSV export} of the sales
+report. \\[2pt]
+
+\bottomrule
+\end{longtable}
+
+\paragraph{Explicitly noted as bonus / not yet implemented.} Suppliers, purchase orders, purchase
+invoices and stock receiving (listed as a bonus in the specification) are \emph{not} implemented.
+PDF export is planned but only CSV export is currently available. These are recorded in
+Section~\ref{sec:limitations}.
+
+% ===========================================================================
+\section{System Architecture}
+\label{sec:architecture}
+% ===========================================================================
+
+\subsection{Architectural style and principles}
+
+StockTill is a \textbf{modular monolith}: a single deployable backend composed of explicitly
+bounded modules (contexts), each internally structured with Clean Architecture. This choice, recorded
+in \textbf{ADR-0001}, gives us strong internal boundaries without the operational complexity of
+distributed systems, and keeps the door open to extracting a context into its own service later.
+
+The design follows three organising principles:
+
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Domain-Driven Design.} We model the business explicitly --- entities, aggregates,
+  value objects, domain events, domain services, and repositories --- and we use the \emph{ubiquitous
+  language} of retail (sale, line, payment, refund, void, stock movement, valuation) consistently in
+  code, tests and documentation (\texttt{docs/domain.md}).
+  \item \textbf{Clean Architecture.} Each context is split into \emph{Domain}, \emph{Application},
+  \emph{Infrastructure}, and \emph{Interfaces} layers. Dependencies point strictly inward: the domain
+  knows nothing about Django, HTTP, or the database.
+  \item \textbf{Dependency inversion.} Cross-context and infrastructure dependencies are expressed
+  as abstract \emph{ports} in the inner layers and satisfied by \emph{adapters} in the outer layers.
+\end{enumerate}
+
+\subsection{Bounded contexts}
+
+The backend is decomposed into six bounded contexts. Each owns its own models, migrations, and API
+namespace; no context imports another context's ORM models.
+
+\begin{table}[htbp]\centering
+\small
+\caption{Bounded contexts and responsibilities.}
+\begin{tabular}{@{}p{0.18\textwidth}p{0.76\textwidth}@{}}
+\toprule
+\textbf{Context} & \textbf{Responsibility} \\
+\midrule
+\texttt{accounts} & Users, roles, authentication, account lockout, audit log. \\
+\texttt{catalog} & Products, categories, SKUs/barcodes, pricing and cost. \\
+\texttt{inventory} & Append-only stock ledger, on-hand cache, valuation, low/out-of-stock. \\
+\texttt{sales} & Sales aggregate, lines, payments, refunds, voids, receipt numbering. \\
+\texttt{reporting} & Read-only projections: dashboards, reports, CSV export. \\
+\texttt{settings} & Business configuration (name, currency, receipt header/footer, discount limit, tax). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Layered structure per context}
+
+Every context has the same four-layer shape. The table shows the concrete modules and example
+types.
+
+\begin{table}[htbp]\centering
+\small
+\caption{Layers, responsibilities, and examples.}
+\begin{tabular}{@{}p{0.16\textwidth}p{0.34\textwidth}p{0.42\textwidth}@{}}
+\toprule
+\textbf{Layer} & \textbf{Responsibility} & \textbf{Examples} \\
+\midrule
+Domain & Business rules, framework-free & \texttt{Sale}, \texttt{SaleLine}, \texttt{Payment}, \texttt{Refund},
+\texttt{User}, \texttt{Product}, \texttt{StockMovement}, \texttt{StockItem}, \texttt{Money},
+repository interfaces, domain services, domain events. \\
+Application & Orchestration of use cases & \texttt{CompleteSaleUseCase}, \texttt{RefundSaleUseCase},
+\texttt{VoidSaleUseCase}, \texttt{AdjustStockUseCase}, \texttt{AuthenticateUserUseCase},
+\texttt{CreateProductUseCase}, reporting queries. Ports: \texttt{InventoryPort}, \texttt{CatalogPort},
+\texttt{IdempotencyPort}, \texttt{ReceiptNumberPort}. \\
+Infrastructure & Framework \& I/O details & Django models, migrations, repositories
+(\texttt{DjangoSaleRepository}), adapters, ORM query builders, password hasher, idempotency store,
+audit recorder, unit of work. \\
+Interfaces & Delivery/entry points & DRF views, serializers, permission classes, URL configuration. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{The dependency rule and its automated enforcement}
+
+The inviolable dependency rule is: \emph{source code dependencies only point inward}. This is not a
+convention we ask developers to remember --- it is \textbf{verified in CI} by
+\texttt{import-linter}, configured in \texttt{backend/pyproject.toml}:
+
+\begin{lstlisting}[language=Python,caption={Architecture contracts enforced by import-linter (excerpt).}]
+[[tool.importlinter.contracts]]
+name = "Domain has no Django imports"
+type = "forbidden"
+source_modules = ["accounts.domain", "catalog.domain",
+                  "inventory.domain", "sales.domain", "reporting.domain"]
+forbidden_modules = ["django", "rest_framework"]
+
+[[tool.importlinter.contracts]]
+name = "Contexts do not import each other"
+type = "forbidden"
+source_modules = ["accounts.application", "catalog.application", ...]
+forbidden_modules = ["accounts", "catalog", "inventory", "sales", "reporting"]
+ignore_imports = [
+    "sales.infrastructure.adapters:catalog.application",
+    "sales.infrastructure.adapters:inventory.application",
+]
+\end{lstlisting}
+
+\noindent
+The first contract guarantees the domain layer stays pure Python. The second guarantees contexts
+stay decoupled; the deliberately small \texttt{ignore\_imports} list documents the \emph{only}
+sanctioned cross-context wiring --- the sales adapters that call into catalog/inventory through their
+application ports. Any other cross-context import fails the build.
+
+\subsection{Tactical DDD building blocks}
+
+\textbf{Entities and identity.} A shared \texttt{Entity} base assigns every object a UUID identity and
+defines equality by identity, not by attribute values (\texttt{shared/domain/base.py}). Aggregates
+inherit from \texttt{AggregateRoot}, which collects domain events.
+
+\textbf{Aggregate roots and invariants.} \texttt{Sale} is the central aggregate root of the sales
+context. It encapsulates its lines, payments and refunds, and exposes business calculations as
+properties: \texttt{subtotal}, \texttt{total\_discount}, \texttt{total}, \texttt{amount\_paid},
+\texttt{total\_refunded}, \texttt{refundable\_amount}, \texttt{cost\_total}, and
+\texttt{gross\_profit}. The refund logic \emph{lives in the aggregate}
+(\texttt{refundable\_quantity\_for\_line}), so an invalid refund is impossible to express without
+violating the aggregate's own rules.
+
+\textbf{Value objects.} \texttt{Money} is an immutable value object backed by \texttt{Decimal} (never
+\texttt{float}), fixed to a currency (UGX by default) and quantised to two decimal places using
+half-up rounding. It exposes intention-revealing operations (\texttt{add}, \texttt{subtract},
+\texttt{multiply}) and comparisons. \texttt{Discount} is a frozen value object; \texttt{Role},
+\texttt{PaymentMethod}, \texttt{SaleStatus}, \texttt{MovementType} and \texttt{DiscountType} are
+enumerations that form part of the ubiquitous language.
+
+\textbf{Domain services.} Operations that do not naturally belong to a single entity are modelled as
+pure domain services --- for example \texttt{calculate\_discount(...)} and
+\texttt{calculate\_change(...)} in \texttt{sales/domain/services.py}. They are stateless and fully
+unit-testable.
+
+\textbf{Domain events.} \texttt{catalog}, \texttt{inventory} and \texttt{sales} define domain events
+(e.g.\ \texttt{events.py}) so that consequences of a change can be expressed explicitly rather than
+being smeared across layers.
+
+\textbf{Repository interfaces.} Each context declares repository \emph{interfaces} in its domain
+layer (\texttt{domain/repository.py}) and implements them in the infrastructure layer. The application
+layer depends only on the interface, which is what makes use cases testable with in-memory fakes.
+
+\textbf{Ports and adapters.} The sales context must not import inventory or catalog internals. It
+instead declares \texttt{InventoryPort}, \texttt{CatalogPort}, \texttt{ReceiptNumberPort} and
+\texttt{IdempotencyPort} in its application layer. Concrete \texttt{InventoryAdapter},
+\texttt{CatalogAdapter}, \texttt{DatabaseReceiptNumberPort} and \texttt{CacheIdempotencyPort} live in
+\texttt{sales/infrastructure/adapters.py} and are injected into the use case by the view. The
+inventory context similarly declares a \texttt{ProductInfoPort} satisfied by a catalog adapter.
+
+\textbf{Unit of Work.} \texttt{shared/domain/unit\_of\_work.py} defines the transaction boundary
+abstraction, with a Django implementation in \texttt{shared/infrastructure/django\_unit\_of\_work.py}.
+
+\textbf{Clock abstraction.} Time is injected through a \texttt{Clock} port
+(\texttt{shared/domain/clock.py}) rather than read from \texttt{datetime.now()} inside the domain,
+which keeps business logic deterministic and testable.
+
+\subsection{Context map and integration}
+
+The sales context is the integration hub. When a sale is completed:
+
+\begin{enumerate}[leftmargin=1.4em]
+  \item the use case builds the \texttt{Sale} aggregate from the command,
+  \item it validates that payments cover the total (\texttt{InvalidPaymentError} otherwise),
+  \item it calls \texttt{InventoryPort.deduct\_stock} for every line --- inventory reacts by writing a
+  \texttt{SALE} movement to the append-only ledger and decrementing the cached on-hand quantity,
+  \item it persists the aggregate through \texttt{SaleRepository} and records the idempotency key.
+\end{enumerate}
+
+Refunds optionally call \texttt{InventoryPort.restore\_stock} (a \texttt{REFUND\_RETURN} movement),
+and voids restore every line. Because integration happens through ports, the sales context compiles
+and tests without a database or the other contexts installed.
+
+\subsection{Architecture Decision Records}
+
+Design decisions are recorded as ADRs in \texttt{docs/adr/}:
+\textbf{ADR-0001} (modular monolith) and \textbf{ADR-0002} (append-only stock ledger). ADR-0002 records
+the decision that all stock changes are immutable \texttt{StockMovement} rows, with the current
+on-hand quantity derived from the ledger and cached in \texttt{StockItem} for read performance; the
+cache can always be rebuilt from the ledger.
+
+\subsection{Frontend architecture}
+
+The React SPA mirrors the backend's feature orientation. Code is organised under
+\texttt{src/features/} --- one folder per capability (\texttt{auth}, \texttt{pos}, \texttt{catalog},
+\texttt{inventory}, \texttt{sales}, \texttt{reports}, \texttt{dashboard}, \texttt{users},
+\texttt{settings}, \texttt{audit}) --- with shared HTTP, UI and utility modules under
+\texttt{src/shared/} and app-level wiring (router, layout, providers) under \texttt{src/app/}. All
+network access goes through a single configured axios client with credentials enabled and CSRF header
+injection, and server state is managed with TanStack Query.
+
+% ===========================================================================
+\section{Test-Driven Development and Quality Engineering}
+\label{sec:tdd}
+% ===========================================================================
+
+\subsection{Strategy}
+
+Development follows a TDD red--green--refactor loop, and the layering is deliberately arranged so
+that the \emph{majority of tests exercise pure domain logic without a database}. This is the
+practical payoff of Clean Architecture: because the domain and application layers have no framework
+dependencies, they can be tested quickly and in isolation.
+
+\subsection{The test pyramid}
+
+\begin{table}[htbp]\centering
+\small
+\caption{Test levels, what they cover, and the technique used.}
+\begin{tabular}{@{}p{0.19\textwidth}p{0.47\textwidth}p{0.26\textwidth}@{}}
+\toprule
+\textbf{Level} & \textbf{Focus} & \textbf{Technique} \\
+\midrule
+Domain (\emph{most}) & Business rules in isolation: password hashing/verification, account lockout
+after failed attempts, entity behaviour. & Pure pytest, no DB, fakes for ports. \\
+Application & Use-case orchestration with repositories/ports replaced by in-memory fakes:
+authentication, user creation/management. & pytest with hand-written fakes. \\
+Infrastructure & Repository behaviour against the real ORM/database. & pytest + \texttt{pytest-django},
+DB fixtures. \\
+API / interfaces & End-to-end HTTP behaviour through DRF, including status codes and the full auth
+flow and role permissions. & DRF \texttt{APIClient}, \texttt{@pytest.mark.django\_db}. \\
+End-to-end (\emph{fewest}) & Real browser against the running app. & Playwright. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Test doubles and dependency inversion in tests}
+
+Because the domain depends on interfaces (e.g.\ \texttt{PasswordHasher}, \texttt{UserRepository}),
+tests substitute lightweight doubles. The password tests, for example, use a
+\texttt{FakePasswordHasher} to assert that passwords are never stored in plain text and that
+verification succeeds and fails correctly --- a test that would be slower and less deterministic if it
+reached for a real hasher.
+
+\begin{lstlisting}[language=Python,caption={Domain test with a fake port: passwords are hashed, never stored raw.}]
+class FakePasswordHasher(PasswordHasher):
+    def hash(self, raw_password: str) -> str:
+        return f"hashed_{raw_password}"
+    def verify(self, raw_password: str, hashed: str) -> bool:
+        return hashed == f"hashed_{raw_password}"
+
+def test_password_is_hashed_not_stored_raw():
+    user = User(email="test@shop.com", first_name="Test",
+                last_name="User", role=Role.CASHIER)
+    hasher = FakePasswordHasher()
+    user.set_password("secure_password_123", hasher)
+    assert user.password_hash != "secure_password_123"
+\end{lstlisting}
+
+\subsection{Behaviour-driven domain tests}
+
+The account-lockout policy is a first-class domain rule and is covered directly:
+
+\begin{lstlisting}[language=Python,caption={API test asserting the lockout policy (5 failures then locked).}]
+@pytest.mark.django_db
+def test_account_locks_after_5_failed_attempts(api_client, cashier_user):
+    for _ in range(5):
+        api_client.post("/api/v1/accounts/login/",
+                        {"email": "cashier@shop.com", "password": "wrong"})
+    response = api_client.post("/api/v1/accounts/login/",
+                               {"email": "cashier@shop.com", "password": "password123"})
+    assert response.status_code == 401
+    assert "locked" in response.data["detail"].lower()
+\end{lstlisting}
+
+\subsection{Tooling}
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{pytest} + \textbf{pytest-django} for backend unit, application, infrastructure and API tests.
+  \item \textbf{pytest-cov} for coverage reporting (configured to run on every \texttt{pytest} invocation).
+  \item \textbf{Playwright} for end-to-end browser tests of the authentication and POS flows.
+  \item \textbf{Vitest} for frontend unit tests (the money and date utilities), running under jsdom.
+  \item The dev toolchain also provisions \textbf{factory\_boy} (test data) and \textbf{hypothesis}
+  (property-based testing) for use where they add value.
+\end{itemize}
+
+\subsection{Current test inventory}
+
+At the time of writing the repository contains \textbf{71 backend tests}. The accounts context is
+covered at every level (domain password/lockout rules, application use cases with fakes, repository
+behaviour against the ORM, and the HTTP auth flow with role permissions); the catalog, inventory,
+sales and reporting contexts are covered through DRF API tests --- product creation, update and
+deactivation permissions; stock adjustment; completing a sale with stock deduction and idempotent
+replay; and the dashboard, valuation, low-stock, profit and CSV reporting endpoints --- plus a
+domain suite for sale totals and a value-object suite for \texttt{Money}. The frontend adds
+\textbf{9 Vitest unit tests} for the money and date utilities, and three Playwright browser
+scenarios cover login success, login failure, and completing a sale. Deepening the domain-layer
+suite in the catalog, inventory and sales contexts is the top item on the quality roadmap
+(Section~\ref{sec:limitations}); the architecture is designed so those tests are cheap to add.
+
+\subsection{Continuous integration quality gate}
+
+Every push and pull request runs \texttt{GitHub Actions} (`.github/workflows/ci.yml`) with a
+PostgreSQL~16 service. The backend job enforces:
+
+\begin{enumerate}[leftmargin=1.4em]
+  \item \textbf{Lint/format}: \texttt{ruff check} and \texttt{ruff format --check}.
+  \item \textbf{Static types}: \texttt{mypy} with the Django plugin, in \texttt{strict} mode over the
+  domain and application layers; the adapter and interface modules that bind to Django and DRF are
+  excluded from the strict gate but remain linted and tested.
+  \item \textbf{Architecture}: \texttt{lint-imports} (import-linter) --- fails on any dependency-rule breach.
+  \item \textbf{Tests}: \texttt{pytest} with coverage.
+\end{enumerate}
+
+The frontend job runs \texttt{tsc --noEmit}, the test suite, and a production build. The pipeline
+therefore encodes three of the project's core values --- clean architecture, type safety, and tests ---
+as non-negotiable gates.
+
+% ===========================================================================
+\section{Security and Access Control}
+\label{sec:security}
+% ===========================================================================
+
+Security is treated as a first-class requirement. The controls below are implemented in the codebase.
+
+\subsection{Authentication and sessions}
+
+Authentication uses Django's session framework with DRF's \texttt{SessionAuthentication}. Login
+verifies credentials through a use case, then establishes a server-side session; the session cookie is
+\texttt{HttpOnly} and (in production) \texttt{Secure} with \texttt{SameSite=None} to support the
+cross-domain frontend/backend split. The current-user endpoint returns \texttt{401} for unauthenticated
+callers.
+
+\subsection{Role-based access control}
+
+Three roles are modelled on the \texttt{User} entity and enforced at the API boundary with dedicated
+DRF permission classes (\texttt{IsAdmin}, \texttt{IsManager}, \texttt{IsCashier}) in
+\texttt{accounts/interfaces/api/permissions.py}. User administration (list/create/update/deactivate)
+and the audit-log endpoint are restricted to administrators. The role model follows least privilege:
+cashiers transact, managers manage inventory and view reports, administrators manage users and
+configuration.
+
+\subsection{Account lockout}
+
+Brute-force resistance is implemented as a domain rule. Each failed login increments
+\texttt{failed\_login\_attempts}; after \texttt{MAX\_FAILED\_ATTEMPTS} (=5) the account is locked for
+\texttt{LOCKOUT\_DURATION\_MINUTES} (=30). A successful login resets the counter and clears the lock.
+The \texttt{is\_locked()} check is evaluated during authentication, and the behaviour is covered by
+both domain and API tests.
+
+\subsection{Password storage}
+
+Passwords are never stored or logged in plain text. The domain \texttt{User} entity delegates hashing
+and verification to a \texttt{PasswordHasher} port; the infrastructure implementation wraps Django's
+password hasher (PBKDF2 by default). Django's standard password validators (similarity, minimum
+length, common-password, numeric) are enabled.
+
+\subsection{Transport and browser hardening}
+
+Production settings enable HTTPS enforcement and hardening: \texttt{SECURE\_SSL\_REDIRECT},
+\texttt{SESSION\_COOKIE\_SECURE} and \texttt{CSRF\_COOKIE\_SECURE}, HSTS for one year with subdomains
+and preload, and \texttt{SECURE\_PROXY\_SSL\_HEADER} so Django correctly detects https behind the
+Render proxy. Browser-side protections include \texttt{X\_FRAME\_OPTIONS=DENY},
+\texttt{SECURE\_CONTENT\_TYPE\_NOSNIFF}, and Django's XSS filter.
+
+\subsection{CSRF, CORS and cookies}
+
+The frontend sends the CSRF token as an \texttt{X-CSRFToken} header on every request; the axios client
+reads the \texttt{csrftoken} cookie and injects it automatically. Cross-origin access is restricted to
+the configured frontend origin via \texttt{CORS\_ALLOWED\_ORIGINS} with credentials enabled, and
+\texttt{CSRF\_TRUSTED\_ORIGINS} is set accordingly. In production the frontend is served from the same
+site via a reverse-proxy rewrite (Section~\ref{sec:deploy}), which keeps cookies first-party and
+reduces exposure. Origin parsing normalises trailing slashes to avoid misconfiguration.
+
+\subsection{Idempotency}
+
+Sale creation accepts a client-generated \texttt{idempotency\_key}. The use case checks the
+\texttt{IdempotencyPort} before doing any work; if the key was already used, the original sale is
+returned instead of creating a duplicate. The database also enforces a unique constraint on the key.
+This protects against double-charging caused by retries or double-clicks.
+
+\subsection{Audit trail}
+
+An \texttt{AuditRecorder} and \texttt{AuditLogModel} capture who changed what, when, with
+before/after snapshots. Administrators can review the most recent entries through the audit-log
+endpoint and page.
+
+\subsection{Data integrity as a security control}
+
+Two database-level guarantees reduce the blast radius of bugs. First, the stock ledger is append-only,
+so history cannot be silently rewritten. Second, a \texttt{CheckConstraint} named
+\texttt{stock\_non\_negative} forbids stock from ever going below zero. Referential integrity is
+enforced by foreign keys, and product/account deactivation is used instead of hard deletion.
+
+\subsection{Secrets and configuration}
+
+No secrets are committed. Configuration is read from the environment: \texttt{DJANGO\_SECRET\_KEY},
+\texttt{DATABASE\_URL}, \texttt{DJANGO\_ALLOWED\_HOSTS}, CORS/CSRF origins, and the seeded-admin
+credentials. In production the secret key and the admin password are generated by the platform
+(\texttt{generateValue}) rather than hard-coded. \texttt{DEBUG} is false in production.
+
+\subsection{Threat model summary}
+
+\begin{table}[htbp]\centering
+\small
+\caption{Selected threats and mitigations.}
+\begin{tabular}{@{}p{0.36\textwidth}p{0.58\textwidth}@{}}
+\toprule
+\textbf{Threat} & \textbf{Mitigation} \\
+\midrule
+Credential brute force & Failed-attempt counting and 30-minute account lockout. \\
+Password disclosure & Hashed storage (PBKDF2); never logged; strong validators. \\
+Cross-site request forgery & CSRF middleware + \texttt{X-CSRFToken} header; trusted origins. \\
+Cross-site scripting & Framework escaping; \texttt{X-Content-Type-Options}; XSS filter; frame deny. \\
+Session hijacking over the wire & HTTPS enforcement, HSTS, Secure+HttpOnly cookies. \\
+Unauthorised data access (roles) & Role-based permission classes; least privilege. \\
+Duplicate/retry charges & Idempotency keys with unique DB constraint. \\
+Stock tampering / overselling & Append-only ledger; non-negative stock constraint; audit log. \\
+Secret leakage & Environment-based secrets; generated in production; no secrets in VCS. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ===========================================================================
+\section{Database Schema}
+\label{sec:schema}
+% ===========================================================================
+
+StockTill uses PostgreSQL with UUID primary keys. The schema is deliberately normalised around the
+domain model. Below is the logical structure; the physical definition is in each context's Django
+migrations.
+
+\begin{longtable}{@{}p{0.26\textwidth}p{0.68\textwidth}@{}}
+\caption{Core tables.}\\
+\toprule
+\textbf{Table} & \textbf{Key columns} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Table} & \textbf{Key columns} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+
+\texttt{accounts\_user} & \texttt{id} (UUID PK), \texttt{email} (unique), \texttt{first\_name},
+\texttt{last\_name}, \texttt{role} (admin/manager/cashier), \texttt{is\_active},
+\texttt{is\_staff}, \texttt{failed\_login\_attempts}, \texttt{locked\_until}, \texttt{password},
+\texttt{created\_at}, \texttt{updated\_at}. Custom \texttt{AUTH\_USER\_MODEL}. \\[2pt]
+\texttt{accounts\_audit\_log} & \texttt{id} (UUID PK), \texttt{user\_id}, \texttt{action},
+\texttt{entity\_type}, \texttt{entity\_id}, \texttt{before} (JSON), \texttt{after} (JSON),
+\texttt{timestamp} (indexed). \\[2pt]
+\texttt{catalog\_category} & \texttt{id} (UUID PK), \texttt{name}, \texttt{description},
+\texttt{parent} (self-FK), \texttt{is\_active}, timestamps. \\[2pt]
+\texttt{catalog\_product} & \texttt{id} (UUID PK), \texttt{name}, \texttt{sku} (unique),
+\texttt{barcode} (unique), \texttt{category} (FK), \texttt{buying\_cost}, \texttt{selling\_price},
+\texttt{minimum\_stock\_level}, \texttt{image\_url}, \texttt{is\_active}, timestamps.
+Indexed on \texttt{(is\_active, name)} and \texttt{(category, is\_active)}. \\[2pt]
+\texttt{inventory\_stock\_movement} & Append-only ledger: \texttt{id} (UUID PK), \texttt{product\_id}
+(indexed), \texttt{quantity} (signed), \texttt{movement\_type} (opening/purchase/sale/refund\_return/
+adjustment\_in/adjustment\_out/write\_off), \texttt{reason}, \texttt{reference}, \texttt{unit\_cost},
+\texttt{user\_id}, \texttt{timestamp} (indexed), \texttt{notes}. \\[2pt]
+\texttt{inventory\_stock\_item} & Derived cache: \texttt{id} (UUID PK), \texttt{product\_id} (unique),
+\texttt{quantity\_on\_hand}, \texttt{reserved\_quantity}, \texttt{last\_movement\_id},
+\texttt{updated\_at}. \texttt{CHECK(quantity\_on\_hand >= 0)}. \\[2pt]
+\texttt{sales\_sale} & Aggregate root: \texttt{id} (UUID PK), \texttt{receipt\_number} (unique),
+\texttt{cashier\_id} (indexed), \texttt{status} (completed/partially\_refunded/refunded/voided),
+\texttt{subtotal}, \texttt{total\_discount}, \texttt{total}, \texttt{notes},
+\texttt{idempotency\_key} (unique), \texttt{created\_at} (indexed). \\[2pt]
+\texttt{sales\_sale\_line} & \texttt{id} (UUID PK), \texttt{sale} (FK, cascade), \texttt{product\_id},
+\texttt{product\_name} (price snapshot), \texttt{quantity}, \texttt{unit\_price}, \texttt{unit\_cost},
+\texttt{discount\_type}, \texttt{discount\_value}, \texttt{discount\_amount}. \\[2pt]
+\texttt{sales\_payment} & \texttt{id} (UUID PK), \texttt{sale} (FK, cascade), \texttt{method},
+\texttt{amount}, \texttt{tendered}, \texttt{change}, \texttt{reference}, \texttt{provider}. \\[2pt]
+\texttt{sales\_refund} & \texttt{id} (UUID PK), \texttt{sale} (FK, cascade), \texttt{line\_id},
+\texttt{quantity}, \texttt{amount}, \texttt{reason}, \texttt{restock}, \texttt{user\_id},
+\texttt{created\_at}. \\[2pt]
+\texttt{settings\_business} & Singleton config: \texttt{key} (PK), \texttt{business\_name},
+\texttt{address}, \texttt{phone}, \texttt{email}, \texttt{currency}, \texttt{receipt\_header},
+\texttt{receipt\_footer}, \texttt{cashier\_discount\_limit}, \texttt{tax\_rate}, \texttt{logo\_url},
+\texttt{updated\_at}. \\[2pt]
+
+\bottomrule
+\end{longtable}
+
+\paragraph{Relationships and integrity.} A sale has many lines, payments and refunds (all cascade on
+delete). Products reference a category (nullable, \texttt{SET\_NULL}). Stock items and movements
+reference products by UUID. The ledger is the source of truth; the stock-item cache is reproducible
+and bounded by the non-negative constraint.
+
+% ===========================================================================
+\section{Technology Stack}
+\label{sec:stack}
+% ===========================================================================
+
+\begin{table}[htbp]\centering
+\small
+\caption{Technology choices.}
+\begin{tabular}{@{}p{0.22\textwidth}p{0.72\textwidth}@{}}
+\toprule
+\textbf{Area} & \textbf{Technologies} \\
+\midrule
+Backend language & Python 3.12 \\
+Backend framework & Django 5, Django REST Framework \\
+API schema/docs & drf-spectacular (OpenAPI, Swagger UI) \\
+Database & PostgreSQL 16; \texttt{dj-database-url}; psycopg 3 \\
+Auth \& perms & Django sessions, DRF \texttt{SessionAuthentication}, custom permission classes \\
+Serving & Gunicorn, WhiteNoise (static files) \\
+Cross-origin & django-cors-headers \\
+Observability & Sentry SDK \\
+Frontend & React 18, TypeScript, Vite \\
+State/server data & TanStack Query (React Query) \& axios \\
+Forms & react-hook-form + zod (schema validation) \\
+Charts & Recharts \\
+Styling & Tailwind CSS \\
+Routing & React Router \\
+Backend testing & pytest, pytest-django, pytest-cov (plus factory\_boy, hypothesis provisioned) \\
+Frontend testing & Vitest; Playwright for end-to-end \\
+Quality gates & ruff (lint/format), mypy strict (domain/application), import-linter, GitHub Actions CI \\
+Containerisation & Docker, Docker Compose \\
+Deployment & Render (backend API + managed Postgres), Vercel (frontend SPA) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ===========================================================================
+\section{Setup and Deployment}
+\label{sec:deploy}
+% ===========================================================================
+
+\subsection{Local development with Docker (recommended)}
+
+\begin{lstlisting}[language=bash,caption={One-command local environment.}]
+docker compose up -d --build
+# Frontend  -> http://localhost:3000
+# Backend   -> http://localhost:8000
+# API docs  -> http://localhost:8000/api/docs/
+\end{lstlisting}
+
+\noindent
+Docker Compose starts PostgreSQL~16, the Django backend (dev settings with hot reload) and the frontend.
+A \texttt{Makefile} wraps common tasks: \texttt{make up}, \texttt{make test}, \texttt{make lint},
+\texttt{make typecheck}.
+
+\subsection{Manual setup}
+
+\begin{lstlisting}[language=bash,caption={Manual backend and frontend setup.}]
+# Backend
+cd backend
+python -m venv .venv && . .venv/bin/activate
+pip install -e ".[dev]"
+export DATABASE_URL=postgres://stocktill:stocktill@localhost:5432/stocktill
+python manage.py migrate
+python manage.py createsuperuser     # or: python manage.py seed_admin
+python manage.py runserver
+
+# Frontend
+cd frontend
+npm install
+npm run dev
+\end{lstlisting}
+
+\subsection{Production deployment}
+
+The application is deployed as two cooperating services behind a shared domain:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Backend (Render).} Defined declaratively in \texttt{render.yaml}. The start command is
+  \texttt{migrate} $\rightarrow$ \texttt{seed\_admin} $\rightarrow$ \texttt{collectstatic} $\rightarrow$
+  Gunicorn. A managed PostgreSQL instance provides \texttt{DATABASE\_URL}. Production settings live in
+  \texttt{config/settings/prod.py}.
+  \item \textbf{Frontend (Vercel).} A Vite build served as a static SPA. \texttt{vercel.json} rewrites
+  \texttt{/api/(.*)} to the Render backend and all other paths to \texttt{index.html} (SPA fallback).
+  Routing API calls through the same origin keeps authentication cookies first-party and avoids
+  cross-site cookie restrictions.
+\end{itemize}
+
+\subsection{Environment variables}
+
+\begin{table}[htbp]\centering
+\small
+\caption{Key environment variables (production).}
+\begin{tabular}{@{}p{0.34\textwidth}p{0.60\textwidth}@{}}
+\toprule
+\textbf{Variable} & \textbf{Purpose} \\
+\midrule
+\texttt{DJANGO\_SETTINGS\_MODULE} & \texttt{config.settings.prod}. \\
+\texttt{DJANGO\_SECRET\_KEY} & Cryptographic secret (generated by platform). \\
+\texttt{DEBUG} & \texttt{false}. \\
+\texttt{DATABASE\_URL} & Managed PostgreSQL connection string. \\
+\texttt{DJANGO\_ALLOWED\_HOSTS} & Permitted host names. \\
+\texttt{CORS\_ALLOWED\_ORIGINS} & Frontend origin allow-list. \\
+\texttt{CSRF\_TRUSTED\_ORIGINS} & Trusted origins for CSRF. \\
+\texttt{DJANGO\_SUPERUSER\_EMAIL} / \texttt{\_PASSWORD} & Seed the administrator account. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Operational notes}
+
+A health endpoint at \texttt{GET /api/v1/health/} supports uptime checks. Backup and restore scripts
+are provided in \texttt{deploy/} (\texttt{backup.sh}, \texttt{restore.sh}). The backend is stateless
+apart from the database, so it can be restarted or scaled without data loss.
+
+% ===========================================================================
+\section{User Interface and Experience}
+\label{sec:ui}
+% ===========================================================================
+
+The interface is a responsive dashboard with a persistent sidebar filtered by role, a top bar with
+user identity and sign-out, and a content area rendered by React Router. Interaction states
+(loading, empty, error) are surfaced, destructive actions are confirmed, and the POS screen is
+optimised for speed: type-ahead product search, a running cart with quantity controls, and a single
+charge action that opens the payment modal. Charts on the dashboard are rendered with Recharts.
+
+The following screenshots illustrate the working system. Drop the corresponding PNG files into the
+\texttt{screenshots/} directory; this report includes them automatically when present.
+
+\shot{login.png}{Login screen with email/password authentication.}
+\shot{dashboard.png}{Business dashboard with KPIs and charts.}
+\shot{pos.png}{Cashier POS interface with product search, cart and payment.}
+\shot{catalog.png}{Product catalog management.}
+\shot{inventory.png}{Inventory list with low-stock indicators and stock adjustments.}
+\shot{sales.png}{Sales management with filters and receipt actions.}
+\shot{reports.png}{Reports with date filtering and CSV export.}
+\shot{users.png}{User and role management.}
+
+% ===========================================================================
+\section{Mapping to Judging Criteria}
+\label{sec:criteria}
+% ===========================================================================
+
+\begin{table}[htbp]\centering
+\small
+\caption{How the submission addresses each weighted criterion.}
+\begin{tabular}{@{}p{0.24\textwidth}p{0.10\textwidth}p{0.58\textwidth}@{}}
+\toprule
+\textbf{Criterion} & \textbf{Weight} & \textbf{Evidence} \\
+\midrule
+Core POS functionality & 25\% & Auth/roles, product management, POS with discounts/split
+payments/receipts, refunds and voids, dashboard, reports. Section~\ref{sec:features}. \\
+Code quality \& architecture & 15\% & DDD + Clean Architecture with enforced dependency rules
+(import-linter), value objects, aggregates, ports/adapters, ADRs. Section~\ref{sec:architecture}. \\
+UI/UX & 15\% & Role-aware dashboard, fast POS, consistent components, responsive layout.
+Section~\ref{sec:ui}. \\
+Inventory \& sales management & 15\% & Append-only ledger, valuation, low/out-of-stock, sales
+filters, refunds/voids. Sections~\ref{sec:features}, \ref{sec:schema}. \\
+Reports \& analytics & 10\% & Sales/profit/inventory/best-seller/cashier/payment reports with date
+filtering and CSV export; dashboard KPIs and charts. \\
+Security \& permissions & 10\% & Session auth, RBAC, lockout, hashed passwords, CSRF/CORS, HTTPS/HSTS,
+idempotency, audit trail, DB constraints. Section~\ref{sec:security}. \\
+Online deployment & 5\% & Live on Render + Vercel, managed Postgres, health checks, kept online.
+Section~\ref{sec:deploy}. \\
+Additional features & 5\% & Append-only ledger, idempotent sales, split payments, audit log, custom
+settings model, architecture enforcement in CI. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ===========================================================================
+\section{Limitations and Roadmap}
+\label{sec:limitations}
+% ===========================================================================
+
+We state limitations candidly:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Test coverage breadth.} The suite is deepest in the accounts context. Catalog,
+  inventory, sales and reporting now have API-level coverage, plus domain tests for sale totals and
+  \texttt{Money}; extending the domain-first unit suite to those contexts is the next quality step.
+  \item \textbf{Authentication scheme.} Server-side sessions suit the single-tenant deployment;
+  token-based authentication and request throttling are planned hardening steps for multi-client use.
+  \item \textbf{Bonus inventory features.} Suppliers, purchase orders, purchase invoices and stock
+  receiving are not implemented.
+  \item \textbf{Exports.} CSV export is available for the sales report; PDF export is planned.
+  \item \textbf{Synchronous reporting.} Reports are computed on request; materialised read models
+  would be added if data volumes grow.
+\end{itemize}
+
+\noindent
+The immediate roadmap is: (1) broaden the domain-first test suite across all contexts; (2) add
+token authentication and request throttling; (3) add PDF export and, time permitting, the bonus
+purchasing features.
+
+% ===========================================================================
+\appendix
+\section{API Endpoints}
+\label{app:api}
+% ===========================================================================
+
+\begin{longtable}{@{}p{0.12\textwidth}p{0.30\textwidth}p{0.50\textwidth}@{}}
+\caption{REST endpoints under \texttt{/api/v1/}.}\\
+\toprule
+\textbf{Method} & \textbf{Path} & \textbf{Purpose} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Method} & \textbf{Path} & \textbf{Purpose} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+POST & \texttt{/accounts/login/} & Authenticate and create a session. \\
+POST & \texttt{/accounts/logout/} & End the session. \\
+GET & \texttt{/accounts/me/} & Current authenticated user. \\
+GET/POST & \texttt{/accounts/users/} & List / create users (admin). \\
+GET/PATCH/DELETE & \texttt{/accounts/users/\{id\}/} & Retrieve / update / deactivate (admin). \\
+GET/POST & \texttt{/catalog/products/} & List/search / create products. \\
+GET/PATCH/DELETE & \texttt{/catalog/products/\{id\}/} & Retrieve / update / deactivate. \\
+GET/POST & \texttt{/catalog/categories/} & List / create categories. \\
+POST & \texttt{/inventory/adjust/} & Add / reduce / adjust / write-off stock. \\
+GET & \texttt{/inventory/items/\{product\_id\}/} & Stock item for a product. \\
+GET & \texttt{/inventory/history/\{product\_id\}/} & Movement history. \\
+GET & \texttt{/inventory/low-stock/} & Low-stock products. \\
+GET & \texttt{/inventory/out-of-stock/} & Out-of-stock products. \\
+GET & \texttt{/inventory/valuation/} & Inventory valuation. \\
+POST & \texttt{/inventory/rebuild-cache/} & Rebuild the stock cache from the ledger. \\
+GET/POST & \texttt{/sales/} & List/filter sales / complete a sale. \\
+GET & \texttt{/sales/\{id\}/} & Sale detail (receipt). \\
+POST & \texttt{/sales/refund/} & Refund a sale (partial or full). \\
+POST & \texttt{/sales/void/} & Void a sale. \\
+GET & \texttt{/reporting/dashboard/} & Dashboard KPIs. \\
+GET & \texttt{/reporting/sales-summary/} & Sales summary for a period. \\
+GET & \texttt{/reporting/top-products/} & Best-selling products. \\
+GET & \texttt{/reporting/by-payment-method/} & Sales grouped by payment method. \\
+GET & \texttt{/reporting/daily-sales/} & Daily sales series. \\
+GET & \texttt{/reporting/cashier-sales/} & Sales grouped by cashier. \\
+GET & \texttt{/reporting/profit/} & Profit report. \\
+GET & \texttt{/reporting/inventory/} & Inventory report. \\
+GET & \texttt{/reporting/sales-report/} & Tabular sales report. \\
+GET & \texttt{/reporting/sales-report/csv/} & CSV export of the sales report. \\
+GET & \texttt{/reporting/low-stock/} & Low-stock report. \\
+GET/PUT & \texttt{/settings/} & Read / update business settings. \\
+\bottomrule
+\end{longtable}
+
+% ===========================================================================
+\section{Domain Glossary}
+\label{app:glossary}
+% ===========================================================================
+
+\begin{table}[htbp]\centering
+\small
+\begin{tabular}{@{}p{0.26\textwidth}p{0.68\textwidth}@{}}
+\toprule
+\textbf{Term} & \textbf{Definition} \\
+\midrule
+Sale & A completed transaction with a receipt number, lines and payments. \\
+Sale Line & A product within a sale, with quantity, price snapshot and optional discount. \\
+Payment & A payment against a sale (cash / mobile money / card / bank transfer). \\
+Refund & A partial or full reversal of a sale, with reason and optional restock. \\
+Void & A full cancellation of a completed sale. \\
+Stock Movement & An append-only ledger entry recording a stock change. \\
+Stock Item & Cached on-hand quantity derived from the movement ledger. \\
+Money & Decimal-based value object (UGX), never float. \\
+Idempotency Key & Client-generated key preventing duplicate sale creation. \\
+Unit of Work & Database transaction boundary. \\
+Port & Interface declared by a use case for cross-context communication. \\
+Adapter & Infrastructure implementation of a port. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ===========================================================================
+\section{Screenshot Checklist}
+\label{app:screenshots}
+% ===========================================================================
+
+Place the following files in \texttt{screenshots/} to populate Section~\ref{sec:ui}:
+\texttt{login.png}, \texttt{dashboard.png}, \texttt{pos.png}, \texttt{catalog.png},
+\texttt{inventory.png}, \texttt{sales.png}, \texttt{reports.png}, \texttt{users.png}.
+
+\end{document}
