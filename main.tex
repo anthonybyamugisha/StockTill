@@ -233,19 +233,36 @@ Sales report, profit report, inventory report, best-selling products, low-stock 
 cashier and sales by payment method, with date filtering and \textbf{CSV export} of the sales
 report. \\[2pt]
 
+9. Shift \& cash reconciliation (bonus) &
+Open and close cashier shifts against an opening float; record payouts and cash-in movements; a
+live X-report shows the expected cash in the drawer, and closing produces a Z-report with the
+counted amount and the variance. Sales are attributed to the shift that was open when they were
+rung up. \\[2pt]
+
+10. Purchasing \& suppliers (bonus) &
+Manage suppliers (name, contact, phone, e-mail, address) and raise purchase orders with product
+lines and agreed unit costs. Orders move draft $\rightarrow$ ordered $\rightarrow$ received;
+receiving adds the quantities to the inventory ledger through a stock-intake port. Draft or
+ordered orders can be cancelled. \\[2pt]
+
 \bottomrule
 \end{longtable}
 
-\paragraph{Explicitly noted as bonus / not yet implemented.} Suppliers, purchase orders, purchase
-invoices and stock receiving (listed as a bonus in the specification) are \emph{not} implemented.
-PDF export is planned but only CSV export is currently available. These are recorded in
-Section~\ref{sec:limitations}.
+\paragraph{Explicitly noted as bonus / not yet implemented.} The specification lists suppliers,
+purchase orders and stock receiving as bonus features; these \emph{are} implemented
+(Section~\ref{sec:features}, rows~9--10, and \texttt{docs/purchasing.md}). PDF export is planned but
+only CSV export is currently available. These are recorded in Section~\ref{sec:limitations}.
 
 \paragraph{Barcode scanning.} The POS accepts barcodes from a USB or Bluetooth keyboard-wedge
 scanner, from a device camera (through the browser's \texttt{BarcodeDetector} API), or by typing a
 barcode and pressing Enter. A hardware scanner is entirely optional: any standard model works with
 no configuration, and scanning resolves the code to a single active product through a dedicated
 lookup endpoint. Full instructions are in \texttt{docs/barcode-scanning.md}.
+
+\paragraph{Offline selling and installable app.} The frontend is an installable Progressive Web
+App and keeps selling when the network drops: a completed sale that cannot reach the server is
+queued on the device (keyed by its idempotency key) and replayed automatically when connectivity
+returns, with an on-screen offline banner. This is described in \texttt{docs/offline-and-pwa.md}.
 
 % ===========================================================================
 \section{System Architecture}
@@ -275,7 +292,7 @@ The design follows three organising principles:
 
 \subsection{Bounded contexts}
 
-The backend is decomposed into six bounded contexts. Each owns its own models, migrations, and API
+The backend is decomposed into eight bounded contexts. Each owns its own models, migrations, and API
 namespace; no context imports another context's ORM models.
 
 \begin{table}[htbp]\centering
@@ -289,6 +306,8 @@ namespace; no context imports another context's ORM models.
 \texttt{catalog} & Products, categories, SKUs/barcodes, pricing and cost. \\
 \texttt{inventory} & Append-only stock ledger, on-hand cache, valuation, low/out-of-stock. \\
 \texttt{sales} & Sales aggregate, lines, payments, refunds, voids, receipt numbering. \\
+\texttt{shifts} & Cashier shifts, opening float, cash movements, drawer reconciliation. \\
+\texttt{purchasing} & Suppliers, purchase orders, goods receiving into inventory. \\
 \texttt{reporting} & Read-only projections: dashboards, reports, CSV export. \\
 \texttt{settings} & Business configuration (name, currency, receipt header/footer, discount limit, tax). \\
 \bottomrule
@@ -417,6 +436,14 @@ Refunds optionally call \texttt{InventoryPort.restore\_stock} (a \texttt{REFUND\
 and voids restore every line. Because integration happens through ports, the sales context compiles
 and tests without a database or the other contexts installed.
 
+Two further integrations use the same ports-and-adapters pattern. The \texttt{shifts} context asks
+\texttt{sales} for the cash taken during a shift through a \texttt{SalesSummaryPort}, and \texttt{sales}
+resolves the cashier's open shift through a \texttt{ShiftPort} so each sale is stamped with its
+shift. The \texttt{purchasing} context adds received goods to stock through a \texttt{StockIntakePort}
+satisfied by an inventory adapter, which writes a \texttt{PURCHASE} movement per line. No context
+reads another's tables directly; the cross-context imports live only in the outermost adapters and
+are whitelisted in the import-linter contract.
+
 \subsection{Architecture Decision Records}
 
 Design decisions are recorded as ADRs in \texttt{docs/adr/}:
@@ -429,8 +456,8 @@ cache can always be rebuilt from the ledger.
 
 The React SPA mirrors the backend's feature orientation. Code is organised under
 \texttt{src/features/} --- one folder per capability (\texttt{auth}, \texttt{pos}, \texttt{catalog},
-\texttt{inventory}, \texttt{sales}, \texttt{reports}, \texttt{dashboard}, \texttt{users},
-\texttt{settings}, \texttt{audit}) --- with shared HTTP, UI and utility modules under
+\texttt{inventory}, \texttt{purchasing}, \texttt{sales}, \texttt{shifts}, \texttt{reports},
+\texttt{dashboard}, \texttt{users}, \texttt{settings}, \texttt{audit}) --- with shared HTTP, UI and utility modules under
 \texttt{src/shared/} and app-level wiring (router, layout, providers) under \texttt{src/app/}. All
 network access goes through a single configured axios client with credentials enabled and CSRF header
 injection, and server state is managed with TanStack Query.
@@ -521,14 +548,16 @@ def test_account_locks_after_5_failed_attempts(api_client, cashier_user):
 
 \subsection{Current test inventory}
 
-At the time of writing the repository contains \textbf{71 backend tests}. The accounts context is
+At the time of writing the repository contains \textbf{112 backend tests}. The accounts context is
 covered at every level (domain password/lockout rules, application use cases with fakes, repository
 behaviour against the ORM, and the HTTP auth flow with role permissions); the catalog, inventory,
-sales and reporting contexts are covered through DRF API tests --- product creation, update and
-deactivation permissions; stock adjustment; completing a sale with stock deduction and idempotent
-replay; and the dashboard, valuation, low-stock, profit and CSV reporting endpoints --- plus a
-domain suite for sale totals and a value-object suite for \texttt{Money}. The frontend adds
-\textbf{9 Vitest unit tests} for the money and date utilities, and three Playwright browser
+sales, shifts and purchasing contexts are covered through DRF API tests --- product creation,
+update and deactivation permissions; barcode lookup; stock adjustment; completing a sale with stock
+deduction and idempotent replay; opening and closing a shift with its drawer reconciliation; and
+creating, ordering, receiving and cancelling a purchase order with stock intake --- plus domain
+suites for sale totals, shift reconciliation and purchase-order state, and a value-object suite for
+\texttt{Money}. The frontend adds \textbf{22 Vitest unit tests} for the money/date utilities, the
+barcode buffer, the offline sale queue and the sale-sync replay, and three Playwright browser
 scenarios cover login success, login failure, and completing a sale. Deepening the domain-layer
 suite in the catalog, inventory and sales contexts is the top item on the quality roadmap
 (Section~\ref{sec:limitations}); the architecture is designed so those tests are cheap to add.
@@ -699,9 +728,9 @@ adjustment\_in/adjustment\_out/write\_off), \texttt{reason}, \texttt{reference},
 \texttt{quantity\_on\_hand}, \texttt{reserved\_quantity}, \texttt{last\_movement\_id},
 \texttt{updated\_at}. \texttt{CHECK(quantity\_on\_hand >= 0)}. \\[2pt]
 \texttt{sales\_sale} & Aggregate root: \texttt{id} (UUID PK), \texttt{receipt\_number} (unique),
-\texttt{cashier\_id} (indexed), \texttt{status} (completed/partially\_refunded/refunded/voided),
-\texttt{subtotal}, \texttt{total\_discount}, \texttt{total}, \texttt{notes},
-\texttt{idempotency\_key} (unique), \texttt{created\_at} (indexed). \\[2pt]
+\texttt{cashier\_id} (indexed), \texttt{shift\_id} (indexed, nullable), \texttt{status}
+(completed/partially\_refunded/refunded/voided), \texttt{subtotal}, \texttt{total\_discount},
+\texttt{total}, \texttt{notes}, \texttt{idempotency\_key} (unique), \texttt{created\_at} (indexed). \\[2pt]
 \texttt{sales\_sale\_line} & \texttt{id} (UUID PK), \texttt{sale} (FK, cascade), \texttt{product\_id},
 \texttt{product\_name} (price snapshot), \texttt{quantity}, \texttt{unit\_price}, \texttt{unit\_cost},
 \texttt{discount\_type}, \texttt{discount\_value}, \texttt{discount\_amount}. \\[2pt]
@@ -714,6 +743,20 @@ adjustment\_in/adjustment\_out/write\_off), \texttt{reason}, \texttt{reference},
 \texttt{address}, \texttt{phone}, \texttt{email}, \texttt{currency}, \texttt{receipt\_header},
 \texttt{receipt\_footer}, \texttt{cashier\_discount\_limit}, \texttt{tax\_rate}, \texttt{logo\_url},
 \texttt{updated\_at}. \\[2pt]
+\texttt{shifts\_shift} & \texttt{id} (UUID PK), \texttt{cashier\_id} (indexed), \texttt{status}
+(open/closed), \texttt{opening\_float}, \texttt{counted\_cash}, \texttt{notes}, \texttt{opened\_at}
+(indexed), \texttt{closed\_at}. \\[2pt]
+\texttt{shifts\_cash\_movement} & \texttt{id} (UUID PK), \texttt{shift} (FK, cascade),
+\texttt{type} (payout/cash\_in), \texttt{amount}, \texttt{reason}, \texttt{user\_id},
+\texttt{created\_at}. \\[2pt]
+\texttt{purchasing\_supplier} & \texttt{id} (UUID PK), \texttt{name} (indexed), \texttt{contact\_name},
+\texttt{email}, \texttt{phone}, \texttt{address}, \texttt{is\_active}, timestamps. \\[2pt]
+\texttt{purchasing\_purchase\_order} & \texttt{id} (UUID PK), \texttt{supplier} (FK, SET\_NULL),
+\texttt{supplier\_name}, \texttt{status} (draft/ordered/received/cancelled), \texttt{reference},
+\texttt{notes}, \texttt{total}, \texttt{created\_at} (indexed), \texttt{ordered\_at},
+\texttt{received\_at}. \\[2pt]
+\texttt{purchasing\_purchase\_order\_line} & \texttt{id} (UUID PK), \texttt{purchase\_order}
+(FK, cascade), \texttt{product\_id}, \texttt{product\_name}, \texttt{quantity}, \texttt{unit\_cost}. \\[2pt]
 
 \bottomrule
 \end{longtable}
@@ -887,7 +930,8 @@ idempotency, audit trail, DB constraints. Section~\ref{sec:security}. \\
 Online deployment & 5\% & Live on Render + Vercel, managed Postgres, health checks, kept online.
 Section~\ref{sec:deploy}. \\
 Additional features & 5\% & Append-only ledger, idempotent sales, split payments, audit log, custom
-settings model, architecture enforcement in CI. \\
+settings model, architecture enforcement in CI, barcode scanning, offline-first PWA, shift/cash
+reconciliation, and supplier/purchase-order management. \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -905,8 +949,8 @@ We state limitations candidly:
   \texttt{Money}; extending the domain-first unit suite to those contexts is the next quality step.
   \item \textbf{Authentication scheme.} Server-side sessions suit the single-tenant deployment;
   token-based authentication and request throttling are planned hardening steps for multi-client use.
-  \item \textbf{Bonus inventory features.} Suppliers, purchase orders, purchase invoices and stock
-  receiving are not implemented.
+  \item \textbf{Purchasing depth.} Suppliers, purchase orders and stock receiving are implemented;
+  purchase invoices and partial (per-line) receiving are not yet built.
   \item \textbf{Exports.} CSV export is available for the sales report; PDF export is planned.
   \item \textbf{Synchronous reporting.} Reports are computed on request; materialised read models
   would be added if data volumes grow.
@@ -914,8 +958,8 @@ We state limitations candidly:
 
 \noindent
 The immediate roadmap is: (1) broaden the domain-first test suite across all contexts; (2) add
-token authentication and request throttling; (3) add PDF export and, time permitting, the bonus
-purchasing features.
+token authentication and request throttling; (3) add PDF export and, time permitting, purchase
+invoices and partial receiving.
 
 % ===========================================================================
 \appendix
@@ -942,6 +986,7 @@ GET/POST & \texttt{/accounts/users/} & List / create users (admin). \\
 GET/PATCH/DELETE & \texttt{/accounts/users/\{id\}/} & Retrieve / update / deactivate (admin). \\
 GET/POST & \texttt{/catalog/products/} & List/search / create products. \\
 GET/PATCH/DELETE & \texttt{/catalog/products/\{id\}/} & Retrieve / update / deactivate. \\
+GET & \texttt{/catalog/products/by-barcode/} & Resolve a barcode to a single product. \\
 GET/POST & \texttt{/catalog/categories/} & List / create categories. \\
 POST & \texttt{/inventory/adjust/} & Add / reduce / adjust / write-off stock. \\
 GET & \texttt{/inventory/items/\{product\_id\}/} & Stock item for a product. \\
@@ -954,6 +999,18 @@ GET/POST & \texttt{/sales/} & List/filter sales / complete a sale. \\
 GET & \texttt{/sales/\{id\}/} & Sale detail (receipt). \\
 POST & \texttt{/sales/refund/} & Refund a sale (partial or full). \\
 POST & \texttt{/sales/void/} & Void a sale. \\
+GET & \texttt{/shifts/current/} & The cashier's open shift, if any. \\
+POST & \texttt{/shifts/open/} & Open a shift with an opening float. \\
+POST & \texttt{/shifts/cash-movement/} & Record a payout or cash-in movement. \\
+POST & \texttt{/shifts/close/} & Close a shift and return the Z-report. \\
+GET & \texttt{/shifts/\{id\}/} & X/Z report for a shift. \\
+GET/POST & \texttt{/purchasing/suppliers/} & List / create suppliers. \\
+GET/PATCH & \texttt{/purchasing/suppliers/\{id\}/} & Retrieve / update a supplier. \\
+GET/POST & \texttt{/purchasing/orders/} & List / create purchase orders. \\
+GET & \texttt{/purchasing/orders/\{id\}/} & Retrieve a purchase order. \\
+POST & \texttt{/purchasing/orders/\{id\}/order/} & Mark an order as sent. \\
+POST & \texttt{/purchasing/orders/\{id\}/receive/} & Receive an order into stock. \\
+POST & \texttt{/purchasing/orders/\{id\}/cancel/} & Cancel a draft/ordered request. \\
 GET & \texttt{/reporting/dashboard/} & Dashboard KPIs. \\
 GET & \texttt{/reporting/sales-summary/} & Sales summary for a period. \\
 GET & \texttt{/reporting/top-products/} & Best-selling products. \\
@@ -989,6 +1046,10 @@ Stock Movement & An append-only ledger entry recording a stock change. \\
 Stock Item & Cached on-hand quantity derived from the movement ledger. \\
 Money & Decimal-based value object (UGX), never float. \\
 Idempotency Key & Client-generated key preventing duplicate sale creation. \\
+Shift & A cashier's trading session at a till, with an opening float and reconciliation. \\
+Cash Movement & A manual drawer adjustment during a shift: a payout or a cash-in. \\
+Supplier & A vendor stock is purchased from. \\
+Purchase Order & A request to a supplier for products, tracked draft/ordered/received/cancelled. \\
 Unit of Work & Database transaction boundary. \\
 Port & Interface declared by a use case for cross-context communication. \\
 Adapter & Infrastructure implementation of a port. \\
@@ -1003,6 +1064,7 @@ Adapter & Infrastructure implementation of a port. \\
 
 Place the following files in \texttt{screenshots/} to populate Section~\ref{sec:ui}:
 \texttt{login.png}, \texttt{dashboard.png}, \texttt{pos.png}, \texttt{catalog.png},
-\texttt{inventory.png}, \texttt{sales.png}, \texttt{reports.png}, \texttt{users.png}.
+\texttt{inventory.png}, \texttt{purchasing.png}, \texttt{sales.png}, \texttt{shifts.png},
+\texttt{reports.png}, \texttt{users.png}.
 
 \end{document}
