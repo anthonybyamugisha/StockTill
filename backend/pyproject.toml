@@ -2,6 +2,9 @@
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ["config", "shared", "accounts", "catalog", "inventory", "sales", "reporting", "settings"]
+
 [project]
 name = "stocktill-backend"
 version = "0.1.0"
