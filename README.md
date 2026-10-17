@@ -73,3 +73,4 @@ Clean Architecture / DDD modular monolith. Each bounded context has four layers:
 - [Domain model](docs/domain.md)
 - [Deployment](docs/deployment.md)
 - [Barcode scanning](docs/barcode-scanning.md)
+- [Offline selling and PWA](docs/offline-and-pwa.md)
