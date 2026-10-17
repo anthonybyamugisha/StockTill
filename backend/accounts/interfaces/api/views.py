@@ -1,5 +1,4 @@
 from django.contrib.auth import login as django_login, logout as django_logout
-from django.middleware.csrf import get_token
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -118,3 +117,26 @@ class CurrentUserView(APIView):
         if not request.user.is_authenticated:
             return Response({"detail": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(UserSerializer(request.user).data)
+
+
+class AuditLogView(APIView):
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        from shared.infrastructure.audit import AuditEntry
+        from accounts.infrastructure.models import AuditLogModel
+
+        entries = AuditLogModel.objects.all().order_by("-timestamp")[:100]
+        return Response([
+            {
+                "id": str(e.id),
+                "user_id": str(e.user_id) if e.user_id else None,
+                "action": e.action,
+                "entity_type": e.entity_type,
+                "entity_id": e.entity_id,
+                "before": e.before,
+                "after": e.after,
+                "timestamp": e.timestamp.isoformat(),
+            }
+            for e in entries
+        ])
