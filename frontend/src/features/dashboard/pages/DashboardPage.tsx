@@ -14,6 +14,7 @@ export function DashboardPage() {
   const today = new Date().toISOString().split('T')[0];
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const monthName = new Date().toLocaleDateString('en-US', { month: 'long' });
 
   const { data: topProducts } = useQuery({
     queryKey: ['topProducts', thirtyDaysAgo, today],
@@ -34,7 +35,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-4 gap-4">
         <StatCard title={`${dayName}'s Sales`} value={`${stats?.today_sales ?? 0}`} subtitle={`UGX ${stats?.today_revenue ?? 0}`} />
         <StatCard title="This Week" value={`${stats?.week_sales ?? 0}`} subtitle={`UGX ${stats?.week_revenue ?? 0}`} />
-        <StatCard title="This Month" value={`${stats?.month_sales ?? 0}`} subtitle={`UGX ${stats?.month_revenue ?? 0}`} />
+        <StatCard title={`${monthName}'s Sales`} value={`${stats?.month_sales ?? 0}`} subtitle={`UGX ${stats?.month_revenue ?? 0}`} />
         <StatCard title="Gross Profit" value={`UGX ${stats?.gross_profit ?? 0}`} subtitle={`Avg: UGX ${stats?.average_sale_value ?? 0}`} />
       </div>
 
