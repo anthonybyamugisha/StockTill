@@ -2,6 +2,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { login } from '../api/auth';
+import { toast } from '../../../shared/ui/toast';
+import { getApiErrorMessage } from '../../../shared/http/errors';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -20,8 +22,12 @@ export function LoginForm() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    await login(data);
-    window.location.href = '/';
+    try {
+      await login(data);
+      window.location.href = '/';
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Could not sign in. Check your email and password.'));
+    }
   };
 
   return (
