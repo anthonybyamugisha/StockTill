@@ -1,44 +1,131 @@
+from uuid import UUID
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from catalog.application.commands import CreateProductCommand
-from catalog.application.use_cases import CreateProductUseCase
-from catalog.infrastructure.repository import DjangoProductRepository
-from catalog.interfaces.api.serializers import CreateProductSerializer, ProductSerializer
+from catalog.application.commands import (
+    CreateCategoryCommand,
+    CreateProductCommand,
+    DeactivateProductCommand,
+    UpdateProductCommand,
+)
+from catalog.application.use_cases import (
+    CreateCategoryUseCase,
+    CreateProductUseCase,
+    DeactivateProductUseCase,
+    ListCategoriesUseCase,
+    UpdateProductUseCase,
+)
+from catalog.infrastructure.repository import DjangoCategoryRepository, DjangoProductRepository
+from catalog.interfaces.api.serializers import (
+    CategorySerializer,
+    CreateCategorySerializer,
+    CreateProductSerializer,
+    ProductDetailSerializer,
+    ProductListSerializer,
+    UpdateProductSerializer,
+)
+from shared.domain.clock import SystemClock
 from shared.domain.money import Money
 
 
 class ProductListCreateView(APIView):
     def get(self, request):
         repo = DjangoProductRepository()
-        products = repo.list_products()
-        return Response(ProductSerializer(products, many=True).data)
+        query = request.query_params.get("q", "")
+        category_id = request.query_params.get("category_id")
+        active_only = request.query_params.get("active_only", "true").lower() == "true"
+
+        if query:
+            products = repo.search(query, active_only=active_only, category_id=UUID(category_id) if category_id else None)
+        else:
+            products = repo.list_products(active_only=active_only, category_id=UUID(category_id) if category_id else None)
+
+        return Response(ProductListSerializer(products, many=True).data)
 
     def post(self, request):
         serializer = CreateProductSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        use_case = CreateProductUseCase(DjangoProductRepository())
-        product = use_case.execute(
-            CreateProductCommand(
+        use_case = CreateProductUseCase(DjangoProductRepository(), SystemClock())
+        try:
+            product = use_case.execute(
+                CreateProductCommand(
+                    name=data["name"],
+                    sku=data["sku"],
+                    selling_price=Money(data["selling_price"]),
+                    buying_cost=Money(data["buying_cost"]),
+                    description=data.get("description", ""),
+                    barcode=data.get("barcode"),
+                    category_id=data.get("category_id"),
+                    minimum_stock_level=data.get("minimum_stock_level", 0),
+                    image_url=data.get("image_url"),
+                )
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ProductDetailSerializer(product).data, status=status.HTTP_201_CREATED)
+
+
+class ProductDetailView(APIView):
+    def get(self, request, product_id):
+        repo = DjangoProductRepository()
+        product = repo.get_by_id(product_id)
+        if product is None:
+            return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(ProductDetailSerializer(product).data)
+
+    def patch(self, request, product_id):
+        serializer = UpdateProductSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        use_case = UpdateProductUseCase(DjangoProductRepository(), SystemClock())
+        try:
+            product = use_case.execute(
+                UpdateProductCommand(
+                    product_id=product_id,
+                    name=data.get("name"),
+                    description=data.get("description"),
+                    barcode=data.get("barcode"),
+                    category_id=data.get("category_id"),
+                    selling_price=Money(data["selling_price"]) if "selling_price" in data else None,
+                    buying_cost=Money(data["buying_cost"]) if "buying_cost" in data else None,
+                    minimum_stock_level=data.get("minimum_stock_level"),
+                    image_url=data.get("image_url"),
+                    is_active=data.get("is_active"),
+                    user_id=request.user.id if request.user.is_authenticated else None,
+                )
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ProductDetailSerializer(product).data)
+
+    def delete(self, request, product_id):
+        use_case = DeactivateProductUseCase(DjangoProductRepository(), SystemClock())
+        try:
+            use_case.execute(DeactivateProductCommand(product_id=product_id))
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CategoryListCreateView(APIView):
+    def get(self, request):
+        use_case = ListCategoriesUseCase(DjangoCategoryRepository())
+        categories = use_case.execute()
+        return Response(CategorySerializer(categories, many=True).data)
+
+    def post(self, request):
+        serializer = CreateCategorySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        use_case = CreateCategoryUseCase(DjangoCategoryRepository())
+        category = use_case.execute(
+            CreateCategoryCommand(
                 name=data["name"],
                 description=data.get("description", ""),
-                sku=data["sku"],
-                barcode=data.get("barcode"),
-                category_id=data.get("category_id"),
-                buying_cost=Money(data["buying_cost"]),
-                selling_price=Money(data["selling_price"]),
-                minimum_stock_level=data.get("minimum_stock_level", 0),
-                image_url=data.get("image_url"),
+                parent_id=data.get("parent_id"),
             )
         )
-        return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
-
-
-class ProductSearchView(APIView):
-    def get(self, request):
-        query = request.query_params.get("q", "")
-        repo = DjangoProductRepository()
-        products = repo.search(query)
-        return Response(ProductSerializer(products, many=True).data)
+        return Response(CategorySerializer(category).data, status=status.HTTP_201_CREATED)
