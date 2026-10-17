@@ -60,6 +60,7 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
       const payload: CompleteSaleRequest = {
         lines: items.map((i) => ({
           product_id: i.product_id,
+          product_name: i.name,
           quantity: i.quantity,
           unit_price: i.unit_price,
           unit_cost: i.unit_cost,

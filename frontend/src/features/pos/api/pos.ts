@@ -36,6 +36,7 @@ export interface PaymentInput {
 export interface CompleteSaleRequest {
   lines: Array<{
     product_id: string;
+    product_name?: string;
     quantity: number;
     unit_price: string;
     unit_cost: string;
