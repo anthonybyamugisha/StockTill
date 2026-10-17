@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../features/auth/hooks/useAuth';
+import logo from '../../logo_image.png';
 
 const navigation = [
   { name: 'Dashboard', path: '/', icon: 'dashboard', roles: ['admin', 'manager', 'cashier'] },
@@ -62,9 +63,7 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-60 border-r border-surface-100 bg-white shadow-nav">
       <div className="flex h-16 items-center gap-2 border-b border-surface-100 px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded bg-primary-500 text-white font-bold text-sm">
-          ST
-        </div>
+        <img src={logo} alt="StockTill logo" className="h-8 w-8 object-contain" />
         <span className="text-lg font-semibold text-surface-600">StockTill</span>
       </div>
       <nav className="mt-4 px-3 space-y-1">
