@@ -13,7 +13,8 @@ Development** as first-class engineering disciplines --- not as decoration aroun
 - **POS** --- Fast cashier interface with an on-screen catalogue grid (every available product as a
   tappable tile, category-filtered, showing remaining stock and disabling sold-out items) so nothing
   has to be memorised, plus product search, cart, per-line discounts, split payments, cash
-  tendered/change, and receipt generation
+  tendered/change, and a printable receipt (store details, each line's name, quantity and unit price,
+  totals, discount, payment, tendered and change) that can also be reprinted from Sales
 - **Barcode Scanning** --- USB/Bluetooth keyboard-wedge scanners, camera scanning, and manual entry
   on the cashier screen (no scanner required to run the system)
 - **Inventory** --- Append-only stock ledger, opening stock captured when a product is created,
