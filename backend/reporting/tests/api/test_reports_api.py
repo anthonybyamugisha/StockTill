@@ -1,4 +1,7 @@
+from datetime import UTC, date, datetime
+
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.domain.entities import Role, User
@@ -188,3 +191,66 @@ def test_dashboard_allowed_for_cashier(api_client, cashier_user):
     api_client.force_authenticate(user=cashier_user)
     response = api_client.get("/api/v1/reporting/dashboard/")
     assert response.status_code == 200
+
+
+def _sale_at(receipt_number, cashier_id, created_at):
+    sale = SaleModel.objects.create(
+        receipt_number=receipt_number,
+        cashier_id=cashier_id,
+        status="completed",
+        subtotal="1500.00",
+        total_discount="0.00",
+        total="1500.00",
+    )
+    SaleModel.objects.filter(id=sale.id).update(created_at=created_at)
+    return sale
+
+
+def _buckets(response):
+    return {row["date"]: row for row in response.data}
+
+
+@pytest.mark.django_db
+def test_dashboard_today_uses_the_shop_timezone(api_client, manager_user, monkeypatch):
+    late_night_utc = datetime(2026, 10, 17, 22, 30, tzinfo=UTC)
+    monkeypatch.setattr(timezone, "now", lambda: late_night_utc)
+    _sale_at("ST-2026-000042", manager_user.id, late_night_utc)
+
+    assert late_night_utc.date() == date(2026, 10, 17)
+    assert timezone.localdate(late_night_utc) == date(2026, 10, 18)
+
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.get("/api/v1/reporting/dashboard/")
+
+    assert response.status_code == 200
+    assert response.data["today_revenue"] == "1500.00"
+
+
+@pytest.mark.django_db
+def test_sale_after_midnight_kampala_counts_on_the_new_day(api_client, manager_user, monkeypatch):
+    monkeypatch.setattr("reporting.interfaces.api.views.shop_today", lambda: date(2026, 10, 18))
+    _sale_at("ST-2026-000043", manager_user.id, datetime(2026, 10, 17, 22, 30, tzinfo=UTC))
+
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.get("/api/v1/reporting/daily-sales/")
+
+    assert response.status_code == 200
+    assert _buckets(response)["2026-10-18"]["transaction_count"] == 1
+
+
+@pytest.mark.django_db
+def test_daily_sales_includes_days_without_sales(api_client, manager_user, sale):
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get(
+        "/api/v1/reporting/daily-sales/",
+        {"date_from": "2000-01-01", "date_to": "2000-01-03"},
+    )
+
+    assert response.status_code == 200
+    assert [row["date"] for row in response.data] == ["2000-01-01", "2000-01-02", "2000-01-03"]
+    assert _buckets(response)["2000-01-02"] == {
+        "date": "2000-01-02",
+        "transaction_count": 0,
+        "total": "0.00",
+    }

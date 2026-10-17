@@ -3,6 +3,7 @@ from datetime import date
 from io import StringIO
 
 from django.http import HttpResponse
+from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,6 +24,10 @@ from reporting.interfaces.api.serializers import (
 )
 
 
+def shop_today() -> date:
+    return timezone.localdate()
+
+
 def parse_date(request, param, default):
     value = request.query_params.get(param)
     if value:
@@ -34,7 +39,7 @@ class SalesSummaryView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request):
-        today = date.today()
+        today = shop_today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
         date_to = parse_date(request, "date_to", today)
         builder = SalesQueryBuilder()
@@ -46,7 +51,7 @@ class TopProductsView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request):
-        today = date.today()
+        today = shop_today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
         date_to = parse_date(request, "date_to", today)
         limit = int(request.query_params.get("limit", 10))
@@ -59,7 +64,7 @@ class SalesByPaymentMethodView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request):
-        today = date.today()
+        today = shop_today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
         date_to = parse_date(request, "date_to", today)
         builder = SalesQueryBuilder()
@@ -71,7 +76,7 @@ class DailySalesView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request):
-        today = date.today()
+        today = shop_today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
         date_to = parse_date(request, "date_to", today)
         builder = SalesQueryBuilder()
@@ -83,7 +88,7 @@ class CashierSalesView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request):
-        today = date.today()
+        today = shop_today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
         date_to = parse_date(request, "date_to", today)
         builder = SalesQueryBuilder()
@@ -104,7 +109,7 @@ class ProfitReportView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request):
-        today = date.today()
+        today = shop_today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
         date_to = parse_date(request, "date_to", today)
         builder = SalesQueryBuilder()
@@ -125,7 +130,7 @@ class SalesReportView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request):
-        today = date.today()
+        today = shop_today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
         date_to = parse_date(request, "date_to", today)
         builder = SalesQueryBuilder()
@@ -146,7 +151,7 @@ class SalesReportCSVView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request):
-        today = date.today()
+        today = shop_today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
         date_to = parse_date(request, "date_to", today)
         builder = SalesQueryBuilder()

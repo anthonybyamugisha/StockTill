@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.db.models import Count, F, Sum
 from django.db.models.functions import TruncDate
+from django.utils import timezone
 
 from accounts.infrastructure.models import UserModel
 from catalog.infrastructure.models import ProductModel
@@ -21,6 +22,12 @@ from reporting.application.queries import (
 )
 from sales.infrastructure.models import PaymentModel, SaleLineModel, SaleModel
 from shared.domain.money import Money
+
+_MAX_FILLED_DAYS = 366
+
+
+def _date_range(date_from: date, date_to: date) -> list[date]:
+    return [date_from + timedelta(days=offset) for offset in range((date_to - date_from).days + 1)]
 
 
 class SalesQueryBuilder:
@@ -112,17 +119,22 @@ class SalesQueryBuilder:
         ]
 
     def get_daily_sales(self, date_from: date, date_to: date) -> list[DailySales]:
-        sales = (
+        rows = (
             SaleModel.objects.filter(created_at__date__range=(date_from, date_to))
             .annotate(day=TruncDate("created_at"))
             .values("day")
             .annotate(count=Count("id"), total=Sum("total"))
-            .order_by("day")
         )
-        return [
-            DailySales(date=row["day"], transaction_count=row["count"], total=row["total"])
-            for row in sales
-        ]
+        sold: dict[date, DailySales] = {
+            row["day"]: DailySales(
+                date=row["day"], transaction_count=row["count"], total=row["total"] or 0
+            )
+            for row in rows
+        }
+        days = _date_range(date_from, date_to)
+        if len(days) > _MAX_FILLED_DAYS:
+            return [sold[day] for day in sorted(sold)]
+        return [sold.get(day, DailySales(date=day, transaction_count=0, total=0)) for day in days]
 
     def get_cashier_sales(self, date_from: date, date_to: date) -> list[CashierSales]:
         names = self._cashier_names()
@@ -185,7 +197,7 @@ class SalesQueryBuilder:
         ]
 
     def get_dashboard_stats(self) -> DashboardStats:
-        today = date.today()
+        today = timezone.localdate()
         week_ago = today - timedelta(days=7)
         month_ago = today - timedelta(days=30)
 
