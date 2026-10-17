@@ -6,6 +6,7 @@ import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { POSPage } from './features/pos/pages/POSPage';
 import { CatalogPage } from './features/catalog/pages/CatalogPage';
 import { InventoryPage } from './features/inventory/pages/InventoryPage';
+import { PurchasingPage } from './features/purchasing/pages/PurchasingPage';
 import { SalesPage } from './features/sales/pages/SalesPage';
 import { ShiftsPage } from './features/shifts/pages/ShiftsPage';
 import { ReportsPage } from './features/reports/pages/ReportsPage';
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="/pos" element={<POSPage />} />
         <Route path="/catalog" element={<CatalogPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
+        <Route path="/purchasing" element={<PurchasingPage />} />
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/shifts" element={<ShiftsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
