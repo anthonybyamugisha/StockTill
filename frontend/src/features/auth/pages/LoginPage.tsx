@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { login } from '../api/auth';
+import logo from '../../../logo_image.png';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -31,9 +32,11 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-surface-50">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-primary-500 text-white text-xl font-bold">
-            ST
-          </div>
+          <img
+            src={logo}
+            alt="StockTill logo"
+            className="mx-auto mb-4 h-16 w-16 object-contain"
+          />
           <h1 className="text-2xl font-semibold text-surface-600">StockTill</h1>
           <p className="mt-1 text-sm text-surface-400">Sign in to your account</p>
         </div>
@@ -48,7 +51,7 @@ export function LoginPage() {
               type="email"
               {...register('email')}
               className={`input ${errors.email ? 'border-error' : ''}`}
-              placeholder="you@shop.com"
+              placeholder="you@stocktill.com"
             />
             {errors.email && <p className="mt-1 text-xs text-error">{errors.email.message}</p>}
           </div>
