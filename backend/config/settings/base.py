@@ -111,14 +111,15 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Point of Sale and Inventory Management System",
 }
 
-CORS_ALLOWED_ORIGINS = os.environ.get(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
-).split(",")
+def _split_origins(variable: str, default: str) -> list[str]:
+    raw = os.environ.get(variable, default)
+    return [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
+
+
+CORS_ALLOWED_ORIGINS = _split_origins("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = os.environ.get(
-    "CSRF_TRUSTED_ORIGINS", "http://localhost:3000"
-).split(",")
+CSRF_TRUSTED_ORIGINS = _split_origins("CSRF_TRUSTED_ORIGINS", "http://localhost:3000")
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
