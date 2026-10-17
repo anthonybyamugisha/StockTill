@@ -7,6 +7,7 @@ Browser-based Point of Sale and inventory management system for retail shops.
 - **POS** — Fast cashier interface with product search, cart, discounts, split payments, and receipt printing
 - **Barcode Scanning** — USB/Bluetooth scanners, camera scanning, and manual entry on the cashier screen
 - **Inventory** — Append-only stock ledger, low-stock alerts, valuation, adjustments
+- **Purchasing** — Suppliers and purchase orders; receiving an order adds stock to inventory
 - **Sales Management** — Search, filter, refund, void, reprint receipts
 - **Shifts & Cash** — Open/close shifts, record payouts and float top-ups, reconcile the drawer with an X/Z report
 - **Dashboard** — Real-time KPIs, charts, best sellers, payment breakdown
@@ -45,6 +46,7 @@ backend/
   inventory/     Stock ledger, movements, valuation
   sales/         Sales, payments, refunds, voids
   shifts/        Shifts, cash movements, drawer reconciliation
+  purchasing/    Suppliers, purchase orders, goods receiving
   reporting/     Dashboard queries, reports, CSV export
   settings/      Business configuration
   shared/        Money, entities, UoW, audit
@@ -77,3 +79,4 @@ Clean Architecture / DDD modular monolith. Each bounded context has four layers:
 - [Barcode scanning](docs/barcode-scanning.md)
 - [Offline selling and PWA](docs/offline-and-pwa.md)
 - [Shifts and cash reconciliation](docs/shifts-and-cash.md)
+- [Purchasing and suppliers](docs/purchasing.md)
