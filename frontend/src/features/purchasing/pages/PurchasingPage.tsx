@@ -7,6 +7,7 @@ import {
   listPurchaseOrders,
   listSuppliers,
   markPurchaseOrderOrdered,
+  PurchaseOrder,
   receivePurchaseOrder,
   Supplier,
   updateSupplier,
@@ -17,8 +18,11 @@ import { Button } from '../../../shared/ui/Button';
 import { Badge } from '../../../shared/ui/Badge';
 import { Table } from '../../../shared/ui/Table';
 import { Modal } from '../../../shared/ui/Modal';
+import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Input } from '../../../shared/ui/Input';
 import { Select } from '../../../shared/ui/Select';
+import { toast } from '../../../shared/ui/toast';
+import { getApiErrorMessage } from '../../../shared/http/errors';
 
 const statusVariants: Record<string, 'neutral' | 'primary' | 'success' | 'error'> = {
   draft: 'neutral',
@@ -62,11 +66,17 @@ function SuppliersTab() {
   const saveMutation = useMutation({
     mutationFn: (data: { id?: string; values: Parameters<typeof createSupplier>[0] }) =>
       data.id ? updateSupplier(data.id, data.values) : createSupplier(data.values),
-    onSuccess: () => {
+    onSuccess: (supplier, variables) => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       setShowForm(false);
       setEditing(null);
+      toast.success(
+        variables.id
+          ? `Supplier "${supplier.name}" updated`
+          : `Supplier "${supplier.name}" added successfully`,
+      );
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not save supplier')),
   });
 
   return (
@@ -217,6 +227,7 @@ function SupplierForm({
 function OrdersTab() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<PurchaseOrder | null>(null);
 
   const { data: orders } = useQuery({ queryKey: ['purchaseOrders'], queryFn: listPurchaseOrders });
   const { data: suppliers } = useQuery({ queryKey: ['suppliers'], queryFn: () => listSuppliers() });
@@ -229,25 +240,44 @@ function OrdersTab() {
 
   const createMutation = useMutation({
     mutationFn: createPurchaseOrder,
-    onSuccess: () => {
+    onSuccess: (order) => {
       invalidate();
       setShowForm(false);
+      toast.success(`Purchase order ${order.reference || order.id.slice(0, 8)} created`);
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not create purchase order')),
   });
 
   const orderMutation = useMutation({
     mutationFn: markPurchaseOrderOrdered,
-    onSuccess: invalidate,
+    onSuccess: (order) => {
+      invalidate();
+      toast.success(`Purchase order ${order.reference || order.id.slice(0, 8)} marked as ordered`);
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not order purchase order')),
   });
 
   const receiveMutation = useMutation({
     mutationFn: receivePurchaseOrder,
-    onSuccess: invalidate,
+    onSuccess: (order) => {
+      invalidate();
+      toast.success(
+        `Purchase order ${order.reference || order.id.slice(0, 8)} received — stock updated`,
+      );
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not receive purchase order')),
   });
 
   const cancelMutation = useMutation({
-    mutationFn: (id: string) => cancelPurchaseOrder(id),
-    onSuccess: invalidate,
+    mutationFn: (order: PurchaseOrder) => cancelPurchaseOrder(order.id),
+    onSuccess: (_order, cancelled) => {
+      invalidate();
+      setOrderToCancel(null);
+      toast.success(
+        `Purchase order ${cancelled.reference || cancelled.id.slice(0, 8)} cancelled`,
+      );
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not cancel purchase order')),
   });
 
   return (
@@ -288,7 +318,7 @@ function OrdersTab() {
                   </Button>
                 )}
                 {(o.status === 'draft' || o.status === 'ordered') && (
-                  <Button size="sm" variant="danger" onClick={() => cancelMutation.mutate(o.id)}>
+                  <Button size="sm" variant="danger" onClick={() => setOrderToCancel(o)}>
                     Cancel
                   </Button>
                 )}
@@ -309,6 +339,33 @@ function OrdersTab() {
           isLoading={createMutation.isPending}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={orderToCancel !== null}
+        title="Cancel purchase order?"
+        message={
+          <>
+            <p>
+              Are you sure you want to cancel{' '}
+              <span className="font-medium text-surface-700">
+                {orderToCancel?.reference || orderToCancel?.id.slice(0, 8)}
+              </span>
+              ?
+            </p>
+            <p className="mt-2">A cancelled order cannot be ordered or received.</p>
+          </>
+        }
+        confirmLabel="Yes, cancel order"
+        cancelLabel="Keep order"
+        isLoading={cancelMutation.isPending}
+        onConfirm={() => {
+          if (orderToCancel) cancelMutation.mutate(orderToCancel);
+        }}
+        onCancel={() => {
+          cancelMutation.reset();
+          setOrderToCancel(null);
+        }}
+      />
     </Card>
   );
 }
