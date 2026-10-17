@@ -1,0 +1,34 @@
+import { apiClient } from '../../../shared/http/client';
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  sku: string;
+  barcode: string | null;
+  category_id: string | null;
+  buying_cost: string;
+  selling_price: string;
+  minimum_stock_level: number;
+  image_url: string | null;
+  is_active: boolean;
+}
+
+export async function listProducts(): Promise<Product[]> {
+  const res = await apiClient.get<Product[]>('/catalog/products/');
+  return res.data;
+}
+
+export async function createProduct(data: Partial<Product>): Promise<Product> {
+  const res = await apiClient.post<Product>('/catalog/products/', data);
+  return res.data;
+}
+
+export async function updateProduct(id: string, data: Partial<Product>): Promise<Product> {
+  const res = await apiClient.patch<Product>(`/catalog/products/${id}/`, data);
+  return res.data;
+}
+
+export async function deactivateProduct(id: string): Promise<void> {
+  await apiClient.post(`/catalog/products/${id}/deactivate/`);
+}
