@@ -1,18 +1,22 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { listUsers, createUser, updateUser, deactivateUser } from '../api/users';
+import { listUsers, createUser, updateUser, deactivateUser, User } from '../api/users';
 import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Badge } from '../../../shared/ui/Badge';
 import { Table } from '../../../shared/ui/Table';
 import { Modal } from '../../../shared/ui/Modal';
+import { ConfirmDialog } from '../../../shared/ui/ConfirmDialog';
 import { Input } from '../../../shared/ui/Input';
 import { Select } from '../../../shared/ui/Select';
+import { toast } from '../../../shared/ui/toast';
+import { getApiErrorMessage } from '../../../shared/http/errors';
 
 export function UsersPage() {
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userToDeactivate, setUserToDeactivate] = useState<User | null>(null);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
@@ -21,23 +25,33 @@ export function UsersPage() {
 
   const createMutation = useMutation({
     mutationFn: createUser,
-    onSuccess: () => {
+    onSuccess: (user) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowModal(false);
+      toast.success(`User ${user.email} added successfully`);
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not add user')),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => updateUser(id, data),
-    onSuccess: () => {
+    mutationFn: ({ id, data }: { id: string; data: Partial<Pick<User, 'first_name' | 'last_name' | 'role'>> }) =>
+      updateUser(id, data),
+    onSuccess: (user) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowModal(false);
+      toast.success(`User ${user.email} updated`);
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not update user')),
   });
 
   const deactivateMutation = useMutation({
-    mutationFn: deactivateUser,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+    mutationFn: (user: User) => deactivateUser(user.id),
+    onSuccess: (_data, user) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setUserToDeactivate(null);
+      toast.success(`${user.first_name} ${user.last_name} was deactivated`);
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not deactivate user')),
   });
 
   const roleColors: Record<string, 'primary' | 'success' | 'neutral'> = {
@@ -61,24 +75,24 @@ export function UsersPage() {
         ) : (
           <Table
             columns={[
-              { key: 'name', header: 'Name', render: (u: any) => (
+              { key: 'name', header: 'Name', render: (u: User) => (
                 <div>
                   <p className="font-medium">{u.first_name} {u.last_name}</p>
                   <p className="text-xs text-surface-400">{u.email}</p>
                 </div>
               )},
-              { key: 'role', header: 'Role', render: (u: any) => (
+              { key: 'role', header: 'Role', render: (u: User) => (
                 <Badge variant={roleColors[u.role] || 'neutral'}>{u.role}</Badge>
               )},
-              { key: 'status', header: 'Status', render: (u: any) => (
+              { key: 'status', header: 'Status', render: (u: User) => (
                 <Badge variant={u.is_active ? 'success' : 'neutral'}>{u.is_active ? 'Active' : 'Inactive'}</Badge>
               )},
-              { key: 'last_login', header: 'Last Login', render: (u: any) => u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never' },
-              { key: 'actions', header: '', render: (u: any) => (
+              { key: 'last_login', header: 'Last Login', render: (u: User) => u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never' },
+              { key: 'actions', header: '', render: (u: User) => (
                 <div className="flex gap-1">
                   <button onClick={() => { setEditingUser(u); setShowModal(true); }} className="btn-ghost btn-sm">Edit</button>
                   {u.is_active && u.role !== 'admin' && (
-                    <button onClick={() => deactivateMutation.mutate(u.id)} className="btn-danger btn-sm">Deactivate</button>
+                    <button onClick={() => setUserToDeactivate(u)} className="btn-danger btn-sm">Deactivate</button>
                   )}
                 </div>
               )},
@@ -104,17 +118,58 @@ export function UsersPage() {
           isLoading={createMutation.isPending || updateMutation.isPending}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={userToDeactivate !== null}
+        title="Deactivate user?"
+        message={
+          <>
+            <p>
+              Are you sure you want to deactivate{' '}
+              <span className="font-medium text-surface-700">
+                {userToDeactivate?.first_name} {userToDeactivate?.last_name}
+              </span>
+              ?
+            </p>
+            <p className="mt-2">
+              They will no longer be able to sign in, but their sales and history are kept.
+            </p>
+          </>
+        }
+        confirmLabel="Yes, deactivate"
+        cancelLabel="Keep active"
+        isLoading={deactivateMutation.isPending}
+        onConfirm={() => {
+          if (userToDeactivate) deactivateMutation.mutate(userToDeactivate);
+        }}
+        onCancel={() => {
+          deactivateMutation.reset();
+          setUserToDeactivate(null);
+        }}
+      />
     </div>
   );
 }
 
 function UserModal({ user, onClose, onSubmit, isLoading }: {
-  user: any;
+  user: User | null;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: {
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: User['role'];
+    password: string;
+  }) => void;
   isLoading: boolean;
 }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: User['role'];
+    password: string;
+  }>({
     email: user?.email || '',
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
@@ -150,7 +205,7 @@ function UserModal({ user, onClose, onSubmit, isLoading }: {
         <Select
           label="Role"
           value={form.role}
-          onChange={(e) => setForm({ ...form, role: e.target.value })}
+          onChange={(e) => setForm({ ...form, role: e.target.value as User['role'] })}
           options={[
             { value: 'admin', label: 'Administrator' },
             { value: 'manager', label: 'Manager' },
