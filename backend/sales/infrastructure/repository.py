@@ -1,3 +1,4 @@
+from decimal import Decimal
 from uuid import UUID
 
 from sales.domain.entities import Discount, DiscountType, Payment, PaymentMethod, Refund, Sale, SaleLine, SaleStatus
@@ -9,14 +10,25 @@ from shared.domain.money import Money
 class DjangoSaleRepository(SaleRepository):
     def get_by_id(self, sale_id: UUID) -> Sale | None:
         try:
-            m = SaleModel.objects.get(id=sale_id)
+            m = SaleModel.objects.prefetch_related("lines", "payments", "refunds").get(id=sale_id)
             return self._to_domain(m)
         except SaleModel.DoesNotExist:
             return None
 
     def get_by_receipt_number(self, receipt_number: str) -> Sale | None:
         try:
-            m = SaleModel.objects.get(receipt_number=receipt_number)
+            m = SaleModel.objects.prefetch_related("lines", "payments", "refunds").get(
+                receipt_number=receipt_number
+            )
+            return self._to_domain(m)
+        except SaleModel.DoesNotExist:
+            return None
+
+    def get_by_idempotency_key(self, key: str) -> Sale | None:
+        try:
+            m = SaleModel.objects.prefetch_related("lines", "payments", "refunds").get(
+                idempotency_key=key
+            )
             return self._to_domain(m)
         except SaleModel.DoesNotExist:
             return None
@@ -31,6 +43,8 @@ class DjangoSaleRepository(SaleRepository):
                 "subtotal": sale.subtotal.amount,
                 "total_discount": sale.total_discount.amount,
                 "total": sale.total.amount,
+                "notes": sale.notes,
+                "idempotency_key": getattr(sale, "idempotency_key", None),
             },
         )
         SaleLineModel.objects.filter(sale=m).delete()
@@ -44,7 +58,7 @@ class DjangoSaleRepository(SaleRepository):
                 unit_price=line.unit_price.amount,
                 unit_cost=line.unit_cost.amount,
                 discount_type=line.discount.type.value if line.discount else None,
-                discount_value=Decimal(str(line.discount.value)) if line.discount else 0,
+                discount_value=line.discount.value if line.discount else 0,
                 discount_amount=line.discount.amount.amount if line.discount else 0,
             )
         PaymentModel.objects.filter(sale=m).delete()
@@ -64,20 +78,29 @@ class DjangoSaleRepository(SaleRepository):
         self,
         *,
         cashier_id: UUID | None = None,
-        status: str | None = None,
+        status: SaleStatus | None = None,
+        payment_method: str | None = None,
         date_from: str | None = None,
         date_to: str | None = None,
+        receipt_number: str | None = None,
     ) -> list[Sale]:
-        qs = SaleModel.objects.all()
+        qs = SaleModel.objects.prefetch_related("lines", "payments", "refunds")
         if cashier_id:
             qs = qs.filter(cashier_id=cashier_id)
         if status:
-            qs = qs.filter(status=status)
+            qs = qs.filter(status=status.value)
         if date_from:
             qs = qs.filter(created_at__date__gte=date_from)
         if date_to:
             qs = qs.filter(created_at__date__lte=date_to)
+        if receipt_number:
+            qs = qs.filter(receipt_number__icontains=receipt_number)
+        if payment_method:
+            qs = qs.filter(payments__method=payment_method)
         return [self._to_domain(m) for m in qs]
+
+    def exists_by_idempotency_key(self, key: str) -> bool:
+        return SaleModel.objects.filter(idempotency_key=key).exists()
 
     def _to_domain(self, m: SaleModel) -> Sale:
         lines = [
@@ -88,7 +111,11 @@ class DjangoSaleRepository(SaleRepository):
                 quantity=ln.quantity,
                 unit_price=Money(ln.unit_price),
                 unit_cost=Money(ln.unit_cost),
-                discount=Discount(type=DiscountType(ln.discount_type), value=float(ln.discount_value), amount=Money(ln.discount_amount)) if ln.discount_type else None,
+                discount=Discount(
+                    type=DiscountType(ln.discount_type),
+                    value=ln.discount_value,
+                    amount=Money(ln.discount_amount),
+                ) if ln.discount_type else None,
             )
             for ln in m.lines.all()
         ]
@@ -104,14 +131,30 @@ class DjangoSaleRepository(SaleRepository):
             )
             for p in m.payments.all()
         ]
+        refunds = [
+            Refund(
+                id=r.id,
+                sale_id=r.sale_id,
+                line_id=r.line_id,
+                quantity=r.quantity,
+                amount=Money(r.amount),
+                reason=r.reason,
+                restock=r.restock,
+                user_id=r.user_id,
+                created_at=r.created_at,
+            )
+            for r in m.refunds.all()
+        ]
         return Sale(
             id=m.id,
             receipt_number=m.receipt_number,
             cashier_id=m.cashier_id,
             lines=lines,
             payments=payments,
+            refunds=refunds,
             status=SaleStatus(m.status),
             created_at=m.created_at,
+            notes=m.notes,
         )
 
 
@@ -143,6 +186,3 @@ class DjangoRefundRepository(RefundRepository):
             )
             for r in RefundModel.objects.filter(sale_id=sale_id)
         ]
-
-
-from decimal import Decimal  # noqa: E402
