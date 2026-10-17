@@ -1,5 +1,7 @@
 from uuid import UUID
 
+from django.db.models import F, Sum
+
 from inventory.domain.entities import StockItem, StockMovement
 from inventory.domain.repository import StockItemRepository, StockMovementRepository
 from inventory.infrastructure.models import StockItemModel, StockMovementModel
@@ -17,6 +19,7 @@ class DjangoStockMovementRepository(StockMovementRepository):
             reference=movement.reference,
             unit_cost=movement.unit_cost.amount,
             user_id=movement.user_id,
+            notes=movement.notes,
         )
 
     def get_by_id(self, movement_id: UUID) -> StockMovement | None:
@@ -27,10 +30,23 @@ class DjangoStockMovementRepository(StockMovementRepository):
             return None
 
     def list_by_product(self, product_id: UUID) -> list[StockMovement]:
-        return [
-            self._to_domain(m)
-            for m in StockMovementModel.objects.filter(product_id=product_id)
-        ]
+        return [self._to_domain(m) for m in StockMovementModel.objects.filter(product_id=product_id)]
+
+    def list_all(
+        self,
+        *,
+        movement_type: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+    ) -> list[StockMovement]:
+        qs = StockMovementModel.objects.all()
+        if movement_type:
+            qs = qs.filter(movement_type=movement_type)
+        if date_from:
+            qs = qs.filter(timestamp__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(timestamp__date__lte=date_to)
+        return [self._to_domain(m) for m in qs]
 
     def _to_domain(self, m: StockMovementModel) -> StockMovement:
         return StockMovement(
@@ -43,6 +59,7 @@ class DjangoStockMovementRepository(StockMovementRepository):
             unit_cost=Money(m.unit_cost),
             user_id=m.user_id,
             timestamp=m.timestamp,
+            notes=m.notes,
         )
 
 
@@ -70,12 +87,25 @@ class DjangoStockItemRepository(StockItemRepository):
             },
         )
 
+    def list_all(self) -> list[StockItem]:
+        return [
+            StockItem(
+                id=m.id,
+                product_id=m.product_id,
+                quantity_on_hand=m.quantity_on_hand,
+                reserved_quantity=m.reserved_quantity,
+                last_movement_id=m.last_movement_id,
+            )
+            for m in StockItemModel.objects.all()
+        ]
+
     def list_low_stock(self) -> list[StockItem]:
         from catalog.infrastructure.models import ProductModel
 
-        low_stock_product_ids = ProductModel.objects.filter(
-            minimum_stock_level__gt=0
+        low_stock_ids = ProductModel.objects.filter(
+            minimum_stock_level__gt=0,
         ).values_list("id", flat=True)
+
         return [
             StockItem(
                 id=m.id,
@@ -84,8 +114,8 @@ class DjangoStockItemRepository(StockItemRepository):
                 reserved_quantity=m.reserved_quantity,
             )
             for m in StockItemModel.objects.filter(
-                product_id__in=low_stock_product_ids,
-                quantity_on_hand__lte=models.F("product__minimum_stock_level"),
+                product_id__in=low_stock_ids,
+                quantity_on_hand__lte=F("product__minimum_stock_level"),
             )
         ]
 
@@ -99,3 +129,22 @@ class DjangoStockItemRepository(StockItemRepository):
             )
             for m in StockItemModel.objects.filter(quantity_on_hand=0)
         ]
+
+    def get_valuation(self) -> dict:
+        from catalog.infrastructure.models import ProductModel
+
+        items = StockItemModel.objects.select_related("product").all()
+        total = Money.zero()
+        by_product = []
+        for item in items:
+            product = item.product
+            value = product.buying_cost * item.quantity_on_hand
+            total = total.add(value)
+            by_product.append({
+                "product_id": str(item.product_id),
+                "product_name": product.name,
+                "quantity": item.quantity_on_hand,
+                "unit_cost": str(product.buying_cost),
+                "value": str(value.amount),
+            })
+        return {"total": str(total.amount), "by_product": by_product}
