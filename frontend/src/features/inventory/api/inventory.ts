@@ -38,6 +38,11 @@ export async function getStockItem(productId: string): Promise<StockItem> {
   return res.data;
 }
 
+export async function listStockItems(): Promise<StockItem[]> {
+  const res = await apiClient.get<StockItem[]>('/inventory/items/');
+  return res.data;
+}
+
 export async function getLowStock(): Promise<StockItem[]> {
   const res = await apiClient.get<StockItem[]>('/inventory/low-stock/');
   return res.data;

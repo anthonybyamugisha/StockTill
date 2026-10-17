@@ -158,6 +158,7 @@ function ProductModal({ product, error, onClose, onSubmit, isLoading }: {
     barcode: product?.barcode || '',
     minimum_stock_level: product?.minimum_stock_level || 0,
     category_id: product?.category_id || '',
+    opening_stock: 0,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -174,6 +175,9 @@ function ProductModal({ product, error, onClose, onSubmit, isLoading }: {
     };
     if (form.barcode) payload.barcode = form.barcode;
     if (form.category_id) payload.category_id = form.category_id;
+    if (!product && Number(form.opening_stock) > 0) {
+      payload.opening_stock = Number(form.opening_stock);
+    }
     onSubmit(payload);
   };
 
@@ -203,6 +207,15 @@ function ProductModal({ product, error, onClose, onSubmit, isLoading }: {
         <Input label="Buying Cost" type="number" step="0.01" value={form.buying_cost} onChange={(e) => setForm({ ...form, buying_cost: e.target.value })} required />
         <Input label="Barcode" value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} />
         <Input label="Min Stock Level" type="number" value={form.minimum_stock_level} onChange={(e) => setForm({ ...form, minimum_stock_level: parseInt(e.target.value) })} />
+        {!product && (
+          <Input
+            label="Opening Stock"
+            type="number"
+            min="0"
+            value={form.opening_stock}
+            onChange={(e) => setForm({ ...form, opening_stock: parseInt(e.target.value) || 0 })}
+          />
+        )}
         <div className="col-span-2">
           <Input label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
         </div>
