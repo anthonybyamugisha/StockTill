@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems, downloadSalesReportCsv, CashierSales } from '../api/reports';
@@ -7,7 +7,8 @@ import { Button } from '../../../shared/ui/Button';
 import { Input } from '../../../shared/ui/Input';
 import { Table } from '../../../shared/ui/Table';
 import { Badge } from '../../../shared/ui/Badge';
-import { daysAgoISO, todayISO } from '../../../shared/utils/date';
+import { formatShortDate, daysAgoISO, todayISO } from '../../../shared/utils/date';
+import { formatMoney } from '../../../shared/utils/money';
 import { toast } from '../../../shared/ui/toast';
 import { getApiErrorMessage } from '../../../shared/http/errors';
 
@@ -84,6 +85,17 @@ function SalesReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string })
     queryFn: () => getDailySales(dateFrom, dateTo),
   });
 
+  const trend = useMemo(
+    () =>
+      (dailySales ?? []).map((day) => ({
+        label: formatShortDate(day.date),
+        date: day.date,
+        sales: Number(day.total),
+        transactions: day.transaction_count,
+      })),
+    [dailySales],
+  );
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-4">
@@ -104,14 +116,17 @@ function SalesReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string })
           <p className="mt-1 text-2xl font-semibold text-success">{summary?.gross_profit ?? 0}</p>
         </div>
       </div>
-      <Card title="Daily Sales Trend">
+      <Card title="Daily Sales Trend" subtitle={`${formatShortDate(dateFrom)} to ${formatShortDate(dateTo)}`}>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={dailySales || []}>
+          <LineChart data={trend}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
-            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+            <XAxis dataKey="label" tick={{ fontSize: 12 }} minTickGap={24} />
             <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
-            <Line type="monotone" dataKey="total" stroke="#0078d4" strokeWidth={2} />
+            <Tooltip
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ''}
+              formatter={(value: number) => [formatMoney(value), 'Sales']}
+            />
+            <Line type="monotone" dataKey="sales" stroke="#0078d4" strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
       </Card>
@@ -125,17 +140,27 @@ function ProfitReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }
     queryFn: () => getProfitReport(dateFrom, dateTo),
   });
 
+  const days = useMemo(
+    () =>
+      (profit ?? []).map((day) => ({
+        label: formatShortDate(day.date),
+        revenue: Number(day.total_revenue),
+        profit: Number(day.gross_profit),
+      })),
+    [profit],
+  );
+
   return (
-    <Card title="Daily Profit">
+    <Card title="Daily Profit" subtitle={`${formatShortDate(dateFrom)} to ${formatShortDate(dateTo)}`}>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={profit || []}>
+        <BarChart data={days}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
-          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+          <XAxis dataKey="label" tick={{ fontSize: 12 }} minTickGap={24} />
           <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
+          <Tooltip formatter={(value: number) => formatMoney(value)} />
           <Legend />
-          <Bar dataKey="total_revenue" fill="#0078d4" name="Revenue" />
-          <Bar dataKey="gross_profit" fill="#107c10" name="Profit" />
+          <Bar dataKey="revenue" fill="#0078d4" name="Revenue" />
+          <Bar dataKey="profit" fill="#107c10" name="Profit" />
         </BarChart>
       </ResponsiveContainer>
     </Card>
