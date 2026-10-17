@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems, downloadSalesReportCsv } from '../api/reports';
+import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems, downloadSalesReportCsv, CashierSales } from '../api/reports';
 import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Input } from '../../../shared/ui/Input';
@@ -225,9 +225,9 @@ function CashierReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
     <Card title="Sales by Cashier">
       <Table
         columns={[
-          { key: 'cashier', header: 'Cashier', render: (c: any) => c.cashier_id.slice(0, 8) },
-          { key: 'count', header: 'Transactions', render: (c: any) => c.transaction_count },
-          { key: 'total', header: 'Total', render: (c: any) => `UGX ${c.total}` },
+          { key: 'cashier', header: 'Cashier', render: (c: CashierSales) => c.cashier_name || c.cashier_id.slice(0, 8) },
+          { key: 'count', header: 'Transactions', render: (c: CashierSales) => c.transaction_count },
+          { key: 'total', header: 'Total', render: (c: CashierSales) => `UGX ${c.total}` },
         ]}
         data={cashiers || []}
         keyExtractor={(c) => c.cashier_id}
