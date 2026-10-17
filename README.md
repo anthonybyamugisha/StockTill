@@ -27,6 +27,8 @@ Development** as first-class engineering disciplines --- not as decoration aroun
 - **Dashboard** --- Real-time KPIs, the sales trend, and this month's best sellers
 - **Reports** --- Sales, profit, inventory, cashier, low stock --- with CSV export
 - **Users & Roles** --- Admin, Manager, Cashier with role-based permissions
+- **Clear feedback** --- every action confirms itself with a toast (or explains its failure), and
+  destructive ones (deactivate, cancel an order, void) ask for confirmation first
 - **Audit Log** --- An immutable record of who did what and when, with before/after values for
   money- and security-relevant actions (admin-only)
 
@@ -220,7 +222,7 @@ business rules end up validated only through the slowest, most fragile tests.
   tests intentionally ignore.
 
 This split mirrors Clean Architecture: the domain is proven in isolation, the wiring is proven at the
-edges. The current suite is **156 backend tests** and **44 frontend unit tests**, plus Playwright
+edges. The current suite is **158 backend tests** and **64 frontend unit tests**, plus Playwright
 end-to-end scenarios; deepening each context's domain suite is the top item on the roadmap.
 
 ## 4. Why this is more than "just Django"
