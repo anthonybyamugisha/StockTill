@@ -1,6 +1,7 @@
 from catalog.application.commands import (
     CreateCategoryCommand,
     CreateProductCommand,
+    DeactivateCategoryCommand,
     DeactivateProductCommand,
     UpdateProductCommand,
 )
@@ -127,3 +128,17 @@ class ListCategoriesUseCase:
 
     def execute(self, active_only: bool = True) -> list[Category]:
         return self._repo.list_categories(active_only=active_only)
+
+
+class DeactivateCategoryUseCase:
+    def __init__(self, category_repository: CategoryRepository):
+        self._repo = category_repository
+
+    def execute(self, command: DeactivateCategoryCommand) -> Category:
+        category = self._repo.get_by_id(command.category_id)
+        if category is None:
+            raise ValueError("Category not found")
+
+        category.is_active = False
+        self._repo.save(category)
+        return category

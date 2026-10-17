@@ -9,12 +9,14 @@ from accounts.interfaces.api.permissions import IsManager
 from catalog.application.commands import (
     CreateCategoryCommand,
     CreateProductCommand,
+    DeactivateCategoryCommand,
     DeactivateProductCommand,
     UpdateProductCommand,
 )
 from catalog.application.use_cases import (
     CreateCategoryUseCase,
     CreateProductUseCase,
+    DeactivateCategoryUseCase,
     DeactivateProductUseCase,
     ListCategoriesUseCase,
     UpdateProductUseCase,
@@ -178,3 +180,20 @@ class CategoryListCreateView(APIView):
             )
         )
         return Response(CategorySerializer(category).data, status=status.HTTP_201_CREATED)
+
+
+class CategoryDetailView(APIView):
+    permission_classes = [IsManager]
+
+    def delete(self, request, category_id):
+        use_case = DeactivateCategoryUseCase(DjangoCategoryRepository())
+        try:
+            use_case.execute(
+                DeactivateCategoryCommand(
+                    category_id=category_id,
+                    user_id=request.user.id if request.user.is_authenticated else None,
+                )
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)

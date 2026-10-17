@@ -46,3 +46,9 @@ class CreateCategoryCommand:
     name: str
     description: str = ""
     parent_id: UUID | None = None
+
+
+@dataclass(frozen=True)
+class DeactivateCategoryCommand:
+    category_id: UUID
+    user_id: UUID | None = None
