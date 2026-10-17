@@ -20,3 +20,7 @@ class UserRepository(ABC):
     @abstractmethod
     def save(self, user: User) -> None:
         pass
+
+    @abstractmethod
+    def email_exists(self, email: str) -> bool:
+        pass

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from accounts.domain.entities import Role
+from accounts.domain.entities import Role, User
 
 
 class UserSerializer(serializers.Serializer):
@@ -11,6 +11,10 @@ class UserSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=[r.value for r in Role])
     is_active = serializers.BooleanField(read_only=True)
     last_login = serializers.DateTimeField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+    def create(self, validated_data):
+        return User(**validated_data)
 
 
 class CreateUserSerializer(serializers.Serializer):
