@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["config", "shared", "accounts", "catalog", "inventory", "sales", "shifts", "reporting", "settings"]
+packages = ["config", "shared", "accounts", "catalog", "inventory", "sales", "shifts", "purchasing", "reporting", "settings"]
 
 [project]
 name = "stocktill-backend"
@@ -80,6 +80,7 @@ source_modules = [
     "inventory.domain",
     "sales.domain",
     "shifts.domain",
+    "purchasing.domain",
     "reporting.domain",
 ]
 forbidden_modules = [
@@ -101,6 +102,8 @@ source_modules = [
     "sales.infrastructure",
     "shifts.application",
     "shifts.infrastructure",
+    "purchasing.application",
+    "purchasing.infrastructure",
     "reporting.application",
     "reporting.infrastructure",
 ]
@@ -110,6 +113,7 @@ forbidden_modules = [
     "inventory",
     "sales",
     "shifts",
+    "purchasing",
     "reporting",
 ]
 ignore_imports = [
@@ -127,4 +131,9 @@ ignore_imports = [
     "reporting.infrastructure.query_builders:inventory.infrastructure.models",
     "sales.infrastructure.adapters:shifts.infrastructure.models",
     "shifts.infrastructure.adapters:sales.infrastructure.models",
+    "purchasing.infrastructure.adapters:inventory.application.commands",
+    "purchasing.infrastructure.adapters:inventory.application.use_cases",
+    "purchasing.infrastructure.adapters:inventory.domain.entities",
+    "purchasing.infrastructure.adapters:inventory.infrastructure.adapters",
+    "purchasing.infrastructure.adapters:inventory.infrastructure.repository",
 ]
