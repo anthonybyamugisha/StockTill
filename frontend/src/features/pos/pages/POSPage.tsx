@@ -90,7 +90,14 @@ export function POSPage() {
       </div>
 
       <div className="space-y-4">
-        <Card title="Current Sale" subtitle={`${items.length} item(s)`}>
+        <Card
+          title="Current Sale"
+          subtitle={
+            items.length === 0
+              ? '0 item(s)'
+              : `${items.length} item(s) · ${items.reduce((sum, item) => sum + item.quantity, 0)} unit(s)`
+          }
+        >
           <Cart items={items} onUpdateQuantity={updateQuantity} onRemove={removeItem} />
           <div className="mt-4 border-t border-surface-100 pt-4">
             <div className="flex justify-between text-lg font-semibold text-surface-600">
