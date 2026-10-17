@@ -222,7 +222,7 @@ business rules end up validated only through the slowest, most fragile tests.
   tests intentionally ignore.
 
 This split mirrors Clean Architecture: the domain is proven in isolation, the wiring is proven at the
-edges. The current suite is **158 backend tests** and **64 frontend unit tests**, plus Playwright
+edges. The current suite is **163 backend tests** and **70 frontend unit tests**, plus Playwright
 end-to-end scenarios; deepening each context's domain suite is the top item on the roadmap.
 
 ## 4. Why this is more than "just Django"
@@ -350,6 +350,21 @@ readable `before → after` list with a filter box.
 
 API: `GET /api/v1/accounts/audit-log/` (admin only), optionally filtered by `action`, `entity_type`,
 `user_id`, `date_from` and `date_to`.
+
+### Reporting and the shop day
+
+A sale rung at 00:20 belongs to that day's takings, not the previous one, so every report, dashboard
+and CSV export buckets sales by the **shop's calendar day** (`Africa/Kampala`), not by UTC:
+
+- Stored timestamps stay UTC-aware (`USE_TZ = True`); grouping uses `created_at__date`, which Django
+  evaluates in the active timezone, and the "today / this week / this month" windows come from
+  `timezone.localdate()` rather than `date.today()`, so a UTC container can never shift the shop's day.
+- The browser asks for ranges using its own calendar day (`toISODate()`), never
+  `toISOString()`-derived dates, which would roll back a day for any UTC+ offset during the small
+  hours.
+- `daily-sales` returns **every day in the range**, zero-filled, so a trend line shows gaps as zero
+  rather than silently connecting across missing days, and charts plot the numbers (money arrives as
+  strings from DRF) with short `18 Oct` labels.
 
 # Quality and testing
 
