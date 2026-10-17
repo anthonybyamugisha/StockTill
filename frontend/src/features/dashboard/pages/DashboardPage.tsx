@@ -1,32 +1,51 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getDashboardStats } from '../api/dashboard';
 import { getTopProducts, getDailySales } from '../../reports/api/reports';
 import { Card } from '../../../shared/ui/Card';
 import { Spinner } from '../../../shared/ui/Spinner';
+import { daysAgoISO, formatShortDate, monthStartISO, todayISO } from '../../../shared/utils/date';
+import { formatMoney } from '../../../shared/utils/money';
+
+const REFRESH_MS = 60_000;
 
 export function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboardStats,
+    refetchInterval: REFRESH_MS,
   });
 
-  const today = new Date().toISOString().split('T')[0];
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const today = todayISO();
+  const thirtyDaysAgo = daysAgoISO(30);
   const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const now = new Date();
   const monthName = now.toLocaleDateString('en-US', { month: 'long' });
-  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  const monthStart = monthStartISO();
 
   const { data: topProducts } = useQuery({
     queryKey: ['topProducts', monthStart, today],
     queryFn: () => getTopProducts(monthStart, today),
+    refetchInterval: REFRESH_MS,
   });
 
   const { data: dailySales } = useQuery({
     queryKey: ['dailySales', thirtyDaysAgo, today],
     queryFn: () => getDailySales(thirtyDaysAgo, today),
+    refetchInterval: REFRESH_MS,
   });
+
+  const salesTrend = useMemo(
+    () =>
+      (dailySales ?? []).map((day) => ({
+        label: formatShortDate(day.date),
+        date: day.date,
+        sales: Number(day.total),
+        transactions: day.transaction_count,
+      })),
+    [dailySales],
+  );
 
   if (statsLoading) {
     return <Spinner className="h-64" />;
@@ -49,12 +68,15 @@ export function DashboardPage() {
 
       <Card title="Sales Over Time" subtitle="Last 30 days">
         <ResponsiveContainer width="100%" height={250}>
-          <LineChart data={dailySales || []}>
+          <LineChart data={salesTrend}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
-            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+            <XAxis dataKey="label" tick={{ fontSize: 12 }} minTickGap={24} />
             <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
-            <Line type="monotone" dataKey="total" stroke="#0078d4" strokeWidth={2} dot={false} />
+            <Tooltip
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ''}
+              formatter={(value: number) => [formatMoney(value), 'Sales']}
+            />
+            <Line type="monotone" dataKey="sales" stroke="#0078d4" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </Card>
@@ -65,7 +87,7 @@ export function DashboardPage() {
             <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
             <XAxis type="number" tick={{ fontSize: 12 }} />
             <YAxis type="category" dataKey="product_name" tick={{ fontSize: 12 }} width={170} interval={0} />
-            <Tooltip />
+            <Tooltip formatter={(value: number) => [value, 'Units sold']} />
             <Bar dataKey="quantity_sold" fill="#0078d4" />
           </BarChart>
         </ResponsiveContainer>
