@@ -1,11 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getDashboardStats } from '../api/dashboard';
-import { getTopProducts, getSalesByPaymentMethod, getDailySales } from '../../reports/api/reports';
+import { getTopProducts, getDailySales } from '../../reports/api/reports';
 import { Card } from '../../../shared/ui/Card';
 import { Spinner } from '../../../shared/ui/Spinner';
-
-const COLORS = ['#0078d4', '#106ebe', '#005a9e', '#004578', '#50e6ff', '#107c10', '#ffb900', '#d13438'];
 
 export function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -21,11 +19,6 @@ export function DashboardPage() {
     queryFn: () => getTopProducts(thirtyDaysAgo, today),
   });
 
-  const { data: paymentMethods } = useQuery({
-    queryKey: ['paymentMethods', thirtyDaysAgo, today],
-    queryFn: () => getSalesByPaymentMethod(thirtyDaysAgo, today),
-  });
-
   const { data: dailySales } = useQuery({
     queryKey: ['dailySales', thirtyDaysAgo, today],
     queryFn: () => getDailySales(thirtyDaysAgo, today),
@@ -34,11 +27,6 @@ export function DashboardPage() {
   if (statsLoading) {
     return <Spinner className="h-64" />;
   }
-
-  const paymentChartData = (paymentMethods || []).map((pm) => ({
-    name: pm.method.replace('_', ' ').toUpperCase(),
-    value: parseFloat(pm.total),
-  }));
 
   return (
     <div className="space-y-6">
@@ -55,33 +43,17 @@ export function DashboardPage() {
         <StatCard title="Out of Stock" value={`${stats?.out_of_stock_count ?? 0}`} error />
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        <Card title="Sales Over Time" subtitle="Last 30 days">
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={dailySales || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
-              <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Line type="monotone" dataKey="total" stroke="#0078d4" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card title="Payment Methods" subtitle="Last 30 days">
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie data={paymentChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                {paymentChartData.map((_, index) => (
-                  <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
+      <Card title="Sales Over Time" subtitle="Last 30 days">
+        <ResponsiveContainer width="100%" height={250}>
+          <LineChart data={dailySales || []}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12 }} />
+            <Tooltip />
+            <Line type="monotone" dataKey="total" stroke="#0078d4" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
 
       <Card title="Top Products" subtitle="Best sellers this month">
         <ResponsiveContainer width="100%" height={200}>
