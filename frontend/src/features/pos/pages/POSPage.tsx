@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useCart } from '../hooks/useCart';
 import { Cart } from '../components/Cart';
-import { ProductSearch } from '../components/ProductSearch';
+import { ProductGrid } from '../components/ProductGrid';
 import { PaymentModal } from '../components/PaymentModal';
 import { BarcodeCameraModal } from '../components/BarcodeCameraModal';
 import { Card } from '../../../shared/ui/Card';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
-import { lookupProductByBarcode } from '../api/pos';
+import { lookupProductByBarcode, ProductLookup } from '../api/pos';
 
 interface ScanFeedback {
   type: 'success' | 'error';
@@ -40,6 +40,19 @@ export function POSPage() {
 
   useBarcodeScanner({ onScan: handleScan });
 
+  const addProduct = useCallback(
+    (product: ProductLookup) => {
+      addItem({
+        product_id: product.id,
+        name: product.name,
+        quantity: 1,
+        unit_price: product.selling_price,
+        unit_cost: product.buying_cost,
+      });
+    },
+    [addItem],
+  );
+
   useEffect(() => {
     if (!scanFeedback) return;
     const id = setTimeout(() => setScanFeedback(null), 3000);
@@ -62,20 +75,9 @@ export function POSPage() {
               {scanFeedback.message}
             </div>
           )}
-          <ProductSearch
-            onAddToCart={(p) =>
-              addItem({
-                product_id: p.product_id,
-                name: p.name,
-                quantity: 1,
-                unit_price: p.unit_price,
-                unit_cost: p.unit_cost,
-              })
-            }
-            onScan={handleScan}
-          />
-          <p className="mt-2 text-xs text-gray-400">
-            Scan a barcode with a USB/Bluetooth scanner, or type a barcode and press Enter.
+          <ProductGrid onSelect={addProduct} onScan={handleScan} />
+          <p className="mt-3 text-xs text-surface-400">
+            Tap a product to add it, or scan a barcode with a USB/Bluetooth scanner or the camera.
           </p>
           <button
             type="button"

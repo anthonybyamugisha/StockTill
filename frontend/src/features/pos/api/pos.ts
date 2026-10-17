@@ -15,7 +15,14 @@ export interface ProductLookup {
   barcode: string | null;
   selling_price: string;
   buying_cost: string;
+  category_id: string | null;
+  minimum_stock_level: number;
   image_url: string | null;
+}
+
+export interface CategoryLookup {
+  id: string;
+  name: string;
 }
 
 export interface PaymentInput {
@@ -63,8 +70,15 @@ export async function completeSale(data: CompleteSaleRequest): Promise<Sale> {
   return res.data;
 }
 
-export async function searchProducts(query: string): Promise<ProductLookup[]> {
-  const res = await apiClient.get<ProductLookup[]>('/catalog/products/', { params: { q: query } });
+export async function listAvailableProducts(categoryId?: string): Promise<ProductLookup[]> {
+  const res = await apiClient.get<ProductLookup[]>('/catalog/products/', {
+    params: { active_only: true, category_id: categoryId },
+  });
+  return res.data;
+}
+
+export async function listCategories(): Promise<CategoryLookup[]> {
+  const res = await apiClient.get<CategoryLookup[]>('/catalog/categories/');
   return res.data;
 }
 

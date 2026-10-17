@@ -10,8 +10,9 @@ Development** as first-class engineering disciplines --- not as decoration aroun
 
 ## Features
 
-- **POS** --- Fast cashier interface with product search, cart, per-line discounts, split payments,
-  cash tendered/change, and receipt generation
+- **POS** --- Fast cashier interface with an on-screen catalogue grid (every available product as a
+  tappable tile, category-filtered) so nothing has to be memorised, plus product search, cart,
+  per-line discounts, split payments, cash tendered/change, and receipt generation
 - **Barcode Scanning** --- USB/Bluetooth keyboard-wedge scanners, camera scanning, and manual entry
   on the cashier screen (no scanner required to run the system)
 - **Inventory** --- Append-only stock ledger, low-stock alerts, valuation, adjustments, write-offs

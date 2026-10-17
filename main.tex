@@ -353,11 +353,12 @@ low-stock and out-of-stock lists, and inventory valuation. A \texttt{rebuild-cac
 recompute the cache from the ledger at any time. A database constraint prevents negative stock. \\[2pt]
 
 4. Sales / POS interface &
-Cashier screen with live product search (by name, SKU or barcode), add-to-cart, barcode scanning
-(USB/Bluetooth scanner, device camera, or manual entry), quantity change, item removal, per-line
-discounts (percentage or fixed), live subtotal and total, single or \textbf{split payments}, cash
-tendered/change calculation, and receipt generation. Payment methods: \textbf{cash, mobile money,
-card, bank transfer}. \\[2pt]
+Cashier screen with an on-screen catalogue grid that lists every available product as a tappable
+tile (with category filters) so nothing has to be memorised, backed by live product search (by name,
+SKU or barcode), add-to-cart, barcode scanning (USB/Bluetooth scanner, device camera, or manual
+entry), quantity change, item removal, per-line discounts (percentage or fixed), live subtotal and
+total, single or \textbf{split payments}, cash tendered/change calculation, and receipt generation.
+Payment methods: \textbf{cash, mobile money, card, bank transfer}. \\[2pt]
 
 6. Sales management &
 List and search sales; filter by date range, cashier, payment method, status and receipt number;
@@ -1772,8 +1773,11 @@ the POS link --- one click away from anywhere.
 
 \subsection{The cashier workflow}
 
-The POS screen is built around a single question: how few actions does one sale take? A product is
-found by typing into a type-ahead search (matching name, SKU or barcode) or by scanning; the item
+The POS screen is built around a single question: how few actions does one sale take? A cashier never
+has to remember a barcode or a product name: the entire active catalogue is presented on screen as a
+grid of large, tappable tiles showing each product's name and price, narrowable with category chips
+and a search box, so the common case is a single tap. For speed there are two further input paths. A
+product is found by typing into a type-ahead search (matching name, SKU or barcode) or by scanning; the item
 drops into a running cart; quantity and per-line discount are adjustable inline; and a single
 \emph{charge} action opens the payment modal. The barcode path is the fastest: a USB or Bluetooth
 scanner behaves as a keyboard, and a small framework-free \emph{scanner-burst detector} distinguishes
