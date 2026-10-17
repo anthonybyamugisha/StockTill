@@ -18,15 +18,34 @@ class ProductRepository(ABC):
         pass
 
     @abstractmethod
-    def search(self, query: str, *, active_only: bool = True) -> list[Product]:
+    def search(
+        self,
+        query: str,
+        *,
+        active_only: bool = True,
+        category_id: UUID | None = None,
+    ) -> list[Product]:
         pass
 
     @abstractmethod
-    def list_products(self, *, active_only: bool = True) -> list[Product]:
+    def list_products(
+        self,
+        *,
+        active_only: bool = True,
+        category_id: UUID | None = None,
+    ) -> list[Product]:
         pass
 
     @abstractmethod
     def save(self, product: Product) -> None:
+        pass
+
+    @abstractmethod
+    def sku_exists(self, sku: str, exclude_id: UUID | None = None) -> bool:
+        pass
+
+    @abstractmethod
+    def barcode_exists(self, barcode: str, exclude_id: UUID | None = None) -> bool:
         pass
 
 
@@ -36,7 +55,7 @@ class CategoryRepository(ABC):
         pass
 
     @abstractmethod
-    def list_categories(self) -> list[Category]:
+    def list_categories(self, *, active_only: bool = True) -> list[Category]:
         pass
 
     @abstractmethod

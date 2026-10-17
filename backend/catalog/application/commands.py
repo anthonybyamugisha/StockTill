@@ -1,20 +1,20 @@
 from dataclasses import dataclass
-from decimal import Decimal
 from uuid import UUID
 
+from catalog.domain.entities import Category
 from shared.domain.money import Money
 
 
 @dataclass(frozen=True)
 class CreateProductCommand:
     name: str
-    description: str
     sku: str
-    barcode: str | None
-    category_id: UUID | None
-    buying_cost: Money
     selling_price: Money
-    minimum_stock_level: int
+    buying_cost: Money
+    description: str = ""
+    barcode: str | None = None
+    category_id: UUID | None = None
+    minimum_stock_level: int = 0
     image_url: str | None = None
 
 
@@ -25,12 +25,22 @@ class UpdateProductCommand:
     description: str | None = None
     barcode: str | None = None
     category_id: UUID | None = None
-    buying_cost: Money | None = None
     selling_price: Money | None = None
+    buying_cost: Money | None = None
     minimum_stock_level: int | None = None
     image_url: str | None = None
+    is_active: bool | None = None
+    user_id: UUID | None = None
 
 
 @dataclass(frozen=True)
 class DeactivateProductCommand:
     product_id: UUID
+    user_id: UUID | None = None
+
+
+@dataclass(frozen=True)
+class CreateCategoryCommand:
+    name: str
+    description: str = ""
+    parent_id: UUID | None = None
