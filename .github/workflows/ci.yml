@@ -54,7 +54,11 @@ jobs:
 
       - name: Test
         env:
-          DATABASE_URL: postgres://stocktill:stocktill@localhost:5432/test_stocktill
+          POSTGRES_DB: test_stocktill
+          POSTGRES_USER: stocktill
+          POSTGRES_PASSWORD: stocktill
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
         run: |
           cd backend
           pytest

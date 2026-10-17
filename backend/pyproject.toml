@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "stocktill-backend"
 version = "0.1.0"
@@ -46,7 +50,7 @@ python_files = ["test_*.py", "*_test.py"]
 addopts = "--cov --cov-report=term-missing"
 
 [tool.importlinter]
-root_package = config
+root_package = .
 
 [[tool.importlinter.contracts]]
 name = "Domain has no Django imports"
