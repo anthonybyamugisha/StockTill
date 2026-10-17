@@ -81,6 +81,26 @@ class ProductListCreateView(APIView):
         return Response(ProductDetailSerializer(product).data, status=status.HTTP_201_CREATED)
 
 
+class ProductByBarcodeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        barcode = request.query_params.get("barcode", "").strip()
+        if not barcode:
+            return Response(
+                {"detail": "A barcode query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        repo = DjangoProductRepository()
+        product = repo.get_by_barcode(barcode)
+        if product is None or not product.is_active:
+            return Response(
+                {"detail": "No active product matches that barcode."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(ProductDetailSerializer(product).data)
+
+
 class ProductDetailView(APIView):
     def get_permissions(self):
         if self.request.method in ("PATCH", "PUT", "DELETE"):
