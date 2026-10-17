@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { searchProducts } from '../api/pos';
 
@@ -9,15 +9,35 @@ interface ProductSearchProps {
     unit_price: string;
     unit_cost: string;
   }) => void;
+  onScan?: (code: string) => void;
 }
 
-export function ProductSearch({ onAddToCart }: ProductSearchProps) {
+const LOOKS_LIKE_BARCODE = /^[0-9A-Za-z._-]{6,}$/;
+
+export function ProductSearch({ onAddToCart, onScan }: ProductSearchProps) {
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(id);
+  }, [query]);
+
   const { data: products, isLoading } = useQuery({
-    queryKey: ['productSearch', query],
-    queryFn: () => searchProducts(query),
-    enabled: query.length >= 2,
+    queryKey: ['productSearch', debouncedQuery],
+    queryFn: () => searchProducts(debouncedQuery),
+    enabled: debouncedQuery.length >= 2,
   });
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    const code = event.currentTarget.value.trim();
+    if (code && LOOKS_LIKE_BARCODE.test(code) && onScan) {
+      event.preventDefault();
+      onScan(code);
+      setQuery('');
+    }
+  };
 
   return (
     <div>
@@ -25,15 +45,19 @@ export function ProductSearch({ onAddToCart }: ProductSearchProps) {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder="Search by name, SKU or barcode..."
         className="w-full rounded border border-gray-300 px-3 py-2"
       />
       {isLoading && <p className="mt-2 text-sm text-gray-500">Searching...</p>}
-      {products && (
+      {products && products.length > 0 && (
         <ul className="mt-2 divide-y">
-          {products.map((p: { id: string; name: string; selling_price: string; buying_cost: string }) => (
+          {products.map((p) => (
             <li key={p.id} className="flex items-center justify-between py-2">
-              <span>{p.name}</span>
+              <span>
+                {p.name}
+                {p.sku && <span className="ml-2 text-xs text-gray-400">{p.sku}</span>}
+              </span>
               <button
                 onClick={() =>
                   onAddToCart({
@@ -50,6 +74,9 @@ export function ProductSearch({ onAddToCart }: ProductSearchProps) {
             </li>
           ))}
         </ul>
+      )}
+      {products && products.length === 0 && debouncedQuery.length >= 2 && (
+        <p className="mt-2 text-sm text-gray-500">No products match "{debouncedQuery}".</p>
       )}
     </div>
   );
