@@ -104,7 +104,13 @@ class DjangoCategoryRepository(CategoryRepository):
     def get_by_id(self, category_id: UUID) -> Category | None:
         try:
             m = CategoryModel.objects.get(id=category_id)
-            return Category(id=m.id, name=m.name, description=m.description, parent_id=m.parent_id, is_active=m.is_active)
+            return Category(
+                id=m.id,
+                name=m.name,
+                description=m.description,
+                parent_id=m.parent_id,
+                is_active=m.is_active,
+            )
         except CategoryModel.DoesNotExist:
             return None
 
@@ -113,7 +119,13 @@ class DjangoCategoryRepository(CategoryRepository):
         if active_only:
             qs = qs.filter(is_active=True)
         return [
-            Category(id=m.id, name=m.name, description=m.description, parent_id=m.parent_id, is_active=m.is_active)
+            Category(
+                id=m.id,
+                name=m.name,
+                description=m.description,
+                parent_id=m.parent_id,
+                is_active=m.is_active,
+            )
             for m in qs
         ]
 

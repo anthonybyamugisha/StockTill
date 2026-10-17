@@ -5,7 +5,6 @@ from catalog.application.commands import (
     UpdateProductCommand,
 )
 from catalog.domain.entities import Category, Product
-from catalog.domain.events import PriceChanged, ProductDeactivated
 from catalog.domain.repository import CategoryRepository, ProductRepository
 from shared.domain.clock import Clock
 

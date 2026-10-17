@@ -1,5 +1,5 @@
-from shared.domain.settings import BusinessSettings
 from settings.domain.repository import SettingsRepository
+from shared.domain.settings import BusinessSettings
 
 
 class GetSettingsUseCase:

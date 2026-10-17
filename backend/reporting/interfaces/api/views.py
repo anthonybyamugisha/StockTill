@@ -3,10 +3,11 @@ from datetime import date
 from io import StringIO
 
 from django.http import HttpResponse
-from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.interfaces.api.permissions import IsManager
 from reporting.infrastructure.query_builders import SalesQueryBuilder
 from reporting.interfaces.api.serializers import (
     CashierSalesSerializer,
@@ -30,6 +31,8 @@ def parse_date(request, param, default):
 
 
 class SalesSummaryView(APIView):
+    permission_classes = [IsManager]
+
     def get(self, request):
         today = date.today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
@@ -40,6 +43,8 @@ class SalesSummaryView(APIView):
 
 
 class TopProductsView(APIView):
+    permission_classes = [IsManager]
+
     def get(self, request):
         today = date.today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
@@ -51,6 +56,8 @@ class TopProductsView(APIView):
 
 
 class SalesByPaymentMethodView(APIView):
+    permission_classes = [IsManager]
+
     def get(self, request):
         today = date.today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
@@ -61,6 +68,8 @@ class SalesByPaymentMethodView(APIView):
 
 
 class DailySalesView(APIView):
+    permission_classes = [IsManager]
+
     def get(self, request):
         today = date.today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
@@ -71,6 +80,8 @@ class DailySalesView(APIView):
 
 
 class CashierSalesView(APIView):
+    permission_classes = [IsManager]
+
     def get(self, request):
         today = date.today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
@@ -81,6 +92,8 @@ class CashierSalesView(APIView):
 
 
 class DashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         builder = SalesQueryBuilder()
         stats = builder.get_dashboard_stats()
@@ -88,6 +101,8 @@ class DashboardView(APIView):
 
 
 class ProfitReportView(APIView):
+    permission_classes = [IsManager]
+
     def get(self, request):
         today = date.today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
@@ -98,6 +113,8 @@ class ProfitReportView(APIView):
 
 
 class InventoryReportView(APIView):
+    permission_classes = [IsManager]
+
     def get(self, request):
         builder = SalesQueryBuilder()
         report = builder.get_inventory_report()
@@ -105,6 +122,8 @@ class InventoryReportView(APIView):
 
 
 class SalesReportView(APIView):
+    permission_classes = [IsManager]
+
     def get(self, request):
         today = date.today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
@@ -115,6 +134,8 @@ class SalesReportView(APIView):
 
 
 class LowStockReportView(APIView):
+    permission_classes = [IsManager]
+
     def get(self, request):
         builder = SalesQueryBuilder()
         items = builder.get_low_stock_items()
@@ -122,6 +143,8 @@ class LowStockReportView(APIView):
 
 
 class SalesReportCSVView(APIView):
+    permission_classes = [IsManager]
+
     def get(self, request):
         today = date.today()
         date_from = parse_date(request, "date_from", today.replace(day=1))
@@ -133,14 +156,16 @@ class SalesReportCSVView(APIView):
         writer = csv.writer(output)
         writer.writerow(["Receipt", "Date", "Cashier", "Total", "Payment Method", "Status"])
         for row in rows:
-            writer.writerow([
-                row.receipt_number,
-                row.date.isoformat(),
-                row.cashier_name,
-                str(row.total),
-                row.payment_method,
-                row.status,
-            ])
+            writer.writerow(
+                [
+                    row.receipt_number,
+                    row.date.isoformat(),
+                    row.cashier_name,
+                    str(row.total),
+                    row.payment_method,
+                    row.status,
+                ]
+            )
 
         response = HttpResponse(output.getvalue(), content_type="text/csv")
         response["Content-Disposition"] = "attachment; filename=sales_report.csv"

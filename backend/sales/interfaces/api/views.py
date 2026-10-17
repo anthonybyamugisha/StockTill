@@ -2,9 +2,11 @@ from decimal import Decimal
 from uuid import UUID
 
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.interfaces.api.permissions import IsManager
 from sales.application.commands import (
     CompleteSaleCommand,
     LineItem,
@@ -25,14 +27,19 @@ from sales.interfaces.api.serializers import (
     VoidSaleSerializer,
 )
 from shared.domain.clock import SystemClock
+from shared.domain.errors import DomainError
 from shared.domain.money import Money
 
 
 class SaleListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         repo = DjangoSaleRepository()
         sales = repo.list_sales(
-            cashier_id=UUID(request.query_params["cashier_id"]) if request.query_params.get("cashier_id") else None,
+            cashier_id=UUID(request.query_params["cashier_id"])
+            if request.query_params.get("cashier_id")
+            else None,
             status=request.query_params.get("status"),
             payment_method=request.query_params.get("payment_method"),
             date_from=request.query_params.get("date_from"),
@@ -53,8 +60,12 @@ class SaleListCreateView(APIView):
                 unit_price=Money(ln["unit_price"]),
                 unit_cost=Money(ln["unit_cost"]),
                 product_name=ln.get("product_name", ""),
-                discount_type=DiscountType(ln["discount_type"]) if ln.get("discount_type") else None,
-                discount_value=Decimal(str(ln["discount_value"])) if ln.get("discount_value") else None,
+                discount_type=DiscountType(ln["discount_type"])
+                if ln.get("discount_type")
+                else None,
+                discount_value=Decimal(str(ln["discount_value"]))
+                if ln.get("discount_value")
+                else None,
             )
             for ln in data["lines"]
         ]
@@ -87,12 +98,14 @@ class SaleListCreateView(APIView):
                     notes=data.get("notes", ""),
                 )
             )
-        except ValueError as e:
+        except (ValueError, DomainError) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(SaleSerializer(sale).data, status=status.HTTP_201_CREATED)
 
 
 class SaleDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, sale_id):
         repo = DjangoSaleRepository()
         sale = repo.get_by_id(sale_id)
@@ -102,6 +115,8 @@ class SaleDetailView(APIView):
 
 
 class RefundSaleView(APIView):
+    permission_classes = [IsManager]
+
     def post(self, request):
         serializer = RefundSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -120,12 +135,16 @@ class RefundSaleView(APIView):
                     user_id=request.user.id,
                 )
             )
-        except (ValueError, Exception) as e:
+        except (ValueError, DomainError) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"id": str(refund.id), "status": "refunded"}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"id": str(refund.id), "status": "refunded"}, status=status.HTTP_201_CREATED
+        )
 
 
 class VoidSaleView(APIView):
+    permission_classes = [IsManager]
+
     def post(self, request):
         serializer = VoidSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -139,6 +158,6 @@ class VoidSaleView(APIView):
                     user_id=request.user.id,
                 )
             )
-        except ValueError as e:
+        except (ValueError, DomainError) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(SaleSerializer(sale).data)

@@ -10,7 +10,7 @@ class Money:
     amount: Decimal
     currency: str = "UGX"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "amount", self.amount.quantize(CENT, rounding=ROUND_HALF_UP))
 
     @classmethod
@@ -31,6 +31,15 @@ class Money:
 
     def is_negative(self) -> bool:
         return self.amount < ZERO
+
+    def __str__(self) -> str:
+        return str(self.amount)
+
+    def __add__(self, other: "Money") -> "Money":
+        return self.add(other)
+
+    def __sub__(self, other: "Money") -> "Money":
+        return self.subtract(other)
 
     def __lt__(self, other: "Money") -> bool:
         return self.amount < other.amount

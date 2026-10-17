@@ -1,11 +1,10 @@
-from abc import ABC
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID, uuid4
 
 
 @dataclass
-class Entity(ABC):
+class Entity:
     id: UUID = field(default_factory=uuid4)
 
     def __eq__(self, other: Any) -> bool:
@@ -19,12 +18,12 @@ class Entity(ABC):
 
 @dataclass
 class AggregateRoot(Entity):
-    _domain_events: list = field(default_factory=list, init=False, repr=False)
+    _domain_events: list[Any] = field(default_factory=list, init=False, repr=False)
 
     def add_domain_event(self, event: Any) -> None:
         self._domain_events.append(event)
 
-    def clear_domain_events(self) -> list:
+    def clear_domain_events(self) -> list[Any]:
         events = self._domain_events[:]
         self._domain_events.clear()
         return events

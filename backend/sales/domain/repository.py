@@ -34,6 +34,10 @@ class SaleRepository(ABC):
     def exists_by_idempotency_key(self, key: str) -> bool:
         pass
 
+    @abstractmethod
+    def get_by_idempotency_key(self, key: str) -> Sale | None:
+        pass
+
 
 class RefundRepository(ABC):
     @abstractmethod

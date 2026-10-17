@@ -1,8 +1,9 @@
-import pytest
+from datetime import UTC
 from uuid import uuid4
 
+import pytest
+
 from accounts.domain.entities import Role, User
-from accounts.infrastructure.models import UserModel
 from accounts.infrastructure.repository import DjangoUserRepository
 
 
@@ -56,8 +57,14 @@ def test_get_by_email_returns_none_for_missing():
 @pytest.mark.django_db
 def test_list_users_returns_all():
     repo = DjangoUserRepository()
-    repo.save(User(email="a@shop.com", first_name="A", last_name="B", role=Role.CASHIER, password_hash="x"))
-    repo.save(User(email="b@shop.com", first_name="C", last_name="D", role=Role.ADMIN, password_hash="y"))
+    repo.save(
+        User(
+            email="a@shop.com", first_name="A", last_name="B", role=Role.CASHIER, password_hash="x"
+        )
+    )
+    repo.save(
+        User(email="b@shop.com", first_name="C", last_name="D", role=Role.ADMIN, password_hash="y")
+    )
 
     users = repo.list_users()
     assert len(users) == 2
@@ -66,8 +73,16 @@ def test_list_users_returns_all():
 @pytest.mark.django_db
 def test_list_users_active_only():
     repo = DjangoUserRepository()
-    active = User(email="active@shop.com", first_name="A", last_name="B", role=Role.CASHIER, password_hash="x")
-    inactive = User(email="inactive@shop.com", first_name="C", last_name="D", role=Role.CASHIER, password_hash="y")
+    active = User(
+        email="active@shop.com", first_name="A", last_name="B", role=Role.CASHIER, password_hash="x"
+    )
+    inactive = User(
+        email="inactive@shop.com",
+        first_name="C",
+        last_name="D",
+        role=Role.CASHIER,
+        password_hash="y",
+    )
     inactive.is_active = False
     repo.save(active)
     repo.save(inactive)
@@ -80,7 +95,15 @@ def test_list_users_active_only():
 @pytest.mark.django_db
 def test_email_exists():
     repo = DjangoUserRepository()
-    repo.save(User(email="exists@shop.com", first_name="A", last_name="B", role=Role.CASHIER, password_hash="x"))
+    repo.save(
+        User(
+            email="exists@shop.com",
+            first_name="A",
+            last_name="B",
+            role=Role.CASHIER,
+            password_hash="x",
+        )
+    )
 
     assert repo.email_exists("exists@shop.com") is True
     assert repo.email_exists("missing@shop.com") is False
@@ -89,7 +112,13 @@ def test_email_exists():
 @pytest.mark.django_db
 def test_save_updates_existing_user():
     repo = DjangoUserRepository()
-    user = User(email="update@shop.com", first_name="Old", last_name="Name", role=Role.CASHIER, password_hash="x")
+    user = User(
+        email="update@shop.com",
+        first_name="Old",
+        last_name="Name",
+        role=Role.CASHIER,
+        password_hash="x",
+    )
     repo.save(user)
 
     user.first_name = "New"
@@ -101,12 +130,18 @@ def test_save_updates_existing_user():
 
 @pytest.mark.django_db
 def test_persists_lockout_fields():
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     repo = DjangoUserRepository()
-    user = User(email="lock@shop.com", first_name="Lock", last_name="User", role=Role.CASHIER, password_hash="x")
+    user = User(
+        email="lock@shop.com",
+        first_name="Lock",
+        last_name="User",
+        role=Role.CASHIER,
+        password_hash="x",
+    )
     user.failed_login_attempts = 3
-    user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
+    user.locked_until = datetime.now(UTC) + timedelta(minutes=30)
     repo.save(user)
 
     fetched = repo.get_by_id(user.id)

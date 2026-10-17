@@ -1,10 +1,11 @@
-from datetime import date, datetime, timedelta
+from collections import defaultdict
+from datetime import date, timedelta
 from decimal import Decimal
-from uuid import UUID
 
-from django.db.models import Count, F, Sum, Value
-from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
+from django.db.models import Count, F, Sum
+from django.db.models.functions import TruncDate
 
+from accounts.infrastructure.models import UserModel
 from catalog.infrastructure.models import ProductModel
 from reporting.application.queries import (
     CashierSales,
@@ -23,6 +24,33 @@ from shared.domain.money import Money
 
 
 class SalesQueryBuilder:
+    def _cashier_names(self) -> dict:
+        return {
+            u.id: (f"{u.first_name} {u.last_name}".strip() or u.email)
+            for u in UserModel.objects.all()
+        }
+
+    def _products_by_id(self) -> dict:
+        return {p.id: p for p in ProductModel.objects.all()}
+
+    def _stock_counts(self) -> tuple[int, int]:
+        from inventory.infrastructure.models import StockItemModel
+
+        products = self._products_by_id()
+        low = 0
+        out = 0
+        for item in StockItemModel.objects.all():
+            if item.quantity_on_hand == 0:
+                out += 1
+            product = products.get(item.product_id)
+            if (
+                product
+                and product.minimum_stock_level > 0
+                and item.quantity_on_hand <= product.minimum_stock_level
+            ):
+                low += 1
+        return low, out
+
     def get_sales_summary(self, date_from: date, date_to: date) -> SalesSummary:
         sales = SaleModel.objects.filter(created_at__date__range=(date_from, date_to))
         total_sales = sales.count()
@@ -60,7 +88,9 @@ class SalesQueryBuilder:
             for row in lines
         ]
 
-    def get_sales_by_payment_method(self, date_from: date, date_to: date) -> list[SalesByPaymentMethod]:
+    def get_sales_by_payment_method(
+        self, date_from: date, date_to: date
+    ) -> list[SalesByPaymentMethod]:
         payments = (
             PaymentModel.objects.filter(sale__created_at__date__range=(date_from, date_to))
             .values("method")
@@ -85,6 +115,7 @@ class SalesQueryBuilder:
         ]
 
     def get_cashier_sales(self, date_from: date, date_to: date) -> list[CashierSales]:
+        names = self._cashier_names()
         sales = (
             SaleModel.objects.filter(created_at__date__range=(date_from, date_to))
             .values("cashier_id")
@@ -94,7 +125,7 @@ class SalesQueryBuilder:
         return [
             CashierSales(
                 cashier_id=row["cashier_id"],
-                cashier_name="",
+                cashier_name=names.get(row["cashier_id"], ""),
                 transaction_count=row["count"],
                 total=row["total"],
             )
@@ -102,9 +133,10 @@ class SalesQueryBuilder:
         ]
 
     def get_sales_report(self, date_from: date, date_to: date) -> list[SalesReportRow]:
-        sales = SaleModel.objects.filter(
-            created_at__date__range=(date_from, date_to)
-        ).order_by("-created_at")
+        names = self._cashier_names()
+        sales = SaleModel.objects.filter(created_at__date__range=(date_from, date_to)).order_by(
+            "-created_at"
+        )
         rows = []
         for sale in sales:
             for payment in sale.payments.all():
@@ -112,7 +144,7 @@ class SalesQueryBuilder:
                     SalesReportRow(
                         receipt_number=sale.receipt_number,
                         date=sale.created_at,
-                        cashier_name="",
+                        cashier_name=names.get(sale.cashier_id, ""),
                         total=sale.total,
                         payment_method=payment.method,
                         status=sale.status,
@@ -121,16 +153,25 @@ class SalesQueryBuilder:
         return rows
 
     def get_profit_report(self, date_from: date, date_to: date) -> list[ProfitReport]:
-        sales = (
-            SaleModel.objects.filter(created_at__date__range=(date_from, date_to))
-            .annotate(day=TruncDate("created_at"))
-            .values("day")
-            .annotate(revenue=Sum("total"), cost=Sum("subtotal") - Sum("total") + Sum("total"))
-            .order_by("day")
-        )
+        sales = SaleModel.objects.filter(
+            created_at__date__range=(date_from, date_to)
+        ).prefetch_related("lines")
+        revenue: dict = defaultdict(Decimal)
+        cost: dict = defaultdict(Decimal)
+        for sale in sales:
+            day = sale.created_at.date()
+            revenue[day] += sale.total
+            for line in sale.lines.all():
+                cost[day] += Decimal(line.unit_cost) * line.quantity
+        days = sorted(set(revenue) | set(cost))
         return [
-            ProfitReport(date=row["day"], total_revenue=row["revenue"], total_cost=row["cost"], gross_profit=row["revenue"] - row["cost"])
-            for row in sales
+            ProfitReport(
+                date=day,
+                total_revenue=revenue[day],
+                total_cost=cost[day],
+                gross_profit=revenue[day] - cost[day],
+            )
+            for day in days
         ]
 
     def get_dashboard_stats(self) -> DashboardStats:
@@ -149,21 +190,14 @@ class SalesQueryBuilder:
         total_transactions = SaleModel.objects.count()
         total_products = ProductModel.objects.filter(is_active=True).count()
 
-        from inventory.infrastructure.models import StockItemModel
-        from catalog.infrastructure.models import ProductModel
-
-        low_stock = StockItemModel.objects.filter(
-            product__minimum_stock_level__gt=0,
-            quantity_on_hand__lte=F("product__minimum_stock_level"),
-        ).count()
-        out_of_stock = StockItemModel.objects.filter(quantity_on_hand=0).count()
+        low_stock, out_of_stock = self._stock_counts()
 
         all_sales = SaleModel.objects.all()
         total_rev = sum((Money(s.total) for s in all_sales), Money.zero())
         avg_sale = total_rev.amount / len(all_sales) if all_sales else Decimal(0)
 
         month_cost = Money.zero()
-        for sale in month_sales:
+        for sale in month_sales.prefetch_related("lines"):
             for line in sale.lines.all():
                 month_cost = month_cost.add(Money(line.unit_cost).multiply(Decimal(line.quantity)))
         month_profit = month_revenue.subtract(month_cost)
@@ -186,20 +220,20 @@ class SalesQueryBuilder:
     def get_inventory_report(self) -> InventoryReport:
         from inventory.infrastructure.models import StockItemModel
 
-        total_products = ProductModel.objects.filter(is_active=True).count()
-        items = StockItemModel.objects.select_related("product").all()
+        products = self._products_by_id()
         total_value = Money.zero()
-        for item in items:
-            total_value = total_value.add(Money(item.product.buying_cost) * item.quantity_on_hand)
+        for item in StockItemModel.objects.all():
+            product = products.get(item.product_id)
+            if product is None:
+                continue
+            total_value = total_value.add(
+                Money(product.buying_cost).multiply(Decimal(item.quantity_on_hand))
+            )
 
-        low_stock = StockItemModel.objects.filter(
-            product__minimum_stock_level__gt=0,
-            quantity_on_hand__lte=F("product__minimum_stock_level"),
-        ).count()
-        out_of_stock = StockItemModel.objects.filter(quantity_on_hand=0).count()
+        low_stock, out_of_stock = self._stock_counts()
 
         return InventoryReport(
-            total_products=total_products,
+            total_products=ProductModel.objects.filter(is_active=True).count(),
             total_value=total_value.amount,
             low_stock_count=low_stock,
             out_of_stock_count=out_of_stock,
@@ -208,18 +242,18 @@ class SalesQueryBuilder:
     def get_low_stock_items(self) -> list[LowStockItem]:
         from inventory.infrastructure.models import StockItemModel
 
-        items = StockItemModel.objects.filter(
-            product__minimum_stock_level__gt=0,
-            quantity_on_hand__lte=F("product__minimum_stock_level"),
-        ).select_related("product")
-
-        return [
-            LowStockItem(
-                product_id=item.product_id,
-                product_name=item.product.name,
-                sku=item.product.sku,
-                quantity_on_hand=item.quantity_on_hand,
-                minimum_level=item.product.minimum_stock_level,
-            )
-            for item in items
-        ]
+        products = {p.id: p for p in ProductModel.objects.filter(minimum_stock_level__gt=0)}
+        items = []
+        for item in StockItemModel.objects.all():
+            product = products.get(item.product_id)
+            if product and item.quantity_on_hand <= product.minimum_stock_level:
+                items.append(
+                    LowStockItem(
+                        product_id=item.product_id,
+                        product_name=product.name,
+                        sku=product.sku,
+                        quantity_on_hand=item.quantity_on_hand,
+                        minimum_level=product.minimum_stock_level,
+                    )
+                )
+        return items

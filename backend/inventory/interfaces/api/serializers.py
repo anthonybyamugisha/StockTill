@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from inventory.domain.entities import MovementType, StockItem, StockMovement
+from inventory.domain.entities import MovementType
 
 
 class StockAdjustmentSerializer(serializers.Serializer):

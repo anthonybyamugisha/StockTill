@@ -1,5 +1,3 @@
-import pytest
-
 from accounts.domain.entities import Role, User
 
 

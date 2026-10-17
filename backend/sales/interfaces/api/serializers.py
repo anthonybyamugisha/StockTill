@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from sales.domain.entities import DiscountType, PaymentMethod, Sale, SaleLine, SaleStatus
+from sales.domain.entities import DiscountType, PaymentMethod
 
 
 class SaleLineSerializer(serializers.Serializer):
@@ -10,10 +10,19 @@ class SaleLineSerializer(serializers.Serializer):
     quantity = serializers.IntegerField()
     unit_price = serializers.DecimalField(max_digits=14, decimal_places=2)
     unit_cost = serializers.DecimalField(max_digits=14, decimal_places=2)
-    discount_type = serializers.CharField(allow_null=True)
-    discount_value = serializers.DecimalField(max_digits=14, decimal_places=2)
-    discount_amount = serializers.DecimalField(max_digits=14, decimal_places=2)
+    discount_type = serializers.SerializerMethodField()
+    discount_value = serializers.SerializerMethodField()
+    discount_amount = serializers.SerializerMethodField()
     total = serializers.DecimalField(max_digits=14, decimal_places=2)
+
+    def get_discount_type(self, obj) -> str | None:
+        return obj.discount.type.value if obj.discount else None
+
+    def get_discount_value(self, obj) -> str | None:
+        return str(obj.discount.value) if obj.discount else None
+
+    def get_discount_amount(self, obj) -> str:
+        return str(obj.discount.amount.amount) if obj.discount else "0.00"
 
 
 class PaymentSerializer(serializers.Serializer):
@@ -62,14 +71,20 @@ class LineItemSerializer(serializers.Serializer):
     unit_price = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0)
     unit_cost = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0)
     product_name = serializers.CharField(required=False, allow_blank=True)
-    discount_type = serializers.ChoiceField(choices=[t.value for t in DiscountType], allow_null=True, required=False)
-    discount_value = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0, allow_null=True, required=False)
+    discount_type = serializers.ChoiceField(
+        choices=[t.value for t in DiscountType], allow_null=True, required=False
+    )
+    discount_value = serializers.DecimalField(
+        max_digits=14, decimal_places=2, min_value=0, allow_null=True, required=False
+    )
 
 
 class PaymentInputSerializer(serializers.Serializer):
     method = serializers.ChoiceField(choices=[m.value for m in PaymentMethod])
     amount = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0)
-    tendered = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0, allow_null=True, required=False)
+    tendered = serializers.DecimalField(
+        max_digits=14, decimal_places=2, min_value=0, allow_null=True, required=False
+    )
     reference = serializers.CharField(max_length=200, allow_null=True, required=False)
     provider = serializers.CharField(max_length=100, allow_null=True, required=False)
 

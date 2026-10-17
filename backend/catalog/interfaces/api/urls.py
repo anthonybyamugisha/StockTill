@@ -1,6 +1,10 @@
 from django.urls import path
 
-from catalog.interfaces.api.views import CategoryListCreateView, ProductDetailView, ProductListCreateView
+from catalog.interfaces.api.views import (
+    CategoryListCreateView,
+    ProductDetailView,
+    ProductListCreateView,
+)
 
 urlpatterns = [
     path("products/", ProductListCreateView.as_view(), name="product-list-create"),

@@ -34,7 +34,7 @@ class Product(Entity):
     def profit_margin(self) -> Money:
         return self.selling_price.subtract(self.buying_cost)
 
-    def update_price(self, new_price: Money, user_id: UUID) -> dict:
+    def update_price(self, new_price: Money, user_id: UUID) -> dict[str, str]:
         old_price = self.selling_price
         self.selling_price = new_price
         return {
@@ -45,7 +45,7 @@ class Product(Entity):
             "user_id": str(user_id),
         }
 
-    def update_cost(self, new_cost: Money, user_id: UUID) -> dict:
+    def update_cost(self, new_cost: Money, user_id: UUID) -> dict[str, str]:
         old_cost = self.buying_cost
         self.buying_cost = new_cost
         return {

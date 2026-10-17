@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Any
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -59,7 +60,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
+DATABASES: dict[str, Any] = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.environ.get("POSTGRES_DB", "stocktill"),
@@ -100,6 +101,9 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
     ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
@@ -110,6 +114,7 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "DESCRIPTION": "Point of Sale and Inventory Management System",
 }
+
 
 def _split_origins(variable: str, default: str) -> list[str]:
     raw = os.environ.get(variable, default)

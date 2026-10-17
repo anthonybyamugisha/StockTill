@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID
 
-from shared.domain.base import Entity, AggregateRoot
+from shared.domain.base import Entity
 from shared.domain.money import Money
 
 
-class MovementType(str, Enum):
+class MovementType(StrEnum):
     OPENING = "opening"
     PURCHASE = "purchase"
     SALE = "sale"

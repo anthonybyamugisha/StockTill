@@ -1,0 +1,160 @@
+import pytest
+from rest_framework.test import APIClient
+
+from accounts.domain.entities import Role, User
+from accounts.infrastructure.models import UserModel
+from accounts.infrastructure.password_hasher import DjangoPasswordHasher
+from catalog.infrastructure.models import ProductModel
+from inventory.infrastructure.models import StockItemModel
+from sales.infrastructure.models import PaymentModel, SaleLineModel, SaleModel
+
+
+def _make_user(email, role):
+    user = User(email=email, first_name=role, last_name="User", role=role)
+    user.set_password("password123", DjangoPasswordHasher())
+    return UserModel.objects.create(
+        id=user.id,
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        role=user.role.value,
+        password=user.password_hash,
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+
+@pytest.fixture
+def manager_user(db):
+    return _make_user("manager@shop.com", Role.MANAGER)
+
+
+@pytest.fixture
+def cashier_user(db):
+    return _make_user("cashier@shop.com", Role.CASHIER)
+
+
+@pytest.fixture
+def product(db):
+    return ProductModel.objects.create(
+        name="Sugar 1kg",
+        sku="SUG-001",
+        buying_cost="1000.00",
+        selling_price="1500.00",
+        minimum_stock_level=10,
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def stock_item(db, product):
+    return StockItemModel.objects.create(product_id=product.id, quantity_on_hand=5)
+
+
+@pytest.fixture
+def sale(db, product, cashier_user):
+    s = SaleModel.objects.create(
+        receipt_number="ST-2026-000001",
+        cashier_id=cashier_user.id,
+        status="completed",
+        subtotal="1500.00",
+        total_discount="0.00",
+        total="1500.00",
+    )
+    SaleLineModel.objects.create(
+        sale=s,
+        product_id=product.id,
+        product_name=product.name,
+        quantity=1,
+        unit_price="1500.00",
+        unit_cost="1000.00",
+    )
+    PaymentModel.objects.create(sale=s, method="cash", amount="1500.00")
+    return s
+
+
+@pytest.mark.django_db
+def test_dashboard_returns_stats(api_client, manager_user, product, stock_item):
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.get("/api/v1/reporting/dashboard/")
+    assert response.status_code == 200
+    assert response.data["total_products"] == 1
+    assert response.data["low_stock_count"] == 1
+    assert response.data["out_of_stock_count"] == 0
+
+
+@pytest.mark.django_db
+def test_inventory_report_valuates_stock(api_client, manager_user, product, stock_item):
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.get("/api/v1/reporting/inventory/")
+    assert response.status_code == 200
+    assert response.data["total_value"] == "5000.00"
+    assert response.data["low_stock_count"] == 1
+
+
+@pytest.mark.django_db
+def test_low_stock_report_lists_item(api_client, manager_user, product, stock_item):
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.get("/api/v1/reporting/low-stock/")
+    assert response.status_code == 200
+    assert len(response.data) == 1
+    assert response.data[0]["sku"] == "SUG-001"
+    assert response.data[0]["minimum_level"] == 10
+
+
+@pytest.mark.django_db
+def test_profit_report_computes_cost_and_profit(api_client, manager_user, sale):
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.get(
+        "/api/v1/reporting/profit/",
+        {"date_from": "2000-01-01", "date_to": "2100-01-01"},
+    )
+    assert response.status_code == 200
+    row = response.data[0]
+    assert row["total_revenue"] == "1500.00"
+    assert row["total_cost"] == "1000.00"
+    assert row["gross_profit"] == "500.00"
+
+
+@pytest.mark.django_db
+def test_sales_report_includes_cashier_name(api_client, manager_user, cashier_user, sale):
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.get(
+        "/api/v1/reporting/sales-report/",
+        {"date_from": "2000-01-01", "date_to": "2100-01-01"},
+    )
+    assert response.status_code == 200
+    assert response.data[0]["cashier_name"] == "cashier User"
+
+
+@pytest.mark.django_db
+def test_sales_report_csv_export(api_client, manager_user, sale):
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.get("/api/v1/reporting/sales-report/csv/")
+    assert response.status_code == 200
+    assert response["Content-Type"] == "text/csv"
+    assert "ST-2026-000001" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_dashboard_requires_authentication(api_client):
+    response = api_client.get("/api/v1/reporting/dashboard/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_reports_require_manager(api_client, cashier_user):
+    api_client.force_authenticate(user=cashier_user)
+    response = api_client.get("/api/v1/reporting/sales-summary/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_dashboard_allowed_for_cashier(api_client, cashier_user):
+    api_client.force_authenticate(user=cashier_user)
+    response = api_client.get("/api/v1/reporting/dashboard/")
+    assert response.status_code == 200

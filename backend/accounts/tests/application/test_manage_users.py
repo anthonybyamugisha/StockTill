@@ -1,5 +1,3 @@
-import pytest
-
 from accounts.application.commands import DeactivateUserCommand, UpdateUserCommand
 from accounts.application.use_cases import DeactivateUserUseCase, UpdateUserUseCase
 from accounts.domain.entities import Role, User

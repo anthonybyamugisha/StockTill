@@ -1,4 +1,8 @@
-from accounts.application.commands import CreateUserCommand, DeactivateUserCommand, UpdateUserCommand
+from accounts.application.commands import (
+    CreateUserCommand,
+    DeactivateUserCommand,
+    UpdateUserCommand,
+)
 from accounts.domain.entities import User
 from accounts.domain.errors import InvalidCredentialsError
 from accounts.domain.password import PasswordHasher
@@ -77,9 +81,9 @@ class AuthenticateUserUseCase:
             raise InvalidCredentialsError("Account deactivated")
 
         if user.is_locked():
-            raise InvalidCredentialsError(
-                f"Account locked. Try again after {user.locked_until.isoformat()}"
-            )
+            locked_until = user.locked_until
+            detail = locked_until.isoformat() if locked_until is not None else ""
+            raise InvalidCredentialsError(f"Account locked. Try again after {detail}")
 
         user.register_successful_login()
         self._repo.save(user)

@@ -2,10 +2,9 @@ import pytest
 
 from accounts.application.commands import CreateUserCommand
 from accounts.application.use_cases import CreateUserUseCase
-from accounts.domain.entities import Role
+from accounts.domain.entities import Role, User
 from accounts.domain.password import PasswordHasher
 from accounts.domain.repository import UserRepository
-from accounts.domain.entities import User
 
 
 class FakePasswordHasher(PasswordHasher):
@@ -65,7 +64,9 @@ def test_create_user_succeeds():
 def test_create_user_raises_on_duplicate_email():
     repo = FakeUserRepository()
     hasher = FakePasswordHasher()
-    repo.save(User(email="exists@shop.com", first_name="Exists", last_name="User", role=Role.CASHIER))
+    repo.save(
+        User(email="exists@shop.com", first_name="Exists", last_name="User", role=Role.CASHIER)
+    )
     use_case = CreateUserUseCase(repo, hasher)
 
     with pytest.raises(ValueError, match="Email already registered"):

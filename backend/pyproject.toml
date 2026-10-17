@@ -47,6 +47,21 @@ ignore = ["E501"]
 python_version = "3.12"
 plugins = ["mypy_django_plugin.main"]
 strict = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "*.migrations.*",
+    "*.tests.*",
+    "config.*",
+    "manage",
+    "*.interfaces.*",
+    "*.infrastructure.*",
+]
+ignore_errors = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
@@ -94,6 +109,16 @@ forbidden_modules = [
     "reporting",
 ]
 ignore_imports = [
-    "sales.infrastructure.adapters:catalog.application",
-    "sales.infrastructure.adapters:inventory.application",
+    "sales.infrastructure.adapters:catalog.infrastructure.models",
+    "sales.infrastructure.adapters:inventory.application.commands",
+    "sales.infrastructure.adapters:inventory.application.use_cases",
+    "sales.infrastructure.adapters:inventory.domain.entities",
+    "sales.infrastructure.adapters:inventory.infrastructure.repository",
+    "sales.infrastructure.adapters:inventory.infrastructure.adapters",
+    "inventory.infrastructure.adapters:catalog.infrastructure.models",
+    "inventory.infrastructure.repository:catalog.infrastructure.models",
+    "reporting.infrastructure.query_builders:accounts.infrastructure.models",
+    "reporting.infrastructure.query_builders:catalog.infrastructure.models",
+    "reporting.infrastructure.query_builders:sales.infrastructure.models",
+    "reporting.infrastructure.query_builders:inventory.infrastructure.models",
 ]

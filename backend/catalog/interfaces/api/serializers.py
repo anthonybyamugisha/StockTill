@@ -1,7 +1,5 @@
 from rest_framework import serializers
 
-from catalog.domain.entities import Category, Product
-
 
 class CategorySerializer(serializers.Serializer):
     id = serializers.UUIDField(read_only=True)
@@ -43,8 +41,12 @@ class CreateProductSerializer(serializers.Serializer):
 class UpdateProductSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=300, required=False)
     sku = serializers.CharField(max_length=100, required=False)
-    selling_price = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False)
-    buying_cost = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=0, required=False)
+    selling_price = serializers.DecimalField(
+        max_digits=14, decimal_places=2, min_value=0, required=False
+    )
+    buying_cost = serializers.DecimalField(
+        max_digits=14, decimal_places=2, min_value=0, required=False
+    )
     description = serializers.CharField(allow_blank=True, required=False)
     barcode = serializers.CharField(max_length=100, allow_null=True, required=False)
     category_id = serializers.UUIDField(allow_null=True, required=False)

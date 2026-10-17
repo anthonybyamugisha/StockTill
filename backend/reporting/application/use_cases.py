@@ -1,5 +1,6 @@
 from datetime import date
 
+from reporting.application.ports import SalesQueryPort
 from reporting.application.queries import (
     CashierSales,
     DailySales,
@@ -7,11 +8,10 @@ from reporting.application.queries import (
     SalesSummary,
     TopProduct,
 )
-from shared.domain.money import Money
 
 
 class GetSalesSummaryUseCase:
-    def __init__(self, sales_query):
+    def __init__(self, sales_query: SalesQueryPort):
         self._query = sales_query
 
     def execute(self, date_from: date, date_to: date) -> SalesSummary:
@@ -19,7 +19,7 @@ class GetSalesSummaryUseCase:
 
 
 class GetTopProductsUseCase:
-    def __init__(self, sales_query):
+    def __init__(self, sales_query: SalesQueryPort):
         self._query = sales_query
 
     def execute(self, date_from: date, date_to: date, limit: int = 10) -> list[TopProduct]:
@@ -27,7 +27,7 @@ class GetTopProductsUseCase:
 
 
 class GetSalesByPaymentMethodUseCase:
-    def __init__(self, sales_query):
+    def __init__(self, sales_query: SalesQueryPort):
         self._query = sales_query
 
     def execute(self, date_from: date, date_to: date) -> list[SalesByPaymentMethod]:
@@ -35,7 +35,7 @@ class GetSalesByPaymentMethodUseCase:
 
 
 class GetDailySalesUseCase:
-    def __init__(self, sales_query):
+    def __init__(self, sales_query: SalesQueryPort):
         self._query = sales_query
 
     def execute(self, date_from: date, date_to: date) -> list[DailySales]:
@@ -43,7 +43,7 @@ class GetDailySalesUseCase:
 
 
 class GetCashierSalesUseCase:
-    def __init__(self, sales_query):
+    def __init__(self, sales_query: SalesQueryPort):
         self._query = sales_query
 
     def execute(self, date_from: date, date_to: date) -> list[CashierSales]:

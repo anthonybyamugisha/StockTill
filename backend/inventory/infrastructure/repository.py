@@ -1,8 +1,7 @@
+from decimal import Decimal
 from uuid import UUID
 
-from django.db.models import F, Sum
-
-from inventory.domain.entities import StockItem, StockMovement
+from inventory.domain.entities import MovementType, StockItem, StockMovement
 from inventory.domain.repository import StockItemRepository, StockMovementRepository
 from inventory.infrastructure.models import StockItemModel, StockMovementModel
 from shared.domain.money import Money
@@ -30,7 +29,9 @@ class DjangoStockMovementRepository(StockMovementRepository):
             return None
 
     def list_by_product(self, product_id: UUID) -> list[StockMovement]:
-        return [self._to_domain(m) for m in StockMovementModel.objects.filter(product_id=product_id)]
+        return [
+            self._to_domain(m) for m in StockMovementModel.objects.filter(product_id=product_id)
+        ]
 
     def list_all(
         self,
@@ -53,7 +54,7 @@ class DjangoStockMovementRepository(StockMovementRepository):
             id=m.id,
             product_id=m.product_id,
             quantity=m.quantity,
-            movement_type=m.movement_type,
+            movement_type=MovementType(m.movement_type),
             reason=m.reason,
             reference=m.reference,
             unit_cost=Money(m.unit_cost),
@@ -102,10 +103,11 @@ class DjangoStockItemRepository(StockItemRepository):
     def list_low_stock(self) -> list[StockItem]:
         from catalog.infrastructure.models import ProductModel
 
-        low_stock_ids = ProductModel.objects.filter(
-            minimum_stock_level__gt=0,
-        ).values_list("id", flat=True)
-
+        minimums = dict(
+            ProductModel.objects.filter(minimum_stock_level__gt=0).values_list(
+                "id", "minimum_stock_level"
+            )
+        )
         return [
             StockItem(
                 id=m.id,
@@ -113,10 +115,8 @@ class DjangoStockItemRepository(StockItemRepository):
                 quantity_on_hand=m.quantity_on_hand,
                 reserved_quantity=m.reserved_quantity,
             )
-            for m in StockItemModel.objects.filter(
-                product_id__in=low_stock_ids,
-                quantity_on_hand__lte=F("product__minimum_stock_level"),
-            )
+            for m in StockItemModel.objects.all()
+            if m.product_id in minimums and m.quantity_on_hand <= minimums[m.product_id]
         ]
 
     def list_out_of_stock(self) -> list[StockItem]:
@@ -130,21 +130,25 @@ class DjangoStockItemRepository(StockItemRepository):
             for m in StockItemModel.objects.filter(quantity_on_hand=0)
         ]
 
-    def get_valuation(self) -> dict:
+    def get_valuation(self) -> dict[str, object]:
         from catalog.infrastructure.models import ProductModel
 
-        items = StockItemModel.objects.select_related("product").all()
+        products = {p.id: p for p in ProductModel.objects.all()}
         total = Money.zero()
         by_product = []
-        for item in items:
-            product = item.product
-            value = product.buying_cost * item.quantity_on_hand
+        for item in StockItemModel.objects.all():
+            product = products.get(item.product_id)
+            if product is None:
+                continue
+            value = Money(product.buying_cost).multiply(Decimal(item.quantity_on_hand))
             total = total.add(value)
-            by_product.append({
-                "product_id": str(item.product_id),
-                "product_name": product.name,
-                "quantity": item.quantity_on_hand,
-                "unit_cost": str(product.buying_cost),
-                "value": str(value.amount),
-            })
+            by_product.append(
+                {
+                    "product_id": str(item.product_id),
+                    "product_name": product.name,
+                    "quantity": item.quantity_on_hand,
+                    "unit_cost": str(product.buying_cost),
+                    "value": str(value.amount),
+                }
+            )
         return {"total": str(total.amount), "by_product": by_product}

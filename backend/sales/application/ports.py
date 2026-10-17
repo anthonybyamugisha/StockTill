@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from shared.domain.money import Money
-
 
 class InventoryPort(ABC):
     @abstractmethod
@@ -20,7 +18,7 @@ class InventoryPort(ABC):
 
 class CatalogPort(ABC):
     @abstractmethod
-    def get_product(self, product_id: UUID) -> dict | None:
+    def get_product(self, product_id: UUID) -> dict[str, object] | None:
         pass
 
 

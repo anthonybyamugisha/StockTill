@@ -1,26 +1,26 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 from shared.domain.base import AggregateRoot, Entity
-from shared.domain.money import CENT, ZERO, Money
+from shared.domain.money import Money
 
 
-class DiscountType(str, Enum):
+class DiscountType(StrEnum):
     PERCENTAGE = "percentage"
     FIXED = "fixed"
 
 
-class PaymentMethod(str, Enum):
+class PaymentMethod(StrEnum):
     CASH = "cash"
     MOBILE_MONEY = "mobile_money"
     CARD = "card"
     BANK_TRANSFER = "bank_transfer"
 
 
-class SaleStatus(str, Enum):
+class SaleStatus(StrEnum):
     COMPLETED = "completed"
     PARTIALLY_REFUNDED = "partially_refunded"
     REFUNDED = "refunded"
@@ -100,6 +100,7 @@ class Sale(AggregateRoot):
     status: SaleStatus = SaleStatus.COMPLETED
     created_at: datetime | None = None
     notes: str = ""
+    idempotency_key: str | None = None
 
     @property
     def subtotal(self) -> Money:
@@ -137,7 +138,7 @@ class Sale(AggregateRoot):
         return self.total.subtract(self.cost_total)
 
     def refundable_quantity_for_line(self, line_id: UUID) -> int:
-        line = next((l for l in self.lines if l.id == line_id), None)
+        line = next((item for item in self.lines if item.id == line_id), None)
         if line is None:
             return 0
         already_refunded = sum(r.quantity for r in self.refunds if r.line_id == line_id)

@@ -1,9 +1,16 @@
-from inventory.application.commands import AdjustStockCommand, ReleaseStockCommand, ReserveStockCommand
+from uuid import UUID
+
+from inventory.application.commands import (
+    AdjustStockCommand,
+    ReleaseStockCommand,
+    ReserveStockCommand,
+)
 from inventory.application.ports import ProductInfoPort
 from inventory.domain.entities import MovementType, StockItem, StockMovement
 from inventory.domain.errors import InsufficientStockError
 from inventory.domain.repository import StockItemRepository, StockMovementRepository
 from shared.domain.clock import Clock
+from shared.domain.money import Money
 
 
 class AdjustStockUseCase:
@@ -26,7 +33,11 @@ class AdjustStockUseCase:
 
         qty = abs(command.quantity)
 
-        if command.movement_type in (MovementType.SALE, MovementType.ADJUSTMENT_OUT, MovementType.WRITE_OFF):
+        if command.movement_type in (
+            MovementType.SALE,
+            MovementType.ADJUSTMENT_OUT,
+            MovementType.WRITE_OFF,
+        ):
             if item.available_quantity < qty:
                 raise InsufficientStockError(
                     f"Insufficient stock for product {command.product_id}. "
@@ -42,7 +53,7 @@ class AdjustStockUseCase:
             movement_type=command.movement_type,
             reason=command.reason,
             reference=command.reference,
-            unit_cost=command.unit_cost,
+            unit_cost=command.unit_cost or Money.zero(),
             user_id=command.user_id,
             timestamp=self._clock.now(),
             notes=command.notes,
@@ -89,17 +100,25 @@ class ReleaseStockUseCase:
 
 
 class RebuildStockCacheUseCase:
-    def __init__(self, stock_item_repository: StockItemRepository, movement_repository: StockMovementRepository):
+    def __init__(
+        self,
+        stock_item_repository: StockItemRepository,
+        movement_repository: StockMovementRepository,
+    ):
         self._item_repo = stock_item_repository
         self._movement_repo = movement_repository
 
     def execute(self) -> int:
         movements = self._movement_repo.list_all()
-        items: dict = {}
+        items: dict[UUID, StockItem] = {}
         for m in movements:
             if m.product_id not in items:
                 items[m.product_id] = StockItem(product_id=m.product_id)
-            if m.movement_type in (MovementType.SALE, MovementType.ADJUSTMENT_OUT, MovementType.WRITE_OFF):
+            if m.movement_type in (
+                MovementType.SALE,
+                MovementType.ADJUSTMENT_OUT,
+                MovementType.WRITE_OFF,
+            ):
                 items[m.product_id].quantity_on_hand -= abs(m.quantity)
             else:
                 items[m.product_id].quantity_on_hand += abs(m.quantity)

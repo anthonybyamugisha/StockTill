@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from catalog.domain.entities import Category
 from shared.domain.money import Money
 
 
@@ -22,6 +21,7 @@ class CreateProductCommand:
 class UpdateProductCommand:
     product_id: UUID
     name: str | None = None
+    sku: str | None = None
     description: str | None = None
     barcode: str | None = None
     category_id: UUID | None = None

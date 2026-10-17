@@ -1,9 +1,11 @@
 from uuid import UUID
 
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.interfaces.api.permissions import IsManager
 from catalog.application.commands import (
     CreateCategoryCommand,
     CreateProductCommand,
@@ -31,6 +33,11 @@ from shared.domain.money import Money
 
 
 class ProductListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsManager()]
+        return [IsAuthenticated()]
+
     def get(self, request):
         repo = DjangoProductRepository()
         query = request.query_params.get("q", "")
@@ -38,9 +45,15 @@ class ProductListCreateView(APIView):
         active_only = request.query_params.get("active_only", "true").lower() == "true"
 
         if query:
-            products = repo.search(query, active_only=active_only, category_id=UUID(category_id) if category_id else None)
+            products = repo.search(
+                query,
+                active_only=active_only,
+                category_id=UUID(category_id) if category_id else None,
+            )
         else:
-            products = repo.list_products(active_only=active_only, category_id=UUID(category_id) if category_id else None)
+            products = repo.list_products(
+                active_only=active_only, category_id=UUID(category_id) if category_id else None
+            )
 
         return Response(ProductListSerializer(products, many=True).data)
 
@@ -69,6 +82,11 @@ class ProductListCreateView(APIView):
 
 
 class ProductDetailView(APIView):
+    def get_permissions(self):
+        if self.request.method in ("PATCH", "PUT", "DELETE"):
+            return [IsManager()]
+        return [IsAuthenticated()]
+
     def get(self, request, product_id):
         repo = DjangoProductRepository()
         product = repo.get_by_id(product_id)
@@ -86,6 +104,7 @@ class ProductDetailView(APIView):
                 UpdateProductCommand(
                     product_id=product_id,
                     name=data.get("name"),
+                    sku=data.get("sku"),
                     description=data.get("description"),
                     barcode=data.get("barcode"),
                     category_id=data.get("category_id"),
@@ -111,6 +130,11 @@ class ProductDetailView(APIView):
 
 
 class CategoryListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsManager()]
+        return [IsAuthenticated()]
+
     def get(self, request):
         use_case = ListCategoriesUseCase(DjangoCategoryRepository())
         categories = use_case.execute()

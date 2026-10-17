@@ -1,7 +1,7 @@
 from decimal import Decimal
 
-from shared.domain.money import ZERO, Money
-from sales.domain.entities import Discount, DiscountType, Payment, PaymentMethod, SaleLine
+from sales.domain.entities import Discount, DiscountType, Payment, PaymentMethod
+from shared.domain.money import Money
 
 
 def calculate_discount(
@@ -15,7 +15,7 @@ def calculate_discount(
         discount_amount = Money(value)
 
     discount_amount = min(discount_amount, line_total)
-    discount_amount = max(discount_amount, ZERO)
+    discount_amount = max(discount_amount, Money.zero())
 
     return Discount(type=discount_type, value=value, amount=discount_amount)
 

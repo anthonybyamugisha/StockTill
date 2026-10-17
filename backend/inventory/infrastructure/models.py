@@ -30,10 +30,9 @@ class StockItemModel(models.Model):
 
     class Meta:
         db_table = "inventory_stock_item"
-
-    constraints = [
-        models.CheckConstraint(
-            check=models.Q(quantity_on_hand__gte=0),
-            name="stock_non_negative",
-        ),
-    ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(quantity_on_hand__gte=0),
+                name="stock_non_negative",
+            ),
+        ]

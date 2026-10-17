@@ -1,5 +1,6 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from datetime import datetime, timedelta, timezone
 
 from accounts.application.use_cases import AuthenticateUserUseCase
 from accounts.domain.entities import Role, User
@@ -84,7 +85,9 @@ def test_authenticate_with_nonexistent_email():
 def test_authenticate_with_inactive_user():
     repo = FakeUserRepository()
     hasher = FakePasswordHasher()
-    user = User(email="inactive@shop.com", first_name="Inactive", last_name="User", role=Role.CASHIER)
+    user = User(
+        email="inactive@shop.com", first_name="Inactive", last_name="User", role=Role.CASHIER
+    )
     user.set_password("password123", hasher)
     user.is_active = False
     repo.save(user)
@@ -100,7 +103,7 @@ def test_authenticate_with_locked_account():
     hasher = FakePasswordHasher()
     user = User(email="locked@shop.com", first_name="Locked", last_name="User", role=Role.CASHIER)
     user.set_password("password123", hasher)
-    user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
+    user.locked_until = datetime.now(UTC) + timedelta(minutes=30)
     repo.save(user)
 
     use_case = AuthenticateUserUseCase(repo, hasher)

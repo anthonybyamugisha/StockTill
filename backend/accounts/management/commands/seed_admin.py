@@ -8,7 +8,7 @@ from accounts.infrastructure.models import UserModel
 class Command(BaseCommand):
     help = "Create or update the admin user from environment variables."
 
-    def handle(self, *args, **options):
+    def handle(self, *args: object, **options: object) -> None:
         email = os.environ.get("DJANGO_SUPERUSER_EMAIL", "admin@stocktill.com")
         password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
         if not password:

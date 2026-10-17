@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 class Clock(ABC):
@@ -10,4 +10,4 @@ class Clock(ABC):
 
 class SystemClock(Clock):
     def now(self) -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)

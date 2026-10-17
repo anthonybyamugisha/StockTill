@@ -2,8 +2,6 @@ from decimal import Decimal
 
 from sales.application.commands import (
     CompleteSaleCommand,
-    LineItem,
-    PaymentInput,
     RefundSaleCommand,
     VoidSaleCommand,
 )
@@ -47,7 +45,9 @@ class CompleteSaleUseCase:
         for item in command.lines:
             discount = None
             if item.discount_type and item.discount_value:
-                discount = calculate_discount(item.unit_price, item.quantity, item.discount_type, item.discount_value)
+                discount = calculate_discount(
+                    item.unit_price, item.quantity, item.discount_type, item.discount_value
+                )
             line = SaleLine(
                 product_id=item.product_id,
                 product_name=item.product_name,
@@ -65,11 +65,16 @@ class CompleteSaleUseCase:
             status=SaleStatus.COMPLETED,
             created_at=self._clock.now(),
             notes=command.notes,
+            idempotency_key=command.idempotency_key,
         )
 
         for payment_input in command.payments:
             change = calculate_change(
-                Payment(method=payment_input.method, amount=payment_input.amount, tendered=payment_input.tendered)
+                Payment(
+                    method=payment_input.method,
+                    amount=payment_input.amount,
+                    tendered=payment_input.tendered,
+                )
             )
             sale.payments.append(
                 Payment(
@@ -115,13 +120,21 @@ class RefundSaleUseCase:
         if sale.status == SaleStatus.REFUNDED:
             raise RefundExceedsRefundableError("Sale is already fully refunded")
 
-        refundable_qty = sale.refundable_quantity_for_line(command.line_id) if command.line_id else 1
+        refundable_qty = (
+            sale.refundable_quantity_for_line(command.line_id) if command.line_id else 1
+        )
         if command.quantity > refundable_qty:
             raise RefundExceedsRefundableError(
                 f"Refund quantity {command.quantity} exceeds refundable {refundable_qty}"
             )
 
-        line = next((l for l in sale.lines if l.id == command.line_id), None) if command.line_id else sale.lines[0]
+        line = (
+            next((item for item in sale.lines if item.id == command.line_id), None)
+            if command.line_id
+            else sale.lines[0]
+        )
+        if line is None:
+            raise ValueError("Sale line not found")
         refund_amount = line.unit_price.multiply(Decimal(command.quantity))
 
         if refund_amount > sale.refundable_amount:

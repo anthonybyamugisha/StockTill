@@ -1,7 +1,15 @@
-from decimal import Decimal
 from uuid import UUID
 
-from sales.domain.entities import Discount, DiscountType, Payment, PaymentMethod, Refund, Sale, SaleLine, SaleStatus
+from sales.domain.entities import (
+    Discount,
+    DiscountType,
+    Payment,
+    PaymentMethod,
+    Refund,
+    Sale,
+    SaleLine,
+    SaleStatus,
+)
 from sales.domain.repository import RefundRepository, SaleRepository
 from sales.infrastructure.models import PaymentModel, RefundModel, SaleLineModel, SaleModel
 from shared.domain.money import Money
@@ -44,7 +52,7 @@ class DjangoSaleRepository(SaleRepository):
                 "total_discount": sale.total_discount.amount,
                 "total": sale.total.amount,
                 "notes": sale.notes,
-                "idempotency_key": getattr(sale, "idempotency_key", None),
+                "idempotency_key": sale.idempotency_key,
             },
         )
         SaleLineModel.objects.filter(sale=m).delete()
@@ -115,7 +123,9 @@ class DjangoSaleRepository(SaleRepository):
                     type=DiscountType(ln.discount_type),
                     value=ln.discount_value,
                     amount=Money(ln.discount_amount),
-                ) if ln.discount_type else None,
+                )
+                if ln.discount_type
+                else None,
             )
             for ln in m.lines.all()
         ]
@@ -155,6 +165,7 @@ class DjangoSaleRepository(SaleRepository):
             status=SaleStatus(m.status),
             created_at=m.created_at,
             notes=m.notes,
+            idempotency_key=m.idempotency_key,
         )
 
 

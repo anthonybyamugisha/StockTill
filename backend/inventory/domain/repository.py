@@ -50,5 +50,5 @@ class StockItemRepository(ABC):
         pass
 
     @abstractmethod
-    def get_valuation(self) -> dict:
+    def get_valuation(self) -> dict[str, object]:
         pass

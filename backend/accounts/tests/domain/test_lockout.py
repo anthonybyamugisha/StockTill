@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from accounts.domain.entities import Role, User
 
@@ -18,7 +18,7 @@ def test_account_unlocks_after_lock_duration():
     for _ in range(4):
         user.register_failed_login(max_attempts=5)
     assert user.is_locked() is True
-    user.locked_until = datetime.now(timezone.utc) - timedelta(minutes=1)
+    user.locked_until = datetime.now(UTC) - timedelta(minutes=1)
     assert user.is_locked() is False
 
 

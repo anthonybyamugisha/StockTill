@@ -4,8 +4,13 @@ from catalog.infrastructure.models import ProductModel
 from inventory.application.commands import AdjustStockCommand
 from inventory.application.use_cases import AdjustStockUseCase
 from inventory.domain.entities import MovementType
-from inventory.infrastructure.repository import DjangoStockItemRepository, DjangoStockMovementRepository
+from inventory.infrastructure.adapters import CatalogProductInfoAdapter
+from inventory.infrastructure.repository import (
+    DjangoStockItemRepository,
+    DjangoStockMovementRepository,
+)
 from sales.application.ports import CatalogPort, InventoryPort
+from shared.domain.clock import SystemClock
 
 
 class InventoryAdapter(InventoryPort):
@@ -13,8 +18,8 @@ class InventoryAdapter(InventoryPort):
         self._use_case = AdjustStockUseCase(
             DjangoStockItemRepository(),
             DjangoStockMovementRepository(),
-            None,
-            None,
+            CatalogProductInfoAdapter(),
+            SystemClock(),
         )
 
     def deduct_stock(self, product_id: UUID, quantity: int, reference: str) -> None:

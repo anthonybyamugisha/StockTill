@@ -1,14 +1,17 @@
-from uuid import UUID
-
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.interfaces.api.permissions import IsAdmin, IsManager
 from inventory.application.commands import AdjustStockCommand
 from inventory.application.use_cases import AdjustStockUseCase, RebuildStockCacheUseCase
 from inventory.domain.entities import MovementType
 from inventory.infrastructure.adapters import CatalogProductInfoAdapter
-from inventory.infrastructure.repository import DjangoStockItemRepository, DjangoStockMovementRepository
+from inventory.infrastructure.repository import (
+    DjangoStockItemRepository,
+    DjangoStockMovementRepository,
+)
 from inventory.interfaces.api.serializers import (
     StockAdjustmentSerializer,
     StockItemSerializer,
@@ -20,6 +23,8 @@ from shared.domain.money import Money
 
 
 class StockAdjustmentView(APIView):
+    permission_classes = [IsManager]
+
     def post(self, request):
         serializer = StockAdjustmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -49,6 +54,8 @@ class StockAdjustmentView(APIView):
 
 
 class StockItemDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, product_id):
         repo = DjangoStockItemRepository()
         item = repo.get_by_product(product_id)
@@ -58,6 +65,8 @@ class StockItemDetailView(APIView):
 
 
 class StockHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, product_id):
         repo = DjangoStockMovementRepository()
         movements = repo.list_by_product(product_id)
@@ -65,6 +74,8 @@ class StockHistoryView(APIView):
 
 
 class LowStockView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         repo = DjangoStockItemRepository()
         items = repo.list_low_stock()
@@ -72,6 +83,8 @@ class LowStockView(APIView):
 
 
 class OutOfStockView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         repo = DjangoStockItemRepository()
         items = repo.list_out_of_stock()
@@ -79,6 +92,8 @@ class OutOfStockView(APIView):
 
 
 class InventoryValuationView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         repo = DjangoStockItemRepository()
         valuation = repo.get_valuation()
@@ -86,6 +101,8 @@ class InventoryValuationView(APIView):
 
 
 class RebuildStockCacheView(APIView):
+    permission_classes = [IsAdmin]
+
     def post(self, request):
         use_case = RebuildStockCacheUseCase(
             DjangoStockItemRepository(), DjangoStockMovementRepository()

@@ -1,9 +1,14 @@
-from django.contrib.auth import login as django_login, logout as django_logout
+from django.contrib.auth import login as django_login
+from django.contrib.auth import logout as django_logout
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.application.commands import CreateUserCommand, DeactivateUserCommand, UpdateUserCommand
+from accounts.application.commands import (
+    CreateUserCommand,
+    DeactivateUserCommand,
+    UpdateUserCommand,
+)
 from accounts.application.use_cases import (
     AuthenticateUserUseCase,
     CreateUserUseCase,
@@ -13,12 +18,12 @@ from accounts.application.use_cases import (
 from accounts.domain.entities import Role
 from accounts.infrastructure.password_hasher import DjangoPasswordHasher
 from accounts.infrastructure.repository import DjangoUserRepository
+from accounts.interfaces.api.permissions import IsAdmin
 from accounts.interfaces.api.serializers import (
     CreateUserSerializer,
     LoginSerializer,
     UserSerializer,
 )
-from accounts.interfaces.api.permissions import IsAdmin
 
 
 class UserListCreateView(APIView):
@@ -110,12 +115,16 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
+    permission_classes = []
+
     def post(self, request):
         django_logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CurrentUserView(APIView):
+    permission_classes = []
+
     def get(self, request):
         if not request.user.is_authenticated:
             return Response({"detail": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -126,20 +135,21 @@ class AuditLogView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        from shared.infrastructure.audit import AuditEntry
         from accounts.infrastructure.models import AuditLogModel
 
         entries = AuditLogModel.objects.all().order_by("-timestamp")[:100]
-        return Response([
-            {
-                "id": str(e.id),
-                "user_id": str(e.user_id) if e.user_id else None,
-                "action": e.action,
-                "entity_type": e.entity_type,
-                "entity_id": e.entity_id,
-                "before": e.before,
-                "after": e.after,
-                "timestamp": e.timestamp.isoformat(),
-            }
-            for e in entries
-        ])
+        return Response(
+            [
+                {
+                    "id": str(e.id),
+                    "user_id": str(e.user_id) if e.user_id else None,
+                    "action": e.action,
+                    "entity_type": e.entity_type,
+                    "entity_id": e.entity_id,
+                    "before": e.before,
+                    "after": e.after,
+                    "timestamp": e.timestamp.isoformat(),
+                }
+                for e in entries
+            ]
+        )

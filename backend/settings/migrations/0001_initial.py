@@ -4,31 +4,37 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='BusinessSettingsModel',
+            name="BusinessSettingsModel",
             fields=[
-                ('key', models.CharField(default='main', max_length=50, primary_key=True, serialize=False)),
-                ('business_name', models.CharField(default='', max_length=200)),
-                ('address', models.TextField(blank=True, default='')),
-                ('phone', models.CharField(blank=True, default='', max_length=50)),
-                ('email', models.EmailField(blank=True, default='', max_length=254)),
-                ('currency', models.CharField(default='UGX', max_length=3)),
-                ('receipt_header', models.TextField(blank=True, default='')),
-                ('receipt_footer', models.TextField(blank=True, default='')),
-                ('cashier_discount_limit', models.DecimalField(decimal_places=2, default=0, max_digits=5)),
-                ('tax_rate', models.DecimalField(decimal_places=2, default=0, max_digits=5)),
-                ('logo_url', models.URLField(blank=True, null=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                (
+                    "key",
+                    models.CharField(
+                        default="main", max_length=50, primary_key=True, serialize=False
+                    ),
+                ),
+                ("business_name", models.CharField(default="", max_length=200)),
+                ("address", models.TextField(blank=True, default="")),
+                ("phone", models.CharField(blank=True, default="", max_length=50)),
+                ("email", models.EmailField(blank=True, default="", max_length=254)),
+                ("currency", models.CharField(default="UGX", max_length=3)),
+                ("receipt_header", models.TextField(blank=True, default="")),
+                ("receipt_footer", models.TextField(blank=True, default="")),
+                (
+                    "cashier_discount_limit",
+                    models.DecimalField(decimal_places=2, default=0, max_digits=5),
+                ),
+                ("tax_rate", models.DecimalField(decimal_places=2, default=0, max_digits=5)),
+                ("logo_url", models.URLField(blank=True, null=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'db_table': 'settings_business',
+                "db_table": "settings_business",
             },
         ),
     ]
