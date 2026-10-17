@@ -35,5 +35,5 @@ export async function updateUser(
 }
 
 export async function deactivateUser(id: string): Promise<void> {
-  await apiClient.post(`/accounts/users/${id}/deactivate/`);
+  await apiClient.delete(`/accounts/users/${id}/`);
 }

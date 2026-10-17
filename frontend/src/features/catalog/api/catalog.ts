@@ -30,5 +30,5 @@ export async function updateProduct(id: string, data: Partial<Product>): Promise
 }
 
 export async function deactivateProduct(id: string): Promise<void> {
-  await apiClient.post(`/catalog/products/${id}/deactivate/`);
+  await apiClient.delete(`/catalog/products/${id}/`);
 }

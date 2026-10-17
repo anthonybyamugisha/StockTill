@@ -54,6 +54,6 @@ export async function completeSale(data: CompleteSaleRequest): Promise<Sale> {
 }
 
 export async function searchProducts(query: string) {
-  const res = await apiClient.get('/catalog/products/search/', { params: { q: query } });
+  const res = await apiClient.get('/catalog/products/', { params: { q: query } });
   return res.data;
 }

@@ -1,19 +1,38 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Input } from '../../../shared/ui/Input';
+import { BusinessSettings, getSettings, updateSettings } from '../api/settings';
+
+const defaults: BusinessSettings = {
+  business_name: '',
+  address: '',
+  phone: '',
+  email: '',
+  currency: 'UGX',
+  receipt_header: '',
+  receipt_footer: '',
+  cashier_discount_limit: '0',
+  tax_rate: '0',
+  logo_url: null,
+};
 
 export function SettingsPage() {
-  const [form, setForm] = useState({
-    business_name: 'StockTill Shop',
-    address: '123 Main Street, Kampala',
-    phone: '+256 700 000 000',
-    email: 'info@stocktill.com',
-    currency: 'UGX',
-    receipt_header: 'Thank you for shopping with us!',
-    receipt_footer: 'Returns accepted within 7 days with receipt',
-    cashier_discount_limit: '10',
-    tax_rate: '0',
+  const queryClient = useQueryClient();
+  const { data } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const [form, setForm] = useState<BusinessSettings>(defaults);
+
+  useEffect(() => {
+    if (data) setForm(data);
+  }, [data]);
+
+  const mutation = useMutation({
+    mutationFn: updateSettings,
+    onSuccess: (saved) => {
+      setForm(saved);
+      queryClient.setQueryData(['settings'], saved);
+    },
   });
 
   return (
@@ -44,8 +63,15 @@ export function SettingsPage() {
         </div>
       </Card>
 
-      <div className="flex justify-end">
-        <Button>Save Settings</Button>
+      {mutation.isError && (
+        <p className="text-sm text-error">{(mutation.error as Error).message}</p>
+      )}
+
+      <div className="flex items-center justify-end gap-3">
+        {mutation.isSuccess && <span className="text-sm text-success">Saved</span>}
+        <Button onClick={() => mutation.mutate(form)} disabled={mutation.isPending}>
+          {mutation.isPending ? 'Saving...' : 'Save Settings'}
+        </Button>
       </div>
     </div>
   );
