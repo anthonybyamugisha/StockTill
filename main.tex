@@ -354,11 +354,13 @@ recompute the cache from the ledger at any time. A database constraint prevents 
 
 4. Sales / POS interface &
 Cashier screen with an on-screen catalogue grid that lists every available product as a tappable
-tile (with category filters) so nothing has to be memorised, backed by live product search (by name,
-SKU or barcode), add-to-cart, barcode scanning (USB/Bluetooth scanner, device camera, or manual
-entry), quantity change, item removal, per-line discounts (percentage or fixed), live subtotal and
-total, single or \textbf{split payments}, cash tendered/change calculation, and receipt generation.
-Payment methods: \textbf{cash, mobile money, card, bank transfer}. \\[2pt]
+tile showing its price and remaining stock (sold-out tiles are dimmed and disabled) with category
+filters, so nothing has to be memorised, backed by live product search (by name, SKU or barcode),
+add-to-cart, barcode scanning (USB/Bluetooth scanner, device camera, or manual entry), quantity
+change, item removal, per-line discounts (percentage or fixed), live subtotal and total, single or
+\textbf{split payments}, and receipt generation. The cashier payment screen is deliberately
+cash-first --- it shows the amount due, the cash tendered and the change to give --- while the
+domain and API accept \textbf{cash, mobile money, card and bank transfer}. \\[2pt]
 
 6. Sales management &
 List and search sales; filter by date range, cashier, payment method, status and receipt number;
@@ -946,6 +948,11 @@ explicitly:
 \texttt{opening}, \texttt{purchase}, \texttt{sale}, \texttt{refund\_return},
 \texttt{adjustment\_in}, \texttt{adjustment\_out}, \texttt{write\_off}.
 \end{center}
+
+The \texttt{opening} type is written when a product is first created with an opening quantity: the
+catalog context defines an \texttt{OpeningStockPort}, and a catalog adapter invokes the inventory use
+case so that even a brand-new product's stock enters the ledger as a normal movement rather than a
+special case.
 
 A \texttt{StockItem} holds the cached \texttt{quantity\_on\_hand} and \texttt{reserved\_quantity}
 for fast reads, with $\text{available} = \text{quantity\_on\_hand} - \text{reserved\_quantity}$. The
@@ -1775,23 +1782,28 @@ the POS link --- one click away from anywhere.
 
 The POS screen is built around a single question: how few actions does one sale take? A cashier never
 has to remember a barcode or a product name: the entire active catalogue is presented on screen as a
-grid of large, tappable tiles showing each product's name and price, narrowable with category chips
-and a search box, so the common case is a single tap. For speed there are two further input paths. A
+grid of large, tappable tiles showing each product's name, price and remaining stock --- a sold-out
+product is dimmed and cannot be tapped, so the cashier sees what is sellable at a glance ---
+narrowable with category chips and a search box, so the common case is a single tap. For speed there
+are two further input paths. A
 product is found by typing into a type-ahead search (matching name, SKU or barcode) or by scanning; the item
 drops into a running cart; quantity and per-line discount are adjustable inline; and a single
 \emph{charge} action opens the payment modal. The barcode path is the fastest: a USB or Bluetooth
 scanner behaves as a keyboard, and a small framework-free \emph{scanner-burst detector} distinguishes
 the rapid keystrokes of a scanner from the slower cadence of human typing, so a scan resolves the
 product without the cashier touching the keyboard layout. A device camera is also supported through
-the browser's \texttt{BarcodeDetector} API for hardware-free scanning. The payment modal accepts one
-or several payments (split), computes change for cash, and confirms the sale; the receipt number is
-returned by the server so it is authoritative.
+the browser's \texttt{BarcodeDetector} API for hardware-free scanning. The payment modal is
+cash-first: it shows the amount due, the cash tendered and the change to return, and confirms the
+sale (the domain still accepts split payments across several methods); the receipt number is returned
+by the server so it is authoritative.
 
 \subsection{Back-office screens}
 
 Each back-office screen follows the same shape --- a filter or search bar, a table or card list, and a
 primary action --- which lowers the cost of learning a new screen. \emph{Products} manages the
-catalogue and categories; \emph{Inventory} shows on-hand quantities with low/out-of-stock badges and
+catalogue and categories and lets you record opening stock when a product is created, so a new item
+is immediately sellable and already appears in the POS grid; \emph{Inventory} shows on-hand
+quantities with low/out-of-stock badges and
 offers adjustments and history; \emph{Sales} lists transactions with date, cashier, payment-method,
 status and receipt filters and offers refund and void actions to permitted roles; \emph{Purchasing}
 manages suppliers and purchase orders and drives the order/receive/cancel transitions;
