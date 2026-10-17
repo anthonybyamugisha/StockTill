@@ -12,11 +12,15 @@ SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR.parent / "frontend" / "dist"]
 
-sentry_sdk.init(
-    dsn=os.environ.get("SENTRY_DSN", ""),
-    integrations=[DjangoIntegration()],
-    traces_sample_rate=0.1,
-)
+MIDDLEWARE.insert(0, "whitenoise.middleware.WhiteNoiseMiddleware")
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+ALLOWED_HOSTS = [".onrender.com", "localhost"]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://stocktill.onrender.com",
+]
