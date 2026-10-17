@@ -11,6 +11,8 @@ import { Select } from '../../../shared/ui/Select';
 import { formatDateTime } from '../../../shared/utils/date';
 import { Receipt } from '../../../shared/ui/Receipt';
 import { getSettings } from '../../settings/api/settings';
+import { toast } from '../../../shared/ui/toast';
+import { getApiErrorMessage } from '../../../shared/http/errors';
 
 export function SalesPage() {
   const queryClient = useQueryClient();
@@ -33,15 +35,19 @@ export function SalesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       setShowDetail(null);
+      toast.success(`Refund recorded for ${showDetail?.receipt_number ?? 'the sale'}`);
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not record the refund')),
   });
 
   const voidMutation = useMutation({
     mutationFn: voidSale,
-    onSuccess: () => {
+    onSuccess: (sale) => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       setShowDetail(null);
+      toast.success(`Sale ${sale.receipt_number} voided — stock restored`);
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not void the sale')),
   });
 
   const statusColors: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
