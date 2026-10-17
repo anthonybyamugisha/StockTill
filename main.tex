@@ -250,19 +250,21 @@ ordered orders can be cancelled. \\[2pt]
 
 \paragraph{Explicitly noted as bonus / not yet implemented.} The specification lists suppliers,
 purchase orders and stock receiving as bonus features; these \emph{are} implemented
-(Section~\ref{sec:features}, rows~9--10, and \texttt{docs/purchasing.md}). PDF export is planned but
+(Section~\ref{sec:features}, rows~9--10). PDF export is planned but
 only CSV export is currently available. These are recorded in Section~\ref{sec:limitations}.
 
 \paragraph{Barcode scanning.} The POS accepts barcodes from a USB or Bluetooth keyboard-wedge
 scanner, from a device camera (through the browser's \texttt{BarcodeDetector} API), or by typing a
 barcode and pressing Enter. A hardware scanner is entirely optional: any standard model works with
 no configuration, and scanning resolves the code to a single active product through a dedicated
-lookup endpoint. Full instructions are in \texttt{docs/barcode-scanning.md}.
+lookup endpoint. The scanner-burst detector is a small, framework-free module, so the heuristic that
+separates a scanner from human typing is unit-tested independently of the interface.
 
 \paragraph{Offline selling and installable app.} The frontend is an installable Progressive Web
 App and keeps selling when the network drops: a completed sale that cannot reach the server is
 queued on the device (keyed by its idempotency key) and replayed automatically when connectivity
-returns, with an on-screen offline banner. This is described in \texttt{docs/offline-and-pwa.md}.
+returns, with an on-screen offline banner. API reads are deliberately never cached --- prices and stock
+must be truthful --- and de-duplication on the idempotency key makes the replay safe.
 
 % ===========================================================================
 \section{System Architecture}
@@ -281,14 +283,67 @@ The design follows three organising principles:
 \begin{enumerate}[leftmargin=1.4em]
   \item \textbf{Domain-Driven Design.} We model the business explicitly --- entities, aggregates,
   value objects, domain events, domain services, and repositories --- and we use the \emph{ubiquitous
-  language} of retail (sale, line, payment, refund, void, stock movement, valuation) consistently in
-  code, tests and documentation (\texttt{docs/domain.md}).
+  language} of retail (sale, line, payment, refund, void, stock movement, valuation, shift,
+  purchase order) consistently in code, tests and documentation (see the glossary in
+  Appendix~\ref{app:glossary}).
   \item \textbf{Clean Architecture.} Each context is split into \emph{Domain}, \emph{Application},
   \emph{Infrastructure}, and \emph{Interfaces} layers. Dependencies point strictly inward: the domain
   knows nothing about Django, HTTP, or the database.
   \item \textbf{Dependency inversion.} Cross-context and infrastructure dependencies are expressed
   as abstract \emph{ports} in the inner layers and satisfied by \emph{adapters} in the outer layers.
 \end{enumerate}
+
+\subsection{Why DDD, Clean Architecture and TDD --- and not the framework alone}
+
+A recurring question for a Django project is why we did not simply put the rules on the models, let the
+ORM and DRF carry the workflow, and be done. The answer is that a framework solves \emph{delivery}
+problems --- routing requests, mapping rows to objects, rendering screens --- but it does not decide
+what the business is allowed to do. The rules that earn a shop money are precisely the ones a POS must
+protect: a sale cannot be completed unless payments cover the total; stock can never go negative; the
+expected drawer balance is the float plus cash sales minus refunds plus or minus manual movements; a
+purchase order may be received only once. That protected logic \emph{is} the asset, and we deliberately
+refuse to bury it inside a framework.
+
+StockTill therefore inverts the usual dependency: \textbf{the framework depends on the domain}, not the
+other way round. Concretely:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{DDD --- we model the business, not the tables.} Invariants live on aggregates:
+  \texttt{Sale.total}, \texttt{Sale.refundable\_quantity\_for\_line()} and \texttt{Shift.expected\_cash()}
+  are methods on pure-Python entities, so the API, the reports and the tests agree because they call the
+  same method. The ubiquitous language is shared by code, tests, the interface and this report.
+  \item \textbf{Clean Architecture --- the domain is framework-free.} Django, DRF and the ORM live only
+  in the outer \emph{infrastructure} and \emph{interfaces} layers. The dependency rule points strictly
+  inward and is \emph{enforced by machine} (import-linter), so it cannot erode under deadline pressure.
+  \item \textbf{TDD --- proof rather than hope.} Business rules are specified with fast, database-free
+  unit tests before they are implemented, while the framework wiring (permissions, serialisation,
+  idempotent replay, stock receiving) is proven separately at the API edge.
+\end{itemize}
+
+The payoff is concrete. The domain can be reasoned about without Django: the sale and shift entities
+are covered by unit tests that never start a database, and the cross-context boundaries are enforced by
+tooling rather than by code review.
+
+\begin{table}[htbp]\centering
+\small
+\caption{Framework-first versus framework-at-the-edges.}
+\begin{tabular}{@{}p{0.24\textwidth}p{0.34\textwidth}p{0.36\textwidth}@{}}
+\toprule
+\textbf{Concern} & \textbf{Framework-first} & \textbf{StockTill} \\
+\midrule
+Where business rules live & ORM models, serializers, views & Domain entities and aggregates \\
+How rules are tested & Through the database and HTTP & Fast unit tests, no DB and no HTTP \\
+How contexts relate & Direct model imports & Ports and adapters, verified by the linter \\
+Cost of changing the database & Rewriting business rules & Swapping infrastructure only \\
+Where the invariants live & Implicit, scattered & Explicit on the aggregate \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+This is the sense in which StockTill uses the framework \emph{without} relying on it: the part of the
+system that encodes the business is independent, testable and durable, while Django and React remain
+replaceable details on the outside.
 
 \subsection{Bounded contexts}
 
@@ -446,11 +501,20 @@ are whitelisted in the import-linter contract.
 
 \subsection{Architecture Decision Records}
 
-Design decisions are recorded as ADRs in \texttt{docs/adr/}:
-\textbf{ADR-0001} (modular monolith) and \textbf{ADR-0002} (append-only stock ledger). ADR-0002 records
-the decision that all stock changes are immutable \texttt{StockMovement} rows, with the current
-on-hand quantity derived from the ledger and cached in \texttt{StockItem} for read performance; the
-cache can always be rebuilt from the ledger.
+Two decisions were made early and drive much of the design.
+
+\textbf{ADR-0001 --- Modular monolith.} Rather than microservices, StockTill is a single deployable
+unit with explicitly bounded contexts that communicate through ports and adapters. This keeps the
+strong internal boundaries without the operational cost of distributed systems (service discovery,
+networking, distributed transactions) and leaves each context independently extractable should it
+ever need to scale on its own.
+
+\textbf{ADR-0002 --- Append-only stock ledger.} Every stock change is an immutable
+\texttt{StockMovement} row; the current on-hand quantity is derived from the ledger and cached in
+\texttt{StockItem} for read performance. This gives a complete audit trail of who changed what and
+when, allows the cache to be rebuilt from the ledger at any time, and lets a database constraint make
+negative stock impossible. The cost is a few more writes; the benefit is a stock figure that can
+always be explained.
 
 \subsection{Frontend architecture}
 
