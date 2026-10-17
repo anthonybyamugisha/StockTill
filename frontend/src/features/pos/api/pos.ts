@@ -44,24 +44,40 @@ export interface CompleteSaleRequest {
   idempotency_key: string;
 }
 
+export interface SaleLine {
+  id: string;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: string;
+  unit_cost: string;
+  discount_type: string | null;
+  discount_value: string | null;
+  discount_amount: string;
+  total: string;
+}
+
+export interface SalePayment {
+  id: string;
+  method: string;
+  amount: string;
+  tendered: string | null;
+  change: string | null;
+  reference: string | null;
+  provider: string | null;
+}
+
 export interface Sale {
   id: string;
   receipt_number: string;
+  cashier_id: string;
   status: string;
-  lines: Array<{
-    id: string;
-    product_id: string;
-    product_name: string;
-    quantity: number;
-    unit_price: string;
-  }>;
-  payments: Array<{
-    method: string;
-    amount: string;
-  }>;
+  lines: SaleLine[];
+  payments: SalePayment[];
   subtotal: string;
   total_discount: string;
   total: string;
+  amount_paid: string;
   created_at: string;
 }
 

@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { completeSale, CompleteSaleRequest, PaymentInput, CartItem } from '../api/pos';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { completeSale, CompleteSaleRequest, PaymentInput, CartItem, Sale } from '../api/pos';
 import { queueSale } from '../offline/saleQueue';
 import { isNetworkError } from '../offline/networkError';
 import { getApiErrorMessage } from '../../../shared/http/errors';
 import { formatMoney } from '../../../shared/utils/money';
 import { Modal } from '../../../shared/ui/Modal';
 import { Button } from '../../../shared/ui/Button';
+import { Receipt } from '../../../shared/ui/Receipt';
+import { useAuth } from '../../auth/hooks/useAuth';
+import { getSettings } from '../../settings/api/settings';
 
 const paymentSchema = z.object({
   tendered: z.string().optional(),
@@ -20,6 +23,7 @@ type PaymentFormData = z.infer<typeof paymentSchema>;
 interface PaymentResult {
   receipt_number: string;
   queued: boolean;
+  sale: Sale | null;
 }
 
 interface PaymentModalProps {
@@ -37,6 +41,9 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
   });
   const queryClient = useQueryClient();
   const [result, setResult] = useState<PaymentResult | null>(null);
+  const { user } = useAuth();
+  const cashierName = user ? `${user.first_name} ${user.last_name}`.trim() : '';
+  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
 
   const tenderedInput = watch('tendered') ?? '';
   const tenderedValue = parseFloat(tenderedInput);
@@ -63,11 +70,11 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
 
       try {
         const sale = await completeSale(payload);
-        return { receipt_number: sale.receipt_number, queued: false };
+        return { receipt_number: sale.receipt_number, queued: false, sale };
       } catch (error) {
         if (isNetworkError(error)) {
           queueSale(payload);
-          return { receipt_number: 'PENDING', queued: true };
+          return { receipt_number: 'PENDING', queued: true, sale: null };
         }
         throw error;
       }
@@ -80,8 +87,22 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
 
   if (result) {
     return (
-      <Modal isOpen={isOpen} onClose={onComplete} title={result.queued ? 'Sale Saved Offline' : 'Sale Complete'}>
-        <div className="text-center py-8">
+      <Modal
+        isOpen={isOpen}
+        onClose={onComplete}
+        title={result.queued ? 'Sale Saved Offline' : 'Sale Complete'}
+        footer={
+          result.queued ? (
+            <Button onClick={onComplete}>New Sale</Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={onComplete}>New Sale</Button>
+              <Button onClick={() => window.print()}>Print Receipt</Button>
+            </>
+          )
+        }
+      >
+        <div className="py-2 text-center">
           <div
             className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
               result.queued ? 'bg-amber-100' : 'bg-green-100'
@@ -106,10 +127,20 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
               </p>
             </>
           ) : (
-            <p className="text-lg font-semibold text-surface-600">Receipt: {result.receipt_number}</p>
+            <>
+              <p className="text-lg font-semibold text-surface-600">Receipt: {result.receipt_number}</p>
+              <p className="mt-1 text-sm text-surface-400">
+                Print the receipt for the customer, then start the next sale.
+              </p>
+            </>
           )}
-          <Button onClick={onComplete} className="mt-4">New Sale</Button>
         </div>
+
+        {!result.queued && result.sale && (
+          <div className="mt-4 flex justify-center border-t border-surface-100 pt-4">
+            <Receipt sale={result.sale} business={settings} cashierName={cashierName} />
+          </div>
+        )}
       </Modal>
     );
   }
