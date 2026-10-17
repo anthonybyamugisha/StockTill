@@ -1,5 +1,7 @@
 from uuid import UUID
 
+from django.db.models import Q
+
 from catalog.domain.entities import Category, Product
 from catalog.domain.repository import CategoryRepository, ProductRepository
 from catalog.infrastructure.models import CategoryModel, ProductModel
@@ -35,7 +37,9 @@ class DjangoProductRepository(ProductRepository):
         active_only: bool = True,
         category_id: UUID | None = None,
     ) -> list[Product]:
-        qs = ProductModel.objects.filter(name__icontains=query)
+        qs = ProductModel.objects.filter(
+            Q(name__icontains=query) | Q(sku__icontains=query) | Q(barcode__icontains=query)
+        )
         if active_only:
             qs = qs.filter(is_active=True)
         if category_id:
