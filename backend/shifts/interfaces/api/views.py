@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 
 from shared.domain.clock import SystemClock
 from shared.domain.money import Money
+from shared.infrastructure.audit import build_audit_recorder
 from shifts.application.commands import (
     CloseShiftCommand,
     OpenShiftCommand,
@@ -65,7 +66,7 @@ class OpenShiftView(APIView):
         serializer = OpenShiftSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        use_case = OpenShiftUseCase(DjangoShiftRepository(), SystemClock())
+        use_case = OpenShiftUseCase(DjangoShiftRepository(), SystemClock(), build_audit_recorder())
         try:
             shift = use_case.execute(
                 OpenShiftCommand(
@@ -91,6 +92,7 @@ class CloseShiftView(APIView):
             DjangoCashMovementRepository(),
             SalesSummaryAdapter(),
             SystemClock(),
+            build_audit_recorder(),
         )
         try:
             shift, totals = use_case.execute(
@@ -128,7 +130,10 @@ class CashMovementView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         use_case = RecordCashMovementUseCase(
-            DjangoShiftRepository(), DjangoCashMovementRepository(), SystemClock()
+            DjangoShiftRepository(),
+            DjangoCashMovementRepository(),
+            SystemClock(),
+            build_audit_recorder(),
         )
         try:
             movement = use_case.execute(

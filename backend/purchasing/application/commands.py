@@ -11,6 +11,7 @@ class CreateSupplierCommand:
     email: str = ""
     phone: str = ""
     address: str = ""
+    actor_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,7 @@ class UpdateSupplierCommand:
     email: str = ""
     phone: str = ""
     address: str = ""
+    actor_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,7 @@ class CreatePurchaseOrderCommand:
     lines: list[PurchaseOrderLineInput] = field(default_factory=list)
     reference: str = ""
     notes: str = ""
+    actor_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -49,3 +52,4 @@ class ReceivePurchaseOrderCommand:
 class CancelPurchaseOrderCommand:
     purchase_order_id: UUID
     reason: str = ""
+    actor_id: UUID | None = None

@@ -38,6 +38,11 @@ from purchasing.interfaces.api.serializers import (
 )
 from shared.domain.clock import SystemClock
 from shared.domain.money import Money
+from shared.infrastructure.audit import build_audit_recorder
+
+
+def _actor_id(request):
+    return request.user.id if request.user.is_authenticated else None
 
 
 def _error(error: Exception) -> Response:
@@ -60,13 +65,16 @@ class SupplierListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         try:
-            supplier = CreateSupplierUseCase(DjangoSupplierRepository(), SystemClock()).execute(
+            supplier = CreateSupplierUseCase(
+                DjangoSupplierRepository(), SystemClock(), build_audit_recorder()
+            ).execute(
                 CreateSupplierCommand(
                     name=data["name"],
                     contact_name=data["contact_name"],
                     email=data["email"],
                     phone=data["phone"],
                     address=data["address"],
+                    actor_id=_actor_id(request),
                 )
             )
         except Exception as error:
@@ -89,7 +97,9 @@ class SupplierDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         try:
-            supplier = UpdateSupplierUseCase(DjangoSupplierRepository()).execute(
+            supplier = UpdateSupplierUseCase(
+                DjangoSupplierRepository(), build_audit_recorder()
+            ).execute(
                 UpdateSupplierCommand(
                     supplier_id=supplier_id,
                     name=data["name"],
@@ -97,6 +107,7 @@ class SupplierDetailView(APIView):
                     email=data["email"],
                     phone=data["phone"],
                     address=data["address"],
+                    actor_id=_actor_id(request),
                 )
             )
         except Exception as error:
@@ -129,12 +140,14 @@ class PurchaseOrderListCreateView(APIView):
                 DjangoPurchaseOrderRepository(),
                 DjangoSupplierRepository(),
                 SystemClock(),
+                build_audit_recorder(),
             ).execute(
                 CreatePurchaseOrderCommand(
                     supplier_id=data["supplier_id"],
                     lines=lines,
                     reference=data["reference"],
                     notes=data["notes"],
+                    actor_id=_actor_id(request),
                 )
             )
         except Exception as error:
@@ -161,7 +174,7 @@ class PurchaseOrderOrderView(APIView):
     def post(self, request, purchase_order_id):
         try:
             order = MarkPurchaseOrderOrderedUseCase(
-                DjangoPurchaseOrderRepository(), SystemClock()
+                DjangoPurchaseOrderRepository(), SystemClock(), build_audit_recorder()
             ).execute(purchase_order_id)
         except Exception as error:
             return _error(error)
@@ -177,6 +190,7 @@ class PurchaseOrderReceiveView(APIView):
                 DjangoPurchaseOrderRepository(),
                 InventoryStockIntakeAdapter(),
                 SystemClock(),
+                build_audit_recorder(),
             ).execute(
                 ReceivePurchaseOrderCommand(
                     purchase_order_id=purchase_order_id,
@@ -195,10 +209,13 @@ class PurchaseOrderCancelView(APIView):
         serializer = CancelPurchaseOrderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            order = CancelPurchaseOrderUseCase(DjangoPurchaseOrderRepository()).execute(
+            order = CancelPurchaseOrderUseCase(
+                DjangoPurchaseOrderRepository(), build_audit_recorder()
+            ).execute(
                 CancelPurchaseOrderCommand(
                     purchase_order_id=purchase_order_id,
                     reason=serializer.validated_data["reason"],
+                    actor_id=_actor_id(request),
                 )
             )
         except Exception as error:

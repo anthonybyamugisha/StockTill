@@ -7,7 +7,6 @@ class DjangoSettingsRepository(SettingsRepository):
     def get(self) -> BusinessSettings:
         m, _ = BusinessSettingsModel.objects.get_or_create(key="main")
         return BusinessSettings(
-            id=m.id,
             business_name=m.business_name,
             address=m.address,
             phone=m.phone,

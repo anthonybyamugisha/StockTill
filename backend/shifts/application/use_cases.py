@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from shared.application.audit import AuditPort, NullAuditPort
 from shared.domain.clock import Clock
 from shifts.application.commands import (
     CloseShiftCommand,
@@ -13,9 +14,12 @@ from shifts.domain.repository import CashMovementRepository, ShiftRepository
 
 
 class OpenShiftUseCase:
-    def __init__(self, shift_repository: ShiftRepository, clock: Clock):
+    def __init__(
+        self, shift_repository: ShiftRepository, clock: Clock, audit: AuditPort | None = None
+    ):
         self._shift_repo = shift_repository
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: OpenShiftCommand) -> Shift:
         if self._shift_repo.get_open_for_cashier(command.cashier_id) is not None:
@@ -27,6 +31,13 @@ class OpenShiftUseCase:
             opened_at=self._clock.now(),
         )
         self._shift_repo.save(shift)
+        self._audit.record(
+            user_id=command.cashier_id,
+            action="shift.opened",
+            entity_type="shift",
+            entity_id=str(shift.id),
+            after={"opening_float": str(command.opening_float.amount)},
+        )
         return shift
 
 
@@ -53,11 +64,13 @@ class CloseShiftUseCase:
         movement_repository: CashMovementRepository,
         sales_port: SalesSummaryPort,
         clock: Clock,
+        audit: AuditPort | None = None,
     ):
         self._shift_repo = shift_repository
         self._movement_repo = movement_repository
         self._sales_port = sales_port
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: CloseShiftCommand) -> tuple[Shift, CashTotals]:
         shift = self._shift_repo.get_by_id(command.shift_id)
@@ -67,6 +80,19 @@ class CloseShiftUseCase:
         totals = self._sales_port.cash_totals(shift.id)
         shift.close(command.counted_cash, self._clock.now(), command.notes)
         self._shift_repo.save(shift)
+        expected = shift.expected_cash(totals.sales, totals.refunds)
+        variance = shift.variance(totals.sales, totals.refunds)
+        self._audit.record(
+            user_id=command.user_id,
+            action="shift.closed",
+            entity_type="shift",
+            entity_id=str(shift.id),
+            after={
+                "counted_cash": str(command.counted_cash.amount),
+                "expected_cash": str(expected.amount),
+                "variance": str(variance.amount) if variance is not None else None,
+            },
+        )
         return shift, totals
 
 
@@ -76,10 +102,12 @@ class RecordCashMovementUseCase:
         shift_repository: ShiftRepository,
         movement_repository: CashMovementRepository,
         clock: Clock,
+        audit: AuditPort | None = None,
     ):
         self._shift_repo = shift_repository
         self._movement_repo = movement_repository
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: RecordCashMovementCommand) -> CashMovement:
         shift = self._shift_repo.get_by_id(command.shift_id)
@@ -94,6 +122,17 @@ class RecordCashMovementUseCase:
             created_at=self._clock.now(),
         )
         self._movement_repo.save(movement)
+        self._audit.record(
+            user_id=command.user_id,
+            action="shift.cash_movement",
+            entity_type="shift",
+            entity_id=str(shift.id),
+            after={
+                "type": command.type.value,
+                "amount": str(command.amount.amount),
+                "reason": command.reason,
+            },
+        )
         return movement
 
 

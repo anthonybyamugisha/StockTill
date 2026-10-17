@@ -14,13 +14,17 @@ from purchasing.domain.errors import (
     SupplierNotFoundError,
 )
 from purchasing.domain.repository import PurchaseOrderRepository, SupplierRepository
+from shared.application.audit import AuditPort, NullAuditPort
 from shared.domain.clock import Clock
 
 
 class CreateSupplierUseCase:
-    def __init__(self, supplier_repository: SupplierRepository, clock: Clock):
+    def __init__(
+        self, supplier_repository: SupplierRepository, clock: Clock, audit: AuditPort | None = None
+    ):
         self._supplier_repo = supplier_repository
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: CreateSupplierCommand) -> Supplier:
         supplier = Supplier(
@@ -32,17 +36,32 @@ class CreateSupplierUseCase:
             created_at=self._clock.now(),
         )
         self._supplier_repo.save(supplier)
+        self._audit.record(
+            user_id=command.actor_id,
+            action="supplier.created",
+            entity_type="supplier",
+            entity_id=str(supplier.id),
+            after={"name": supplier.name, "phone": supplier.phone, "email": supplier.email},
+        )
         return supplier
 
 
 class UpdateSupplierUseCase:
-    def __init__(self, supplier_repository: SupplierRepository):
+    def __init__(self, supplier_repository: SupplierRepository, audit: AuditPort | None = None):
         self._supplier_repo = supplier_repository
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: UpdateSupplierCommand) -> Supplier:
         supplier = self._supplier_repo.get_by_id(command.supplier_id)
         if supplier is None:
             raise SupplierNotFoundError("Supplier not found")
+        before = {
+            "name": supplier.name,
+            "contact_name": supplier.contact_name,
+            "email": supplier.email,
+            "phone": supplier.phone,
+            "address": supplier.address,
+        }
         supplier.update_contact(
             name=command.name,
             contact_name=command.contact_name,
@@ -51,6 +70,23 @@ class UpdateSupplierUseCase:
             address=command.address,
         )
         self._supplier_repo.save(supplier)
+        after = {
+            "name": supplier.name,
+            "contact_name": supplier.contact_name,
+            "email": supplier.email,
+            "phone": supplier.phone,
+            "address": supplier.address,
+        }
+        changed = {key: value for key, value in after.items() if value != before[key]}
+        if changed:
+            self._audit.record(
+                user_id=command.actor_id,
+                action="supplier.updated",
+                entity_type="supplier",
+                entity_id=str(supplier.id),
+                before={key: before[key] for key in changed},
+                after=changed,
+            )
         return supplier
 
 
@@ -79,10 +115,12 @@ class CreatePurchaseOrderUseCase:
         order_repository: PurchaseOrderRepository,
         supplier_repository: SupplierRepository,
         clock: Clock,
+        audit: AuditPort | None = None,
     ):
         self._order_repo = order_repository
         self._supplier_repo = supplier_repository
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: CreatePurchaseOrderCommand) -> PurchaseOrder:
         supplier = self._supplier_repo.get_by_id(command.supplier_id)
@@ -106,20 +144,47 @@ class CreatePurchaseOrderUseCase:
             created_at=self._clock.now(),
         )
         self._order_repo.save(order)
+        self._audit.record(
+            user_id=command.actor_id,
+            action="purchase_order.created",
+            entity_type="purchase_order",
+            entity_id=str(order.id),
+            after={
+                "supplier_name": order.supplier_name,
+                "reference": order.reference,
+                "line_count": len(order.lines),
+                "total": str(order.total.amount),
+            },
+        )
         return order
 
 
 class MarkPurchaseOrderOrderedUseCase:
-    def __init__(self, order_repository: PurchaseOrderRepository, clock: Clock):
+    def __init__(
+        self,
+        order_repository: PurchaseOrderRepository,
+        clock: Clock,
+        audit: AuditPort | None = None,
+    ):
         self._order_repo = order_repository
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, purchase_order_id: UUID) -> PurchaseOrder:
         order = self._order_repo.get_by_id(purchase_order_id)
         if order is None:
             raise PurchaseOrderNotFoundError("Purchase order not found")
+        previous_status = order.status.value
         order.mark_ordered(self._clock.now())
         self._order_repo.save(order)
+        self._audit.record(
+            user_id=None,
+            action="purchase_order.ordered",
+            entity_type="purchase_order",
+            entity_id=str(order.id),
+            before={"status": previous_status},
+            after={"status": order.status.value, "reference": order.reference},
+        )
         return order
 
 
@@ -129,15 +194,18 @@ class ReceivePurchaseOrderUseCase:
         order_repository: PurchaseOrderRepository,
         stock_intake_port: StockIntakePort,
         clock: Clock,
+        audit: AuditPort | None = None,
     ):
         self._order_repo = order_repository
         self._stock_intake = stock_intake_port
         self._clock = clock
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: ReceivePurchaseOrderCommand) -> PurchaseOrder:
         order = self._order_repo.get_by_id(command.purchase_order_id)
         if order is None:
             raise PurchaseOrderNotFoundError("Purchase order not found")
+        previous_status = order.status.value
         order.receive(self._clock.now())
         for line in order.lines:
             self._stock_intake.receive_stock(
@@ -148,19 +216,37 @@ class ReceivePurchaseOrderUseCase:
                 user_id=command.user_id,
             )
         self._order_repo.save(order)
+        self._audit.record(
+            user_id=command.user_id,
+            action="purchase_order.received",
+            entity_type="purchase_order",
+            entity_id=str(order.id),
+            before={"status": previous_status},
+            after={"status": order.status.value, "line_count": len(order.lines)},
+        )
         return order
 
 
 class CancelPurchaseOrderUseCase:
-    def __init__(self, order_repository: PurchaseOrderRepository):
+    def __init__(self, order_repository: PurchaseOrderRepository, audit: AuditPort | None = None):
         self._order_repo = order_repository
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: CancelPurchaseOrderCommand) -> PurchaseOrder:
         order = self._order_repo.get_by_id(command.purchase_order_id)
         if order is None:
             raise PurchaseOrderNotFoundError("Purchase order not found")
+        previous_status = order.status.value
         order.cancel(command.reason)
         self._order_repo.save(order)
+        self._audit.record(
+            user_id=command.actor_id,
+            action="purchase_order.cancelled",
+            entity_type="purchase_order",
+            entity_id=str(order.id),
+            before={"status": previous_status},
+            after={"status": order.status.value, "reason": command.reason},
+        )
         return order
 
 
