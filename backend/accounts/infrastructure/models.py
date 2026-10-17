@@ -23,3 +23,18 @@ class UserModel(models.Model):
 
     class Meta:
         db_table = "accounts_user"
+
+
+class AuditLogModel(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_id = models.UUIDField(null=True, blank=True)
+    action = models.CharField(max_length=50)
+    entity_type = models.CharField(max_length=50)
+    entity_id = models.CharField(max_length=100)
+    before = models.JSONField(null=True, blank=True)
+    after = models.JSONField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "accounts_audit_log"
+        ordering = ["-timestamp"]
