@@ -1,6 +1,5 @@
 import uuid
 
-from django.contrib.auth.hashers import make_password
 from django.db import models
 
 
@@ -24,6 +23,3 @@ class UserModel(models.Model):
 
     class Meta:
         db_table = "accounts_user"
-
-    def set_password(self, raw_password: str) -> None:
-        self.password_hash = make_password(raw_password)

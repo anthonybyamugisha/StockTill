@@ -15,7 +15,7 @@ class DjangoUserRepository(UserRepository):
 
     def get_by_email(self, email: str) -> User | None:
         try:
-            m = UserModel.objects.get(email=email)
+            m = UserModel.objects.get(email__iexact=email)
             return self._to_domain(m)
         except UserModel.DoesNotExist:
             return None
@@ -41,6 +41,9 @@ class DjangoUserRepository(UserRepository):
                 "password_hash": user.password_hash,
             },
         )
+
+    def email_exists(self, email: str) -> bool:
+        return UserModel.objects.filter(email__iexact=email).exists()
 
     def _to_domain(self, m: UserModel) -> User:
         return User(
