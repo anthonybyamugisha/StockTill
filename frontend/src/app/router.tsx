@@ -23,20 +23,8 @@ function Protected({ children, roles }: { children: ReactNode; roles?: string[] 
 export function AppRouter() {
   return (
     <Routes>
-      <Route
-        path="/login"
-        element={
-          <Protected>
-            <div>Already logged in</div>
-          </Protected>
-        }
-      />
-      <Route
-        path="/auth/login"
-        element={
-          <LoginRedirect />
-        }
-      />
+      <Route path="/login" element={<LoginGate />} />
+      <Route path="/auth/login" element={<Navigate to="/login" replace />} />
       <Route element={<Protected><AppLayout /></Protected>}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/pos" element={<POSPage />} />
@@ -48,10 +36,6 @@ export function AppRouter() {
       </Route>
     </Routes>
   );
-}
-
-function LoginRedirect() {
-  return <Navigate to="/login" replace />;
 }
 
 import { LoginPage } from '../features/auth/pages/LoginPage';

@@ -9,7 +9,7 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-type LoginFormData = z.infinite<typeof loginSchema>;
+type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
   const {
