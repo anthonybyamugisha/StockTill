@@ -11,6 +11,7 @@ import { formatMoney } from '../../../shared/utils/money';
 import { Modal } from '../../../shared/ui/Modal';
 import { Button } from '../../../shared/ui/Button';
 import { Receipt } from '../../../shared/ui/Receipt';
+import { toast } from '../../../shared/ui/toast';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { getSettings } from '../../settings/api/settings';
 
@@ -83,6 +84,11 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
     onSuccess: (completed) => {
       setResult(completed);
       queryClient.invalidateQueries();
+      if (completed.queued) {
+        toast.info('No connection — the sale was saved on this device and will sync automatically');
+      } else {
+        toast.success(`Sale ${completed.receipt_number} completed`);
+      }
     },
   });
 

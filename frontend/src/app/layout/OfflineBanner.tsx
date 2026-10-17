@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { isOffline } from '../../features/pos/offline/networkError';
 import { queuedSaleCount } from '../../features/pos/offline/saleQueue';
 import { syncPendingSales } from '../../features/pos/offline/saleSync';
+import { toast } from '../../shared/ui/toast';
 
 export function OfflineBanner() {
   const [online, setOnline] = useState(!isOffline());
@@ -11,7 +12,10 @@ export function OfflineBanner() {
   const runSync = useCallback(async () => {
     setSyncing(true);
     try {
-      await syncPendingSales();
+      const synced = await syncPendingSales();
+      if (synced > 0) {
+        toast.success(`${synced} offline sale${synced === 1 ? '' : 's'} synced`);
+      }
     } finally {
       setPending(queuedSaleCount());
       setSyncing(false);
