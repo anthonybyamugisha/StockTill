@@ -1,0 +1,101 @@
+from uuid import UUID
+
+from inventory.domain.entities import StockItem, StockMovement
+from inventory.domain.repository import StockItemRepository, StockMovementRepository
+from inventory.infrastructure.models import StockItemModel, StockMovementModel
+from shared.domain.money import Money
+
+
+class DjangoStockMovementRepository(StockMovementRepository):
+    def save(self, movement: StockMovement) -> None:
+        StockMovementModel.objects.create(
+            id=movement.id,
+            product_id=movement.product_id,
+            quantity=movement.quantity,
+            movement_type=movement.movement_type.value,
+            reason=movement.reason,
+            reference=movement.reference,
+            unit_cost=movement.unit_cost.amount,
+            user_id=movement.user_id,
+        )
+
+    def get_by_id(self, movement_id: UUID) -> StockMovement | None:
+        try:
+            m = StockMovementModel.objects.get(id=movement_id)
+            return self._to_domain(m)
+        except StockMovementModel.DoesNotExist:
+            return None
+
+    def list_by_product(self, product_id: UUID) -> list[StockMovement]:
+        return [
+            self._to_domain(m)
+            for m in StockMovementModel.objects.filter(product_id=product_id)
+        ]
+
+    def _to_domain(self, m: StockMovementModel) -> StockMovement:
+        return StockMovement(
+            id=m.id,
+            product_id=m.product_id,
+            quantity=m.quantity,
+            movement_type=m.movement_type,
+            reason=m.reason,
+            reference=m.reference,
+            unit_cost=Money(m.unit_cost),
+            user_id=m.user_id,
+            timestamp=m.timestamp,
+        )
+
+
+class DjangoStockItemRepository(StockItemRepository):
+    def get_by_product(self, product_id: UUID) -> StockItem | None:
+        try:
+            m = StockItemModel.objects.get(product_id=product_id)
+            return StockItem(
+                id=m.id,
+                product_id=m.product_id,
+                quantity_on_hand=m.quantity_on_hand,
+                reserved_quantity=m.reserved_quantity,
+                last_movement_id=m.last_movement_id,
+            )
+        except StockItemModel.DoesNotExist:
+            return None
+
+    def save(self, item: StockItem) -> None:
+        StockItemModel.objects.update_or_create(
+            product_id=item.product_id,
+            defaults={
+                "quantity_on_hand": item.quantity_on_hand,
+                "reserved_quantity": item.reserved_quantity,
+                "last_movement_id": item.last_movement_id,
+            },
+        )
+
+    def list_low_stock(self) -> list[StockItem]:
+        from catalog.infrastructure.models import ProductModel
+
+        low_stock_product_ids = ProductModel.objects.filter(
+            minimum_stock_level__gt=0
+        ).values_list("id", flat=True)
+        return [
+            StockItem(
+                id=m.id,
+                product_id=m.product_id,
+                quantity_on_hand=m.quantity_on_hand,
+                reserved_quantity=m.reserved_quantity,
+            )
+            for m in StockItemModel.objects.filter(
+                product_id__in=low_stock_product_ids,
+                quantity_on_hand__lte=models.F("product__minimum_stock_level"),
+            )
+        ]
+
+    def list_out_of_stock(self) -> list[StockItem]:
+        return [
+            StockItem(
+                id=m.id,
+                product_id=m.product_id,
+                quantity_on_hand=m.quantity_on_hand,
+                reserved_quantity=m.reserved_quantity,
+            )
+            for m in StockItemModel.objects.filter(quantity_on_hand=0)
+        ]
