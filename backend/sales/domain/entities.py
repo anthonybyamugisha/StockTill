@@ -34,7 +34,7 @@ class Discount:
     amount: Money
 
 
-@dataclass
+@dataclass(eq=False)
 class SaleLine(Entity):
     product_id: UUID = field(default_factory=uuid4)
     product_name: str = ""
@@ -62,7 +62,7 @@ class SaleLine(Entity):
         return self.total.subtract(self.cost_total)
 
 
-@dataclass
+@dataclass(eq=False)
 class Payment(Entity):
     method: PaymentMethod = PaymentMethod.CASH
     amount: Money = field(default_factory=Money.zero)
@@ -78,7 +78,7 @@ class Payment(Entity):
         return max(change, Money.zero())
 
 
-@dataclass
+@dataclass(eq=False)
 class Refund(Entity):
     sale_id: UUID = field(default_factory=uuid4)
     line_id: UUID | None = None
@@ -90,7 +90,7 @@ class Refund(Entity):
     created_at: datetime | None = None
 
 
-@dataclass
+@dataclass(eq=False)
 class Sale(AggregateRoot):
     receipt_number: str = ""
     cashier_id: UUID | None = None

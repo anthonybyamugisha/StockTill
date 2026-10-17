@@ -16,7 +16,7 @@ LOCKOUT_DURATION_MINUTES = 30
 MAX_FAILED_ATTEMPTS = 5
 
 
-@dataclass
+@dataclass(eq=False)
 class User(Entity):
     email: str = ""
     first_name: str = ""

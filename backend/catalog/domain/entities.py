@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     pass
 
 
-@dataclass
+@dataclass(eq=False)
 class Category(Entity):
     name: str = ""
     description: str = ""
@@ -17,7 +17,7 @@ class Category(Entity):
     is_active: bool = True
 
 
-@dataclass
+@dataclass(eq=False)
 class Product(Entity):
     name: str = ""
     description: str = ""

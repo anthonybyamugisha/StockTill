@@ -15,16 +15,15 @@ def api_client():
 def cashier_user(db):
     user = User(email="cashier@shop.com", first_name="Cashier", last_name="User", role=Role.CASHIER)
     user.set_password("password123", DjangoPasswordHasher())
-    UserModel.objects.create(
+    return UserModel.objects.create(
         id=user.id,
         email=user.email,
         first_name=user.first_name,
         last_name=user.last_name,
         role=user.role.value,
-        password_hash=user.password_hash,
+        password=user.password_hash,
         is_active=True,
     )
-    return user
 
 
 @pytest.mark.django_db

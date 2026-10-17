@@ -102,8 +102,11 @@ class LoginView(APIView):
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
-        django_login(request, user)
-        return Response(UserSerializer(user).data)
+        from accounts.infrastructure.models import UserModel
+
+        model = UserModel.objects.get(id=user.id)
+        django_login(request, model)
+        return Response(UserSerializer(model).data)
 
 
 class LogoutView(APIView):

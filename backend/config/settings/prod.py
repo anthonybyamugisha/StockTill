@@ -5,22 +5,16 @@ from .base import *  # noqa: F401, F403
 DEBUG = False
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SAMESITE = "None"
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-ALLOWED_HOSTS = [".onrender.com", "localhost"]
-
-CORS_ALLOWED_ORIGINS = [
-    "https://stocktill.vercel.app",
-    "https://*.vercel.app",
-]
-CORS_ALLOW_CREDENTIALS = True
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://stocktill.vercel.app",
-    "https://*.vercel.app",
+ALLOWED_HOSTS = [
+    h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", ".onrender.com,localhost").split(",") if h
 ]

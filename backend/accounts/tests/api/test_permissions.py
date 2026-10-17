@@ -15,48 +15,45 @@ def api_client():
 def admin_user(db):
     user = User(email="admin@shop.com", first_name="Admin", last_name="User", role=Role.ADMIN)
     user.set_password("admin_pass123", DjangoPasswordHasher())
-    UserModel.objects.create(
+    return UserModel.objects.create(
         id=user.id,
         email=user.email,
         first_name=user.first_name,
         last_name=user.last_name,
         role=user.role.value,
-        password_hash=user.password_hash,
+        password=user.password_hash,
         is_active=True,
     )
-    return user
 
 
 @pytest.fixture
 def manager_user(db):
     user = User(email="manager@shop.com", first_name="Manager", last_name="User", role=Role.MANAGER)
     user.set_password("manager_pass123", DjangoPasswordHasher())
-    UserModel.objects.create(
+    return UserModel.objects.create(
         id=user.id,
         email=user.email,
         first_name=user.first_name,
         last_name=user.last_name,
         role=user.role.value,
-        password_hash=user.password_hash,
+        password=user.password_hash,
         is_active=True,
     )
-    return user
 
 
 @pytest.fixture
 def cashier_user(db):
     user = User(email="cashier@shop.com", first_name="Cashier", last_name="User", role=Role.CASHIER)
     user.set_password("cashier_pass123", DjangoPasswordHasher())
-    UserModel.objects.create(
+    return UserModel.objects.create(
         id=user.id,
         email=user.email,
         first_name=user.first_name,
         last_name=user.last_name,
         role=user.role.value,
-        password_hash=user.password_hash,
+        password=user.password_hash,
         is_active=True,
     )
-    return user
 
 
 @pytest.mark.django_db

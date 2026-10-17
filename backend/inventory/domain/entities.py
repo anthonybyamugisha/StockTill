@@ -17,7 +17,7 @@ class MovementType(str, Enum):
     WRITE_OFF = "write_off"
 
 
-@dataclass
+@dataclass(eq=False)
 class StockMovement(Entity):
     product_id: UUID = field(default_factory=UUID)
     quantity: int = 0
@@ -30,7 +30,7 @@ class StockMovement(Entity):
     notes: str = ""
 
 
-@dataclass
+@dataclass(eq=False)
 class StockItem(Entity):
     product_id: UUID = field(default_factory=UUID)
     quantity_on_hand: int = 0
