@@ -4,6 +4,8 @@ import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Input } from '../../../shared/ui/Input';
 import { BusinessSettings, getSettings, updateSettings } from '../api/settings';
+import { toast } from '../../../shared/ui/toast';
+import { getApiErrorMessage } from '../../../shared/http/errors';
 
 const defaults: BusinessSettings = {
   business_name: '',
@@ -32,7 +34,9 @@ export function SettingsPage() {
     onSuccess: (saved) => {
       setForm(saved);
       queryClient.setQueryData(['settings'], saved);
+      toast.success('Settings saved');
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not save settings')),
   });
 
   return (
@@ -63,12 +67,7 @@ export function SettingsPage() {
         </div>
       </Card>
 
-      {mutation.isError && (
-        <p className="text-sm text-error">{(mutation.error as Error).message}</p>
-      )}
-
       <div className="flex items-center justify-end gap-3">
-        {mutation.isSuccess && <span className="text-sm text-success">Saved</span>}
         <Button onClick={() => mutation.mutate(form)} disabled={mutation.isPending}>
           {mutation.isPending ? 'Saving...' : 'Save Settings'}
         </Button>
