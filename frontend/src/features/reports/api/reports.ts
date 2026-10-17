@@ -97,3 +97,19 @@ export async function getLowStockItems(): Promise<LowStockItem[]> {
   const res = await apiClient.get<LowStockItem[]>('/reporting/low-stock/');
   return res.data;
 }
+
+export async function downloadSalesReportCsv(dateFrom: string, dateTo: string): Promise<void> {
+  const res = await apiClient.get<Blob>('/reporting/sales-report/csv/', {
+    params: { date_from: dateFrom, date_to: dateTo },
+    responseType: 'blob',
+  });
+
+  const url = URL.createObjectURL(res.data);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'sales_report.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

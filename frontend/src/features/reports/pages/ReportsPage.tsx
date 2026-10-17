@@ -1,18 +1,26 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems } from '../api/reports';
+import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems, downloadSalesReportCsv } from '../api/reports';
 import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Input } from '../../../shared/ui/Input';
 import { Table } from '../../../shared/ui/Table';
 import { Badge } from '../../../shared/ui/Badge';
 import { daysAgoISO, todayISO } from '../../../shared/utils/date';
+import { toast } from '../../../shared/ui/toast';
+import { getApiErrorMessage } from '../../../shared/http/errors';
 
 export function ReportsPage() {
   const [activeReport, setActiveReport] = useState('sales');
   const [dateFrom, setDateFrom] = useState(daysAgoISO(30));
   const [dateTo, setDateTo] = useState(todayISO());
+
+  const exportMutation = useMutation({
+    mutationFn: () => downloadSalesReportCsv(dateFrom, dateTo),
+    onSuccess: () => toast.success('Sales report exported as CSV'),
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not export the report')),
+  });
 
   const reports = [
     { id: 'sales', label: 'Sales Report' },
@@ -45,13 +53,12 @@ export function ReportsPage() {
         <div className="flex items-end gap-4">
           <Input label="From" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           <Input label="To" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          <Button variant="secondary" onClick={() => {
-            const link = document.createElement('a');
-            link.href = `/api/v1/reporting/sales-report/csv/?date_from=${dateFrom}&date_to=${dateTo}`;
-            link.download = 'sales_report.csv';
-            link.click();
-          }}>
-            Export CSV
+          <Button
+            variant="secondary"
+            onClick={() => exportMutation.mutate()}
+            disabled={exportMutation.isPending}
+          >
+            {exportMutation.isPending ? 'Exporting...' : 'Export CSV'}
           </Button>
         </div>
       </Card>
