@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "catalog",
     "inventory",
     "sales",
+    "shifts",
     "reporting",
     "settings",
 ]
