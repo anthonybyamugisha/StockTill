@@ -228,7 +228,9 @@ def test_dashboard_today_uses_the_shop_timezone(api_client, manager_user, monkey
 
 @pytest.mark.django_db
 def test_sale_after_midnight_kampala_counts_on_the_new_day(api_client, manager_user, monkeypatch):
-    monkeypatch.setattr("reporting.interfaces.api.views.shop_today", lambda: date(2026, 10, 18))
+    monkeypatch.setattr(
+        "reporting.interfaces.api.date_range.timezone.localdate", lambda: date(2026, 10, 18)
+    )
     _sale_at("ST-2026-000043", manager_user.id, datetime(2026, 10, 17, 22, 30, tzinfo=UTC))
 
     api_client.force_authenticate(user=manager_user)
