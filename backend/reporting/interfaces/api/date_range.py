@@ -1,6 +1,6 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
-from collections.abc import Mapping
 
 from django.utils import timezone
 
