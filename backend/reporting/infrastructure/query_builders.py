@@ -19,7 +19,7 @@ from reporting.application.queries import (
     SalesSummary,
     TopProduct,
 )
-from reporting.infrastructure.directories import CashierDirectory
+from reporting.infrastructure.directories import CashierDirectory, CatalogDirectory
 from sales.infrastructure.models import PaymentModel, SaleLineModel, SaleModel
 from shared.domain.money import Money
 
@@ -35,7 +35,7 @@ class SalesQueryBuilder:
         return CashierDirectory.load().labels
 
     def _products_by_id(self) -> dict:
-        return {p.id: p for p in ProductModel.objects.all()}
+        return CatalogDirectory.load().products
 
     def _stock_counts(self) -> tuple[int, int]:
         from inventory.infrastructure.models import StockItemModel
