@@ -20,6 +20,7 @@ from reporting.application.queries import (
     TopProduct,
 )
 from reporting.infrastructure.directories import CashierDirectory, CatalogDirectory
+from reporting.infrastructure.stock_levels import StockLevels
 from sales.infrastructure.models import PaymentModel, SaleLineModel, SaleModel
 from shared.domain.money import Money
 
@@ -38,22 +39,8 @@ class SalesQueryBuilder:
         return CatalogDirectory.load().products
 
     def _stock_counts(self) -> tuple[int, int]:
-        from inventory.infrastructure.models import StockItemModel
-
-        products = self._products_by_id()
-        low = 0
-        out = 0
-        for item in StockItemModel.objects.all():
-            if item.quantity_on_hand == 0:
-                out += 1
-            product = products.get(item.product_id)
-            if (
-                product
-                and product.minimum_stock_level > 0
-                and item.quantity_on_hand <= product.minimum_stock_level
-            ):
-                low += 1
-        return low, out
+        levels = StockLevels.load()
+        return levels.low, levels.out
 
     def get_sales_summary(self, date_from: date, date_to: date) -> SalesSummary:
         sales = SaleModel.objects.filter(created_at__date__range=(date_from, date_to))
