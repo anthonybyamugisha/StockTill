@@ -6,7 +6,6 @@ from django.db.models import Count, F, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
-from accounts.infrastructure.models import UserModel
 from catalog.infrastructure.models import ProductModel
 from reporting.application.queries import (
     CashierSales,
@@ -20,6 +19,7 @@ from reporting.application.queries import (
     SalesSummary,
     TopProduct,
 )
+from reporting.infrastructure.directories import CashierDirectory
 from sales.infrastructure.models import PaymentModel, SaleLineModel, SaleModel
 from shared.domain.money import Money
 
@@ -32,10 +32,7 @@ def _date_range(date_from: date, date_to: date) -> list[date]:
 
 class SalesQueryBuilder:
     def _cashier_names(self) -> dict:
-        return {
-            u.id: (f"{u.first_name} {u.last_name}".strip() or u.email)
-            for u in UserModel.objects.all()
-        }
+        return CashierDirectory.load().labels
 
     def _products_by_id(self) -> dict:
         return {p.id: p for p in ProductModel.objects.all()}
