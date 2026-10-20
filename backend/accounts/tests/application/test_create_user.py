@@ -79,3 +79,20 @@ def test_create_user_raises_on_duplicate_email():
                 password="secure123",
             )
         )
+
+
+def test_created_user_must_change_the_initial_password():
+    repo = FakeUserRepository()
+    use_case = CreateUserUseCase(repo, FakePasswordHasher())
+
+    user = use_case.execute(
+        CreateUserCommand(
+            email="temp@shop.com",
+            first_name="Temp",
+            last_name="User",
+            role=Role.CASHIER,
+            password="temporary1",
+        )
+    )
+
+    assert user.must_change_password is True
