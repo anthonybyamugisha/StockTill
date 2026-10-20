@@ -163,3 +163,20 @@ def test_persists_first_login_flag():
 
     fetched = repo.get_by_id(user.id)
     assert fetched.must_change_password is True
+
+
+@pytest.mark.django_db
+def test_existing_accounts_do_not_need_a_password_change():
+    repo = DjangoUserRepository()
+    repo.save(
+        User(
+            email="legacy@shop.com",
+            first_name="Legacy",
+            last_name="User",
+            role=Role.CASHIER,
+            password_hash="x",
+        )
+    )
+
+    fetched = repo.get_by_id(repo.get_by_email("legacy@shop.com").id)
+    assert fetched.must_change_password is False
