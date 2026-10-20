@@ -161,3 +161,26 @@ def test_change_password_rejects_an_unknown_user():
                 new_password="permanent1",
             )
         )
+
+
+def test_change_password_records_an_audit_entry():
+    hasher = FakePasswordHasher()
+    repo = FakeUserRepository()
+    audit = FakeAudit()
+    user = make_user(hasher)
+    repo.save(user)
+
+    ChangePasswordUseCase(repo, hasher, audit).execute(
+        ChangePasswordCommand(
+            user_id=user.id,
+            current_password="temporary1",
+            new_password="permanent1",
+        )
+    )
+
+    assert len(audit.entries) == 1
+    entry = audit.entries[0]
+    assert entry["action"] == "auth.password_changed"
+    assert entry["entity_id"] == str(user.id)
+    assert entry["user_id"] == user.id
+    assert entry["after"] == {"email": user.email}
