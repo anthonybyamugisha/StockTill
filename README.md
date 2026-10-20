@@ -350,6 +350,28 @@ on the line at order time so a PO keeps its history even if the catalog entry ch
 API: `/api/v1/purchasing/suppliers/`, `/suppliers/{id}/`, `/orders/`, `/orders/{id}/`, and the
 `/orders/{id}/order/`, `/receive/`, `/cancel/` transitions.
 
+### Temporary passwords and first login
+
+An administrator creates a user with a password, but that password is explicitly temporary. The
+`must_change_password` flag is set at creation and travels with every user payload. After signing in:
+
+- the SPA sends the user to `/change-password` and keeps every other route behind a redirect;
+- the API rejects every endpoint except `/accounts/login/`, `/accounts/me/`,
+  `/accounts/change-password/`, `/accounts/logout/`, the health check and the docs, with a `403`
+  carrying `code: password_change_required`. This is enforced server-side by middleware, not by the
+  SPA, so a client that skips the screen still cannot use the till;
+- the replacement must be at least eight characters, mix a letter with a number, and differ from the
+  temporary password. The old password stops working immediately; the current session is kept alive
+  with `update_session_auth_hash` so the user is not bounced back to the login page;
+- the change is audited as `auth.password_changed`, and the flag is cleared in the same database
+  write as the new hash.
+
+Existing accounts are migrated with the flag off, so only accounts created through the user-management
+screen enter this flow. The temporary password is never stored in plain text or written to the audit
+log.
+
+API: `POST /api/v1/accounts/change-password/` with `current_password` and `new_password`.
+
 ### Audit log
 
 Every money- or security-relevant action writes an immutable entry: **who** (the acting user), **what**
