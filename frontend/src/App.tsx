@@ -3,6 +3,7 @@ import { useAuth } from './features/auth/hooks/useAuth';
 import { AppLayout } from './app/layout/AppLayout';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { ChangePasswordPage } from './features/auth/pages/ChangePasswordPage';
+import { homePathFor } from './features/auth/lib/redirect';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { POSPage } from './features/pos/pages/POSPage';
 import { CatalogPage } from './features/catalog/pages/CatalogPage';
@@ -48,7 +49,7 @@ function AppRoutes() {
     <>
       <Toaster />
       <Routes>
-        <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/login" element={user ? <Navigate to={homePathFor(user)} replace /> : <LoginPage />} />
         <Route
           path="/change-password"
           element={!user ? <Navigate to="/login" replace /> : <ChangePasswordPage />}
