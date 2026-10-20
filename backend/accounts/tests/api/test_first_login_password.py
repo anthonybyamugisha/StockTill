@@ -1,4 +1,5 @@
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.domain.entities import Role, User
@@ -260,6 +261,9 @@ def test_pending_user_can_reach_the_health_check(api_client, pending_user):
 
 @pytest.mark.django_db
 def test_settled_user_logs_in_without_the_pending_flag(api_client, admin_user):
+    admin_user.last_login = timezone.now()
+    admin_user.save(update_fields=["last_login"])
+
     response = sign_in(api_client, admin_user.email)
 
     assert response.status_code == 200
@@ -275,6 +279,8 @@ def test_password_change_appears_in_the_audit_log(api_client, admin_user, pendin
     )
 
     admin_client = APIClient()
+    admin_user.last_login = timezone.now()
+    admin_user.save(update_fields=["last_login"])
     sign_in(admin_client, admin_user.email)
     response = admin_client.get("/api/v1/accounts/audit-log/", {"action": "auth.password_changed"})
 
@@ -343,7 +349,7 @@ def test_legacy_account_cannot_reach_the_dashboard_before_changing(api_client):
     response = api_client.get("/api/v1/reporting/dashboard/")
 
     assert response.status_code == 403
-    assert response.data["code"] == "password_change_required"
+    assert response.json()["code"] == "password_change_required"
 
 
 @pytest.mark.django_db
