@@ -50,6 +50,16 @@ class CreateCategoryCommand:
 
 
 @dataclass(frozen=True)
+class UpdateCategoryCommand:
+    category_id: UUID
+    name: str | None = None
+    description: str | None = None
+    parent_id: UUID | None = None
+    is_active: bool | None = None
+    user_id: UUID | None = None
+
+
+@dataclass(frozen=True)
 class DeactivateCategoryCommand:
     category_id: UUID
     user_id: UUID | None = None

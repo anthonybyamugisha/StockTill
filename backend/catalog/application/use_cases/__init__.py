@@ -2,6 +2,7 @@ from catalog.application.use_cases.categories import (
     CreateCategoryUseCase,
     DeactivateCategoryUseCase,
     ListCategoriesUseCase,
+    UpdateCategoryUseCase,
 )
 from catalog.application.use_cases.products import (
     CreateProductUseCase,
@@ -15,5 +16,6 @@ __all__ = [
     "DeactivateCategoryUseCase",
     "DeactivateProductUseCase",
     "ListCategoriesUseCase",
+    "UpdateCategoryUseCase",
     "UpdateProductUseCase",
 ]

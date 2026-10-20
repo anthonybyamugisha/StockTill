@@ -11,6 +11,7 @@ from catalog.application.commands import (
     CreateProductCommand,
     DeactivateCategoryCommand,
     DeactivateProductCommand,
+    UpdateCategoryCommand,
     UpdateProductCommand,
 )
 from catalog.application.use_cases import (
@@ -19,6 +20,7 @@ from catalog.application.use_cases import (
     DeactivateCategoryUseCase,
     DeactivateProductUseCase,
     ListCategoriesUseCase,
+    UpdateCategoryUseCase,
     UpdateProductUseCase,
 )
 from catalog.infrastructure.adapters import InventoryOpeningStockAdapter
@@ -29,6 +31,7 @@ from catalog.interfaces.api.serializers import (
     CreateProductSerializer,
     ProductDetailSerializer,
     ProductListSerializer,
+    UpdateCategorySerializer,
     UpdateProductSerializer,
 )
 from shared.domain.clock import SystemClock
@@ -176,8 +179,9 @@ class CategoryListCreateView(APIView):
         return [IsAuthenticated()]
 
     def get(self, request):
+        active_only = request.query_params.get("active_only", "true").lower() == "true"
         use_case = ListCategoriesUseCase(DjangoCategoryRepository())
-        categories = use_case.execute()
+        categories = use_case.execute(active_only=active_only)
         return Response(CategorySerializer(categories, many=True).data)
 
     def post(self, request):
@@ -198,6 +202,26 @@ class CategoryListCreateView(APIView):
 
 class CategoryDetailView(APIView):
     permission_classes = [IsManager]
+
+    def patch(self, request, category_id):
+        serializer = UpdateCategorySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        use_case = UpdateCategoryUseCase(DjangoCategoryRepository(), build_audit_recorder())
+        try:
+            category = use_case.execute(
+                UpdateCategoryCommand(
+                    category_id=category_id,
+                    name=data.get("name"),
+                    description=data.get("description"),
+                    parent_id=data.get("parent_id"),
+                    is_active=data.get("is_active"),
+                    user_id=request.user.id if request.user.is_authenticated else None,
+                )
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(CategorySerializer(category).data)
 
     def delete(self, request, category_id):
         use_case = DeactivateCategoryUseCase(DjangoCategoryRepository(), build_audit_recorder())

@@ -70,3 +70,10 @@ class CreateCategorySerializer(serializers.Serializer):
     name = serializers.CharField(max_length=200)
     description = serializers.CharField(allow_blank=True, required=False)
     parent_id = serializers.UUIDField(allow_null=True, required=False)
+
+
+class UpdateCategorySerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=200, required=False)
+    description = serializers.CharField(allow_blank=True, required=False)
+    parent_id = serializers.UUIDField(allow_null=True, required=False)
+    is_active = serializers.BooleanField(required=False)
