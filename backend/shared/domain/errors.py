@@ -14,6 +14,10 @@ class InvalidPaymentError(DomainError):
     pass
 
 
+class DiscountLimitExceededError(DomainError):
+    pass
+
+
 class SaleAlreadyVoidedError(DomainError):
     pass
 

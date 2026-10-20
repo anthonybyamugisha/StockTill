@@ -8,6 +8,7 @@ from accounts.infrastructure.models import UserModel
 from accounts.infrastructure.password_hasher import DjangoPasswordHasher
 from catalog.infrastructure.models import ProductModel
 from inventory.infrastructure.models import StockItemModel
+from settings.infrastructure.models import BusinessSettingsModel
 
 
 def _make_user(email, role):
@@ -181,6 +182,43 @@ def test_manager_can_filter_sales_by_cashier(api_client, cashier_user, stocked_p
 
     assert response.status_code == 200
     assert [item["id"] for item in response.data] == [sale.data["id"]]
+
+
+@pytest.mark.django_db
+def test_cashier_discount_is_limited_by_settings(api_client, cashier_user, stocked_product):
+    BusinessSettingsModel.objects.update_or_create(
+        key="main", defaults={"cashier_discount_limit": "10.00"}
+    )
+    api_client.force_authenticate(user=cashier_user)
+    payload = _payload(stocked_product.id)
+    payload["lines"][0]["discount_type"] = "percentage"
+    payload["lines"][0]["discount_value"] = "11.00"
+    payload["payments"][0]["amount"] = "44500.00"
+    payload["payments"][0]["tendered"] = "44500.00"
+
+    response = api_client.post("/api/v1/sales/", payload, format="json")
+
+    assert response.status_code == 400
+    assert "limited to 10" in response.data["detail"]
+
+
+@pytest.mark.django_db
+def test_manager_can_apply_a_larger_discount(api_client, stocked_product):
+    BusinessSettingsModel.objects.update_or_create(
+        key="main", defaults={"cashier_discount_limit": "10.00"}
+    )
+    manager = _make_user("manager@shop.com", Role.MANAGER)
+    api_client.force_authenticate(user=manager)
+    payload = _payload(stocked_product.id)
+    payload["lines"][0]["discount_type"] = "percentage"
+    payload["lines"][0]["discount_value"] = "50.00"
+    payload["payments"][0]["amount"] = "25000.00"
+    payload["payments"][0]["tendered"] = "25000.00"
+
+    response = api_client.post("/api/v1/sales/", payload, format="json")
+
+    assert response.status_code == 201, response.data
+    assert response.data["total"] == "25000.00"
 
 
 @pytest.mark.django_db

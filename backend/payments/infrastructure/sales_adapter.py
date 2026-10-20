@@ -2,11 +2,13 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from accounts.infrastructure.models import UserModel
 from payments.application.ports import SaleCompletionPort
 from sales.application.commands import CompleteSaleCommand, LineItem, PaymentInput
 from sales.domain.entities import DiscountType, PaymentMethod
 from sales.infrastructure.adapters import ShiftAdapter
 from sales.interfaces.api.container import build_complete_sale_use_case
+from sales.interfaces.api.discount_limits import cashier_discount_limit
 from shared.domain.money import Money
 
 
@@ -27,6 +29,8 @@ class SalesCompletionAdapter(SaleCompletionPort):
     ) -> UUID:
         if shift_id is None:
             shift_id = ShiftAdapter().open_shift_id(cashier_id)
+        cashier = UserModel.objects.filter(id=cashier_id).only("role").first()
+        max_discount_percent = cashier_discount_limit(cashier) if cashier is not None else None
         command = CompleteSaleCommand(
             cashier_id=cashier_id,
             lines=[self._line(item) for item in payload.get("lines", [])],
@@ -42,6 +46,7 @@ class SalesCompletionAdapter(SaleCompletionPort):
             notes=str(payload.get("notes") or ""),
             shift_id=shift_id,
             expected_total=amount,
+            max_discount_percent=max_discount_percent,
         )
         sale = build_complete_sale_use_case().execute(command)
         return sale.id

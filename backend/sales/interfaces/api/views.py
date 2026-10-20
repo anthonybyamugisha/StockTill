@@ -14,6 +14,7 @@ from sales.interfaces.api.container import (
     build_refund_sale_use_case,
     build_void_sale_use_case,
 )
+from sales.interfaces.api.discount_limits import cashier_discount_limit
 from sales.interfaces.api.filters import parse_status_filter
 from sales.interfaces.api.request_mapping import (
     to_complete_sale_command,
@@ -71,6 +72,7 @@ class SaleListCreateView(APIView):
             serializer.validated_data,
             cashier_id=request.user.id,
             shift_id=ShiftAdapter().open_shift_id(request.user.id),
+            max_discount_percent=cashier_discount_limit(request.user),
         )
         sale = build_complete_sale_use_case().execute(command)
         return Response(SaleSerializer(sale).data, status=status.HTTP_201_CREATED)

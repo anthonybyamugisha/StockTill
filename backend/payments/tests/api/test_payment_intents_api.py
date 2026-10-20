@@ -10,6 +10,7 @@ from accounts.infrastructure.password_hasher import DjangoPasswordHasher
 from catalog.infrastructure.models import ProductModel
 from inventory.infrastructure.models import StockItemModel
 from payments.infrastructure.models import PaymentIntentModel
+from settings.infrastructure.models import BusinessSettingsModel
 
 
 def _make_user(email, role):
@@ -308,3 +309,22 @@ def test_creating_a_payment_requires_authentication(api_client, stocked_product)
     response = _create_intent(api_client, stocked_product.id)
 
     assert response.status_code in (401, 403)
+
+
+@pytest.mark.django_db
+def test_cashier_discount_limit_is_checked_before_a_mobile_prompt(
+    api_client, cashier, stocked_product
+):
+    BusinessSettingsModel.objects.update_or_create(
+        key="main", defaults={"cashier_discount_limit": "10.00"}
+    )
+    api_client.force_authenticate(user=cashier)
+    payload = _payload(stocked_product.id)
+    payload["sale"]["lines"][0]["discount_type"] = "percentage"
+    payload["sale"]["lines"][0]["discount_value"] = "11.00"
+
+    response = api_client.post("/api/v1/payments/intents/", payload, format="json")
+
+    assert response.status_code == 400
+    assert "limited to 10" in response.data["detail"]
+    assert not PaymentIntentModel.objects.exists()

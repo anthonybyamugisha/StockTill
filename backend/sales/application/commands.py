@@ -35,6 +35,7 @@ class CompleteSaleCommand:
     notes: str = ""
     shift_id: UUID | None = None
     expected_total: Money | None = None
+    max_discount_percent: Decimal | None = None
 
 
 @dataclass(frozen=True)

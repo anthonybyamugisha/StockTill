@@ -16,9 +16,9 @@ from shared.domain.money import Money
 def to_line_item(data: dict[str, Any]) -> LineItem:
     return LineItem(
         product_id=data["product_id"],
-        quantity=data["quantity"],
-        unit_price=Money(data["unit_price"]),
-        unit_cost=Money(data["unit_cost"]),
+        quantity=int(data["quantity"]),
+        unit_price=Money(Decimal(str(data["unit_price"]))),
+        unit_cost=Money(Decimal(str(data["unit_cost"]))),
         product_name=data.get("product_name", ""),
         discount_type=DiscountType(data["discount_type"]) if data.get("discount_type") else None,
         discount_value=Decimal(str(data["discount_value"])) if data.get("discount_value") else None,
@@ -36,7 +36,11 @@ def to_payment_input(data: dict[str, Any]) -> PaymentInput:
 
 
 def to_complete_sale_command(
-    data: dict[str, Any], *, cashier_id: UUID, shift_id: UUID | None
+    data: dict[str, Any],
+    *,
+    cashier_id: UUID,
+    shift_id: UUID | None,
+    max_discount_percent: Decimal | None = None,
 ) -> CompleteSaleCommand:
     return CompleteSaleCommand(
         cashier_id=cashier_id,
@@ -45,6 +49,7 @@ def to_complete_sale_command(
         idempotency_key=data["idempotency_key"],
         notes=data.get("notes", ""),
         shift_id=shift_id,
+        max_discount_percent=max_discount_percent,
     )
 
 

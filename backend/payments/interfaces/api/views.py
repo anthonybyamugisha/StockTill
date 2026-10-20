@@ -32,6 +32,9 @@ from payments.interfaces.api.serializers import (
     CreatePaymentIntentSerializer,
     PaymentIntentSerializer,
 )
+from sales.application.discount_policy import assert_discount_within_limit
+from sales.interfaces.api.discount_limits import cashier_discount_limit
+from sales.interfaces.api.request_mapping import to_line_item
 from shared.domain.errors import DomainError
 
 
@@ -87,6 +90,10 @@ class PaymentIntentListCreateView(APIView):
         serializer = CreatePaymentIntentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         command = to_create_intent_command(serializer.validated_data, cashier_id=request.user.id)
+        max_discount_percent = cashier_discount_limit(request.user)
+        if max_discount_percent is not None:
+            lines = [to_line_item(line) for line in command.sale_payload.get("lines", [])]
+            assert_discount_within_limit(lines, max_discount_percent)
         intent = build_create_intent_use_case().execute(command)
         return Response(PaymentIntentSerializer(intent).data, status=status.HTTP_201_CREATED)
 

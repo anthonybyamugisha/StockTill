@@ -1,5 +1,6 @@
 from sales.application.audit_events import sale_completed
 from sales.application.commands import CompleteSaleCommand
+from sales.application.discount_policy import assert_discount_within_limit
 from sales.application.payments import build_payments
 from sales.application.ports import CatalogPort, IdempotencyPort, InventoryPort, ReceiptNumberPort
 from sales.application.sale_lines import build_sale_lines
@@ -35,6 +36,9 @@ class CompleteSaleUseCase:
             if existing:
                 return existing
             raise ValueError("Idempotency key already used")
+
+        if command.max_discount_percent is not None:
+            assert_discount_within_limit(command.lines, command.max_discount_percent)
 
         lines = build_sale_lines(command.lines, self._catalog)
 
