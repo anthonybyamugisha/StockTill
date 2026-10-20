@@ -30,3 +30,14 @@ def test_verify_incorrect_password():
     hasher = FakePasswordHasher()
     user.set_password("my_password", hasher)
     assert user.check_password("wrong_password", hasher) is False
+
+
+def test_changing_a_password_clears_the_first_login_flag():
+    user = User(email="test@shop.com", first_name="Test", last_name="User", role=Role.CASHIER)
+    hasher = FakePasswordHasher()
+    user.set_password("temporary1", hasher)
+    user.require_password_change()
+    user.change_password("permanent1", hasher)
+    assert user.must_change_password is False
+    assert user.check_password("permanent1", hasher) is True
+    assert user.check_password("temporary1", hasher) is False
