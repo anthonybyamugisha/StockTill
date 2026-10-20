@@ -321,3 +321,15 @@ def test_pending_user_can_open_the_api_docs(api_client, pending_user):
     response = api_client.get("/api/docs/")
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_legacy_account_is_flagged_on_its_first_login(api_client):
+    legacy = build_user("legacy@shop.com")
+
+    response = sign_in(api_client, legacy.email)
+
+    assert response.status_code == 200
+    assert response.data["must_change_password"] is True
+    legacy.refresh_from_db()
+    assert legacy.must_change_password is True
