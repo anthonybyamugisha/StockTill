@@ -54,6 +54,7 @@ class DjangoUserRepository(UserRepository):
             last_name=m.last_name,
             role=Role(m.role),
             is_active=m.is_active,
+            is_superuser=m.is_superuser,
             last_login=m.last_login,
             failed_login_attempts=m.failed_login_attempts,
             locked_until=m.locked_until,

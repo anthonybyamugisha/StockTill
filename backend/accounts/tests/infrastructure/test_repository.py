@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 
 from accounts.domain.entities import Role, User
+from accounts.infrastructure.models import UserModel
 from accounts.infrastructure.repository import DjangoUserRepository
 
 
@@ -181,3 +182,25 @@ def test_existing_accounts_do_not_need_a_password_change():
 
     fetched = repo.get_by_id(repo.get_by_email("legacy@shop.com").id)
     assert fetched.must_change_password is False
+
+
+@pytest.mark.django_db
+def test_reads_the_superuser_flag_without_writing_through():
+    repo = DjangoUserRepository()
+    user = User(
+        email="seed@shop.com",
+        first_name="Seed",
+        last_name="Admin",
+        role=Role.ADMIN,
+        password_hash="x",
+    )
+    repo.save(user)
+    UserModel.objects.filter(id=user.id).update(is_superuser=True)
+
+    fetched = repo.get_by_id(user.id)
+    assert fetched is not None
+    assert fetched.is_superuser is True
+
+    fetched.first_name = "Renamed"
+    repo.save(fetched)
+    assert UserModel.objects.get(id=user.id).is_superuser is True
