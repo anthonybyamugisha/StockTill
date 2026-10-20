@@ -5,8 +5,9 @@ from purchasing.application.commands import (
     CreatePurchaseOrderCommand,
     ReceivePurchaseOrderCommand,
 )
+from purchasing.application.order_lines import build_order_lines
 from purchasing.application.ports import StockIntakePort
-from purchasing.domain.entities import PurchaseOrder, PurchaseOrderLine
+from purchasing.domain.entities import PurchaseOrder
 from purchasing.domain.errors import PurchaseOrderNotFoundError, SupplierNotFoundError
 from purchasing.domain.repository import PurchaseOrderRepository, SupplierRepository
 from shared.application.audit import AuditPort, NullAuditPort
@@ -30,15 +31,8 @@ class CreatePurchaseOrderUseCase:
         supplier = self._supplier_repo.get_by_id(command.supplier_id)
         if supplier is None:
             raise SupplierNotFoundError("Supplier not found")
-        lines = [
-            PurchaseOrderLine(
-                product_id=line.product_id,
-                product_name=line.product_name,
-                quantity=line.quantity,
-                unit_cost=line.unit_cost,
-            )
-            for line in command.lines
-        ]
+        lines = build_order_lines(command.lines)
+
         order = PurchaseOrder(
             supplier_id=supplier.id,
             supplier_name=supplier.name,
