@@ -23,9 +23,9 @@ Development** as first-class engineering disciplines --- not as decoration aroun
   with an X/Z report
 - **Offline-first PWA**. Installable app that keeps selling when the network drops
 - **Dashboard**. Real-time KPIs, the sales trend, and this month's best sellers
-- **Reports**. Sales, profit, inventory, cashier and low-stock reports, grouped by the shop's
-  calendar day, with CSV export that reports its own failures instead of silently downloading an
-  error page
+- **Reports**. Sales, profit, inventory, best-seller, cashier and low-stock reports, grouped by the
+  shop's calendar day. Every report tab downloads its own CSV, and an export reports its own
+  failures instead of silently downloading an error page
 - **Users & Roles**. Admin, Manager, Cashier with role-based permissions; an administrator-issued
 temporary password that the user must replace at first sign-in
 - **Clear feedback**. Every action confirms itself with a toast (or explains its failure), and
