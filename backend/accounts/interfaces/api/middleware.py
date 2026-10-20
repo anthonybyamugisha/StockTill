@@ -11,6 +11,10 @@ PENDING_PASSWORD_PATHS = (
 )
 
 
+def is_password_change_path(path: str) -> bool:
+    return path in PENDING_PASSWORD_PATHS
+
+
 class RequirePasswordChangeMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -25,7 +29,7 @@ class RequirePasswordChangeMiddleware:
         if (
             pending
             and request.path.startswith("/api/")
-            and not request.path.startswith(PENDING_PASSWORD_PATHS)
+            and not is_password_change_path(request.path)
         ):
             return JsonResponse(
                 {
