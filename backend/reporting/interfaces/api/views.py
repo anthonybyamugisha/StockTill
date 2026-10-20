@@ -30,6 +30,7 @@ from reporting.interfaces.api.csv_export import (
     write_cashier_sales_csv,
     write_daily_sales_csv,
     write_inventory_report_csv,
+    write_payment_methods_csv,
     write_low_stock_csv,
     write_profit_report_csv,
     write_sales_report_csv,
@@ -115,6 +116,17 @@ class SalesByPaymentMethodView(APIView):
             dates.date_from, dates.date_to
         )
         return Response(SalesByPaymentMethodSerializer(data, many=True).data)
+
+
+class SalesByPaymentMethodCSVView(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request):
+        dates = DateRange.from_params(request.query_params)
+        data = GetSalesByPaymentMethodUseCase(DjangoPaymentMethodSalesQuery()).execute(
+            dates.date_from, dates.date_to
+        )
+        return _csv_response(write_payment_methods_csv(data), "sales_by_payment_method.csv")
 
 
 class DailySalesView(APIView):
