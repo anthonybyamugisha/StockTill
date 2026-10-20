@@ -104,9 +104,7 @@ def test_the_expected_total_must_match_the_sale_total():
     inventory = StubInventory()
 
     with pytest.raises(InvalidPaymentError):
-        _use_case(repository, inventory).execute(
-            _command(expected_total=Money(Decimal("24000")))
-        )
+        _use_case(repository, inventory).execute(_command(expected_total=Money(Decimal("24000"))))
 
     assert repository.saved == []
     assert inventory.deductions == []
