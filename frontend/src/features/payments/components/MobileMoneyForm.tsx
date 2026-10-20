@@ -1,5 +1,4 @@
 import { Input } from '../../../shared/ui/Input';
-import { Select } from '../../../shared/ui/Select';
 import { formatMoney } from '../../../shared/utils/money';
 import { MobileNetwork, MOBILE_NETWORK_OPTIONS } from '../lib/paymentMethods';
 
@@ -35,13 +34,35 @@ export function MobileMoneyForm({
         error={error ?? undefined}
         autoComplete="off"
       />
-      <Select
-        label="Network"
-        value={network}
-        onChange={(event) => onNetworkChange(event.target.value as MobileNetwork)}
-        options={MOBILE_NETWORK_OPTIONS}
-        disabled={disabled}
-      />
+      <div>
+        <p className="label">Network</p>
+        <div
+          role="radiogroup"
+          aria-label="Mobile money network"
+          className="grid grid-cols-2 gap-2"
+        >
+          {MOBILE_NETWORK_OPTIONS.map((option) => {
+            const selected = option.value === network;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                disabled={disabled}
+                onClick={() => onNetworkChange(option.value)}
+                className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                  selected
+                    ? 'border-primary-500 bg-primary-50 text-primary-700'
+                    : 'border-surface-200 text-surface-600 hover:border-surface-300'
+                } disabled:cursor-not-allowed disabled:opacity-60`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <p className="text-xs text-surface-400">
         The customer will get a prompt to approve {formatMoney(amount)} on their phone.
       </p>

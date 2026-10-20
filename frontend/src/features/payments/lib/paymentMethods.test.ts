@@ -9,12 +9,10 @@ import {
 } from './paymentMethods';
 
 describe('payment methods', () => {
-  it('offers cash, mobile money, card and bank transfer', () => {
+  it('offers only cash and mobile money in the sale flow', () => {
     expect(PAYMENT_METHOD_OPTIONS.map((option) => option.value)).toEqual([
       'cash',
       'mobile_money',
-      'card',
-      'bank_transfer',
     ]);
   });
 

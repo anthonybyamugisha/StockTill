@@ -21,17 +21,14 @@ export const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
     label: 'Mobile Money',
     description: 'Send a prompt to the customer phone',
   },
-  {
-    value: 'card',
-    label: 'Card',
-    description: 'Use your card terminal, then record the reference',
-  },
-  {
-    value: 'bank_transfer',
-    label: 'Bank Transfer',
-    description: 'Record the transfer reference',
-  },
 ];
+
+const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: 'Cash',
+  mobile_money: 'Mobile Money',
+  card: 'Card',
+  bank_transfer: 'Bank Transfer',
+};
 
 export const MOBILE_NETWORK_OPTIONS: { value: MobileNetwork; label: string }[] = [
   { value: 'mtn', label: 'MTN MoMo' },
@@ -51,7 +48,7 @@ export function requiresReference(method: PaymentMethod): boolean {
 }
 
 export function paymentMethodLabel(method: PaymentMethod): string {
-  return PAYMENT_METHOD_OPTIONS.find((option) => option.value === method)?.label ?? method;
+  return PAYMENT_METHOD_LABELS[method] ?? method;
 }
 
 export function mobileNetworkLabel(network: MobileNetwork): string {

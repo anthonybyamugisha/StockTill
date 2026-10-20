@@ -29,7 +29,6 @@ import {
   calculateChange,
   normalizePhone,
   validatePhone,
-  validateReference,
   validateTendered,
 } from '../../payments/lib/validation';
 
@@ -48,9 +47,8 @@ interface PaymentModalProps {
 }
 
 interface SaleInput {
-  method: 'cash' | 'card' | 'bank_transfer';
+  method: 'cash';
   tendered?: string;
-  reference?: string;
 }
 
 function newIdempotencyKey(): string {
@@ -64,7 +62,6 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
   const queryClient = useQueryClient();
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [tendered, setTendered] = useState('');
-  const [reference, setReference] = useState('');
   const [phone, setPhone] = useState('');
   const [network, setNetwork] = useState<MobileNetwork>('mtn');
   const [formError, setFormError] = useState<string | null>(null);
@@ -90,13 +87,8 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
     mutationFn: async (input: SaleInput): Promise<PaymentResult> => {
       const payment: PaymentInput = { method: input.method, amount: total.toFixed(2) };
 
-      if (input.method === 'cash') {
-        const cashTendered = input.tendered?.trim();
-        if (cashTendered) payment.tendered = Number(cashTendered).toFixed(2);
-      } else {
-        payment.reference = input.reference?.trim();
-        payment.provider = 'manual';
-      }
+      const cashTendered = input.tendered?.trim();
+      if (cashTendered) payment.tendered = Number(cashTendered).toFixed(2);
 
       const payload: CompleteSaleRequest = {
         lines: saleLines,
@@ -160,29 +152,19 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
       return;
     }
 
-    if (method === 'mobile_money') {
-      const error = validatePhone(phone);
-      if (error) {
-        setFormError(error);
-        return;
-      }
-      paymentIntent.start({
-        method: 'mobile_money',
-        amount: total.toFixed(2),
-        phone: normalizePhone(phone),
-        network,
-        idempotency_key: idempotencyKey.current,
-        sale: { lines: saleLines },
-      });
-      return;
-    }
-
-    const error = validateReference(method, reference);
+    const error = validatePhone(phone);
     if (error) {
       setFormError(error);
       return;
     }
-    saleMutation.mutate({ method, reference });
+    paymentIntent.start({
+      method: 'mobile_money',
+      amount: total.toFixed(2),
+      phone: normalizePhone(phone),
+      network,
+      idempotency_key: idempotencyKey.current,
+      sale: { lines: saleLines },
+    });
   };
 
   const handleMethodChange = (next: PaymentMethod) => {
@@ -353,22 +335,6 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
               disabled={busy}
               error={formError}
             />
-          )}
-
-          {(method === 'card' || method === 'bank_transfer') && (
-            <div>
-              <Input
-                label="Payment reference"
-                value={reference}
-                onChange={(event) => setReference(event.target.value)}
-                placeholder="Terminal slip or bank reference"
-                disabled={busy}
-                autoComplete="off"
-              />
-              <p className="mt-1 text-xs text-surface-400">
-                Complete the payment on your terminal or bank app, then record the reference.
-              </p>
-            </div>
           )}
 
           {formError && method !== 'mobile_money' && (
