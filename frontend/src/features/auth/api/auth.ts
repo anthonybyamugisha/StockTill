@@ -12,6 +12,7 @@ export interface User {
   last_name: string;
   role: 'admin' | 'manager' | 'cashier';
   is_active: boolean;
+  must_change_password: boolean;
 }
 
 export async function login(data: LoginRequest): Promise<void> {
