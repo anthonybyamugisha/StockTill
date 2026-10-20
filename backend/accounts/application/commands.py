@@ -27,3 +27,10 @@ class UpdateUserCommand:
 class DeactivateUserCommand:
     user_id: UUID
     actor_id: UUID | None = None
+
+
+@dataclass(frozen=True)
+class ChangePasswordCommand:
+    user_id: UUID
+    current_password: str
+    new_password: str
