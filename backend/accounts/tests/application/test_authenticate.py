@@ -141,3 +141,16 @@ def test_seeded_superuser_is_not_forced_to_change_their_password():
     result = AuthenticateUserUseCase(repo, hasher).execute("admin@shop.com", "password123")
 
     assert result.must_change_password is False
+
+
+def test_second_login_does_not_reopen_the_first_login_rule():
+    repo = FakeUserRepository()
+    hasher = FakePasswordHasher()
+    user = User(email="return@shop.com", first_name="Return", last_name="User", role=Role.CASHIER)
+    user.set_password("password123", hasher)
+    user.last_login = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)
+    repo.save(user)
+
+    result = AuthenticateUserUseCase(repo, hasher).execute("return@shop.com", "password123")
+
+    assert result.must_change_password is False
