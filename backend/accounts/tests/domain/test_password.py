@@ -54,3 +54,8 @@ def test_password_strength_rejects_short_passwords():
 def test_password_strength_rejects_letters_only():
     with pytest.raises(WeakPasswordError, match="letter and one number"):
         validate_password_strength("onlyletters")
+
+
+def test_password_strength_rejects_numbers_only():
+    with pytest.raises(WeakPasswordError, match="letter and one number"):
+        validate_password_strength("12345678")
