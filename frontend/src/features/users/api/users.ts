@@ -7,6 +7,7 @@ export interface User {
   last_name: string;
   role: 'admin' | 'manager' | 'cashier';
   is_active: boolean;
+  must_change_password: boolean;
   last_login: string | null;
 }
 
