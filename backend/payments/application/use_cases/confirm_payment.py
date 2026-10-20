@@ -59,6 +59,7 @@ class ConfirmPaymentUseCase:
             sale_id=None,
             at=now,
         )
+        assert intent.cashier_id is not None
         try:
             sale_id = self._sale_completion.complete_sale(
                 payload=intent.sale_payload,
