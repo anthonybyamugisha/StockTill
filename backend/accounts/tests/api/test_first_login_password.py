@@ -80,3 +80,14 @@ def test_pending_user_is_blocked_from_business_endpoints(api_client, pending_use
 
     assert response.status_code == 403
     assert response.json()["code"] == "password_change_required"
+
+
+@pytest.mark.django_db
+def test_pending_user_can_read_their_profile(api_client, pending_user):
+    sign_in(api_client, pending_user.email)
+
+    response = api_client.get("/api/v1/accounts/me/")
+
+    assert response.status_code == 200
+    assert response.data["email"] == pending_user.email
+    assert response.data["must_change_password"] is True
