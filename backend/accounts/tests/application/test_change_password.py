@@ -146,3 +146,18 @@ def test_change_password_rejects_reuse_of_the_current_password():
                 new_password="temporary1",
             )
         )
+
+
+def test_change_password_rejects_an_unknown_user():
+    hasher = FakePasswordHasher()
+    repo = FakeUserRepository()
+    from uuid import uuid4
+
+    with pytest.raises(ValueError, match="User not found"):
+        ChangePasswordUseCase(repo, hasher).execute(
+            ChangePasswordCommand(
+                user_id=uuid4(),
+                current_password="temporary1",
+                new_password="permanent1",
+            )
+        )
