@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from reporting.application.queries import (
+    CashierSales,
     DailySales,
     ProfitReport,
     SalesReportRow,
@@ -10,6 +11,7 @@ from reporting.application.queries import (
     TopProduct,
 )
 from reporting.interfaces.api.csv_export import (
+    write_cashier_sales_csv,
     write_daily_sales_csv,
     write_profit_report_csv,
     write_sales_report_csv,
@@ -110,3 +112,19 @@ def test_writes_top_products():
 
     assert lines[0] == "Product,Qty Sold,Revenue"
     assert lines[1] == "Sugar 1kg,2,3000.00"
+
+
+def test_writes_sales_by_cashier():
+    rows = [
+        CashierSales(
+            cashier_id=UUID("00000000-0000-0000-0000-000000000002"),
+            cashier_name="Grace Nakato",
+            transaction_count=4,
+            total=Decimal("6000.00"),
+        )
+    ]
+
+    lines = write_cashier_sales_csv(rows).splitlines()
+
+    assert lines[0] == "Cashier,Transactions,Total"
+    assert lines[1] == "Grace Nakato,4,6000.00"
