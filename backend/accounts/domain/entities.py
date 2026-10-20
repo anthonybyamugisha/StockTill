@@ -23,6 +23,7 @@ class User(Entity):
     last_name: str = ""
     role: Role = Role.CASHIER
     is_active: bool = True
+    is_superuser: bool = False
     last_login: datetime | None = None
     failed_login_attempts: int = 0
     locked_until: datetime | None = None
