@@ -31,6 +31,7 @@ from reporting.interfaces.api.csv_export import (
     write_profit_report_csv,
     write_sales_report_csv,
     write_sales_summary_csv,
+    write_top_products_csv,
 )
 from reporting.interfaces.api.date_range import DateRange
 from reporting.interfaces.api.serializers import (
@@ -88,6 +89,18 @@ class TopProductsView(APIView):
             dates.date_from, dates.date_to, limit
         )
         return Response(TopProductSerializer(products, many=True).data)
+
+
+class TopProductsCSVView(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request):
+        dates = DateRange.from_params(request.query_params)
+        limit = int(request.query_params.get("limit", 10))
+        data = GetTopProductsUseCase(DjangoTopProductsQuery()).execute(
+            dates.date_from, dates.date_to, limit
+        )
+        return _csv_response(write_top_products_csv(data), "top_products.csv")
 
 
 class SalesByPaymentMethodView(APIView):
