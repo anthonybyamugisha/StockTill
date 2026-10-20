@@ -17,8 +17,3 @@ class IsManager(BasePermission):
             and hasattr(request.user, "role")
             and request.user.role in ("admin", "manager")
         )
-
-
-class IsCashier(BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated

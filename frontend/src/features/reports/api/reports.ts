@@ -23,12 +23,6 @@ export interface DailySales {
   total: string;
 }
 
-export interface SalesByPaymentMethod {
-  method: string;
-  count: number;
-  total: string;
-}
-
 export interface CashierSales {
   cashier_id: string;
   cashier_name: string;
@@ -67,13 +61,6 @@ export async function getTopProducts(dateFrom: string, dateTo: string): Promise<
 
 export async function getDailySales(dateFrom: string, dateTo: string): Promise<DailySales[]> {
   const res = await apiClient.get<DailySales[]>('/reporting/daily-sales/', {
-    params: { date_from: dateFrom, date_to: dateTo },
-  });
-  return res.data;
-}
-
-export async function getSalesByPaymentMethod(dateFrom: string, dateTo: string): Promise<SalesByPaymentMethod[]> {
-  const res = await apiClient.get<SalesByPaymentMethod[]>('/reporting/by-payment-method/', {
     params: { date_from: dateFrom, date_to: dateTo },
   });
   return res.data;

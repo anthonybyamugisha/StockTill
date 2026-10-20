@@ -37,13 +37,3 @@ class ShiftSerializer(serializers.Serializer):
     opened_at = serializers.DateTimeField()
     closed_at = serializers.DateTimeField(allow_null=True)
     cash_movements = CashMovementSerializer(many=True)
-
-
-class ShiftReportSerializer(serializers.Serializer):
-    shift = ShiftSerializer()
-    cash_sales = serializers.DecimalField(max_digits=14, decimal_places=2)
-    cash_refunds = serializers.DecimalField(max_digits=14, decimal_places=2)
-    net_cash_movements = serializers.DecimalField(max_digits=14, decimal_places=2)
-    expected_cash = serializers.DecimalField(max_digits=14, decimal_places=2)
-    counted_cash = serializers.DecimalField(max_digits=14, decimal_places=2, allow_null=True)
-    variance = serializers.DecimalField(max_digits=14, decimal_places=2, allow_null=True)

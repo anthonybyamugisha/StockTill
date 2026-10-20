@@ -3,12 +3,6 @@ from datetime import datetime
 from sales.application.ports import ReceiptNumberPort
 
 
-class SequentialReceiptNumberPort(ReceiptNumberPort):
-    def generate(self) -> str:
-        now = datetime.now()
-        return f"ST-{now.year}-{now.month:02d}{now.day:02d}-{now.hour:02d}{now.minute:02d}{now.second:02d}"
-
-
 class DatabaseReceiptNumberPort(ReceiptNumberPort):
     def generate(self) -> str:
         from sales.infrastructure.models import SaleModel

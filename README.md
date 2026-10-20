@@ -140,7 +140,7 @@ serializers and views, duplicated, and only testable by standing up a database.
 - **Ubiquitous language** --- the words in the code (*sale line*, *payment*, *refund*, *void*,
   *stock movement*, *shift*, *variance*, *purchase order*) are the words used in the UI, the tests
   and this document.
-- **Domain events, repository interfaces, ports** --- declared in the inner layers and satisfied
+- **Repository interfaces and ports** --- declared in the inner layers and satisfied
   outside.
 
 A good example is `Shift.expected_cash()` and `Shift.variance()`: the drawer formula lives on the
@@ -157,7 +157,7 @@ framework.
 
 | Layer | Contains | Depends on |
 |-------|----------|-----------|
-| **Domain** | Entities, aggregates, value objects, domain events, domain errors, repository **interfaces** | Pure Python only --- no Django, no DRF |
+| **Domain** | Entities, aggregates, value objects, domain errors, repository **interfaces** | Pure Python only --- no Django, no DRF |
 | **Application** | Use cases (command/query handlers), **ports** for cross-context work, clocks | Domain |
 | **Infrastructure** | Django models, migrations, repository implementations, adapters | Application + Domain |
 | **Interfaces** | DRF views, serializers, permissions, URLs | Application |
@@ -250,7 +250,7 @@ business rules end up validated only through the slowest, most fragile tests.
   tests intentionally ignore.
 
 This split mirrors Clean Architecture: the domain is proven in isolation, the wiring is proven at the
-edges. The current suite is **250 backend tests** and **70 frontend unit tests**, plus Playwright
+edges. The current suite is **246 backend tests** and **70 frontend unit tests**, plus Playwright
 end-to-end scenarios; deepening each context's domain suite is the top item on the roadmap.
 
 ## 4. Why this is more than "just Django"
@@ -287,7 +287,6 @@ can reason about, test and change with confidence.
 | **Purchase Order** | A request to a supplier, tracked draft/ordered/received/cancelled |
 | **Money** | Decimal-based value object (UGX), never `float` |
 | **Idempotency Key** | Client-generated key preventing duplicate sale creation |
-| **Unit of Work** | Database transaction boundary |
 | **Port** | Interface declared by a use case for cross-context communication |
 | **Adapter** | Infrastructure implementation of a port |
 

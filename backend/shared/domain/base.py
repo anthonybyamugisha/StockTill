@@ -16,14 +16,5 @@ class Entity:
         return hash(self.id)
 
 
-@dataclass
 class AggregateRoot(Entity):
-    _domain_events: list[Any] = field(default_factory=list, init=False, repr=False)
-
-    def add_domain_event(self, event: Any) -> None:
-        self._domain_events.append(event)
-
-    def clear_domain_events(self) -> list[Any]:
-        events = self._domain_events[:]
-        self._domain_events.clear()
-        return events
+    """Marker base class for aggregate roots."""
