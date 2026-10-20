@@ -94,7 +94,7 @@ StockTill/
 │  ├─ e2e/                                         Playwright specs (auth, POS)
 │  └─ vite.config.ts · vercel.json
 │
-├─ deploy/                                         backup.sh · restore.sh · env.template
+├─ deploy/                                         backup.sh · restore.sh · verify_release.py · env.template
 ├─ docker-compose.yml                              Local dev stack (api · db · web)
 ├─ Makefile                                        up · test · lint · typecheck
 ├─ render.yaml                                     Render blueprint                               
@@ -251,7 +251,7 @@ business rules end up validated only through the slowest, most fragile tests.
   tests intentionally ignore.
 
 This split mirrors Clean Architecture: the domain is proven in isolation, the wiring is proven at the
-edges. The current suite is **342 backend tests** and **84 frontend unit tests**, plus Playwright
+edges. The current suite is **355 backend tests** and **84 frontend unit tests**, plus Playwright
 end-to-end scenarios; deepening each context's domain suite is the top item on the roadmap.
 
 ## 4. Why this is more than "just Django"
@@ -356,23 +356,38 @@ API: `/api/v1/purchasing/suppliers/`, `/suppliers/{id}/`, `/orders/`, `/orders/{
 An administrator creates a user with a password, but that password is explicitly temporary. The
 `must_change_password` flag is set at creation and travels with every user payload. After signing in:
 
-- the SPA sends the user to `/change-password` and keeps every other route behind a redirect;
+- the SPA sends the user to `/change-password` and keeps every other route behind a redirect; a `403`
+  with `code: password_change_required` from any request also redirects the browser there, so a stale
+  tab cannot silently retry against a gated endpoint;
 - the API rejects every endpoint except `/accounts/login/`, `/accounts/me/`,
   `/accounts/change-password/`, `/accounts/logout/`, the health check and the docs, with a `403`
   carrying `code: password_change_required`. This is enforced server-side by middleware, not by the
-  SPA, so a client that skips the screen still cannot use the till;
+  SPA, so a client that skips the screen still cannot use the till. The exempt routes are matched
+  exactly, so a lookalike path such as `/accounts/me/extra/` is still gated;
 - the replacement must be at least eight characters, mix a letter with a number, and differ from the
   temporary password. The old password stops working immediately; the current session is kept alive
-  with `update_session_auth_hash` so the user is not bounced back to the login page;
+  with `update_session_auth_hash` so the user is not bounced back to the login page. The screen also
+  offers a sign-out, so a user handed the wrong account is not stranded;
 - the change is audited as `auth.password_changed`, and the flag is cleared in the same database
   write as the new hash.
 
 The rule follows the *first sign-in*, not the account's creation date. A login is treated as a first
 login whenever the account has never recorded one (`last_login` is `null`), so an account created
 before the flag existed is pulled into the flow the first time it signs in. The sign-in is audited as
-`auth.first_login`, and a data migration backfills the flag for legacy accounts that have never signed
-in. The seeded superuser is exempt, which keeps the deployment's break-glass account usable, and the
-temporary password is never stored in plain text or written to the audit log.
+`auth.first_login`, and the data migration `accounts/0003_backfill_first_login_passwords` sets the flag
+on every existing account that has never signed in. Accounts that have already signed in, and the
+seeded superuser, are left alone --- the superuser stays exempt so the deployment's break-glass account
+remains usable even if its flag is ever set. The temporary password is never stored in plain text or
+written to the audit log.
+
+A gated request returns:
+
+```json
+{
+  "detail": "Change your temporary password before using StockTill.",
+  "code": "password_change_required"
+}
+```
 
 API: `POST /api/v1/accounts/change-password/` with `current_password` and `new_password`.
 
@@ -467,8 +482,15 @@ quantities) that make whole classes of errors impossible.
 (Docker/Gunicorn/WhiteNoise/Sentry).
 
 **Production:** the API runs on Render (Gunicorn + WhiteNoise) with a managed PostgreSQL database;
-the SPA is deployed to Vercel. On every deploy the backend runs migrations, seeds the administrator
-account, collects static files, then starts Gunicorn. Health check: `GET /api/v1/health/`.
+the SPA is deployed to Vercel. Continuous deploy is enabled in `render.yaml`, and on every deploy the
+backend runs migrations, seeds the administrator account, collects static files, then starts Gunicorn.
+The service is considered healthy once `GET /api/v1/health/` answers, and `deploy/verify_release.py`
+compares the live OpenAPI schema against the routes this repository expects, so a stale deployment is
+caught before judging:
+
+```bash
+python deploy/verify_release.py
+```
 
 Migrations and backups:
 
