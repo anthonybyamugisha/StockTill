@@ -337,3 +337,32 @@ def test_top_products_csv_export(api_client, manager_user, sale):
     body = response.content.decode()
     assert body.startswith("Product,Qty Sold,Revenue")
     assert "Sugar 1kg,1,1500.00" in body
+
+
+@pytest.mark.django_db
+def test_cashier_sales_csv_export(api_client, manager_user, sale):
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get(
+        "/api/v1/reporting/cashier-sales/csv/",
+        {"date_from": "2000-01-01", "date_to": "2100-01-01"},
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Disposition"] == "attachment; filename=cashier_sales.csv"
+    body = response.content.decode()
+    assert body.startswith("Cashier,Transactions,Total")
+    assert "cashier User,1,1500.00" in body
+
+
+@pytest.mark.django_db
+def test_low_stock_csv_export(api_client, manager_user, product, stock_item):
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get("/api/v1/reporting/low-stock/csv/")
+
+    assert response.status_code == 200
+    assert response["Content-Disposition"] == "attachment; filename=low_stock.csv"
+    body = response.content.decode()
+    assert body.startswith("Product,SKU,Qty On Hand,Minimum Level")
+    assert "Sugar 1kg,SUG-001,5,10" in body
