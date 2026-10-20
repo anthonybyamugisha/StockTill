@@ -4,6 +4,7 @@ from io import StringIO
 from reporting.application.queries import (
     CashierSales,
     DailySales,
+    LowStockItem,
     ProfitReport,
     SalesReportRow,
     SalesSummary,
@@ -92,6 +93,20 @@ def write_cashier_sales_csv(rows: list[CashierSales]) -> str:
         ["Cashier", "Transactions", "Total"],
         [
             [row.cashier_name, str(row.transaction_count), _money(row.total)]
+            for row in rows
+        ],
+    )
+
+def write_low_stock_csv(rows: list[LowStockItem]) -> str:
+    return _write_rows(
+        ["Product", "SKU", "Qty On Hand", "Minimum Level"],
+        [
+            [
+                row.product_name,
+                row.sku,
+                str(row.quantity_on_hand),
+                str(row.minimum_level),
+            ]
             for row in rows
         ],
     )

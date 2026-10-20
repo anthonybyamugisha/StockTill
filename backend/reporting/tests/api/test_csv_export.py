@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from reporting.application.queries import (
+    LowStockItem,
     CashierSales,
     DailySales,
     ProfitReport,
@@ -13,6 +14,7 @@ from reporting.application.queries import (
 from reporting.interfaces.api.csv_export import (
     write_cashier_sales_csv,
     write_daily_sales_csv,
+    write_low_stock_csv,
     write_profit_report_csv,
     write_sales_report_csv,
     write_sales_summary_csv,
@@ -128,3 +130,20 @@ def test_writes_sales_by_cashier():
 
     assert lines[0] == "Cashier,Transactions,Total"
     assert lines[1] == "Grace Nakato,4,6000.00"
+
+
+def test_writes_low_stock_items():
+    rows = [
+        LowStockItem(
+            product_id=UUID("00000000-0000-0000-0000-000000000003"),
+            product_name="Sugar 1kg",
+            sku="SUG-001",
+            quantity_on_hand=5,
+            minimum_level=10,
+        )
+    ]
+
+    lines = write_low_stock_csv(rows).splitlines()
+
+    assert lines[0] == "Product,SKU,Qty On Hand,Minimum Level"
+    assert lines[1] == "Sugar 1kg,SUG-001,5,10"
