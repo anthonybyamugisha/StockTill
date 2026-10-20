@@ -398,3 +398,12 @@ def test_payment_method_csv_export(api_client, manager_user, sale):
     body = response.content.decode()
     assert body.startswith("Payment Method,Transactions,Total")
     assert "cash,1,1500.00" in body
+
+
+@pytest.mark.django_db
+def test_csv_exports_require_manager(api_client, cashier_user):
+    api_client.force_authenticate(user=cashier_user)
+
+    response = api_client.get("/api/v1/reporting/profit/csv/")
+
+    assert response.status_code == 403
