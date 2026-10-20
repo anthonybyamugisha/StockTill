@@ -22,7 +22,7 @@ type BadgeVariant = 'success' | 'warning' | 'error' | 'neutral' | 'primary';
 
 function actionVariant(action: string): BadgeVariant {
   if (/(voided|failed|blocked|deactivated|cancelled)/.test(action)) return 'error';
-  if (/^(auth\.login$|sale\.completed|shift\.opened|purchase_order\.received)/.test(action)) return 'success';
+  if (/^(auth\.login$|auth\.password_changed$|sale\.completed|shift\.opened|purchase_order\.received)/.test(action)) return 'success';
   if (/^(stock\.|product\.(updated|created)|settings\.updated|supplier\.(updated|created))/.test(action)) return 'warning';
   return 'primary';
 }
