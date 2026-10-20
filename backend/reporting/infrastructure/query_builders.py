@@ -1,14 +1,11 @@
 from datetime import date, timedelta
-from decimal import Decimal
 
 from catalog.infrastructure.models import ProductModel
 from reporting.application.queries import (
-    InventoryReport,
     LowStockItem,
 )
 from reporting.infrastructure.directories import CashierDirectory, CatalogDirectory
 from reporting.infrastructure.stock_levels import StockLevels
-from shared.domain.money import Money
 
 _MAX_FILLED_DAYS = 366
 
@@ -27,28 +24,6 @@ class SalesQueryBuilder:
     def _stock_counts(self) -> tuple[int, int]:
         levels = StockLevels.load()
         return levels.low, levels.out
-
-    def get_inventory_report(self) -> InventoryReport:
-        from inventory.infrastructure.models import StockItemModel
-
-        products = self._products_by_id()
-        total_value = Money.zero()
-        for item in StockItemModel.objects.all():
-            product = products.get(item.product_id)
-            if product is None:
-                continue
-            total_value = total_value.add(
-                Money(product.buying_cost).multiply(Decimal(item.quantity_on_hand))
-            )
-
-        low_stock, out_of_stock = self._stock_counts()
-
-        return InventoryReport(
-            total_products=ProductModel.objects.filter(is_active=True).count(),
-            total_value=total_value.amount,
-            low_stock_count=low_stock,
-            out_of_stock_count=out_of_stock,
-        )
 
     def get_low_stock_items(self) -> list[LowStockItem]:
         from inventory.infrastructure.models import StockItemModel

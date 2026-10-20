@@ -11,6 +11,7 @@ from reporting.application.use_cases import (
     GetCashierSalesUseCase,
     GetDailySalesUseCase,
     GetDashboardStatsUseCase,
+    GetInventoryReportUseCase,
     GetProfitReportUseCase,
     GetSalesByPaymentMethodUseCase,
     GetSalesReportUseCase,
@@ -20,6 +21,7 @@ from reporting.application.use_cases import (
 from reporting.infrastructure.queries.cashier_sales import DjangoCashierSalesQuery
 from reporting.infrastructure.queries.daily_sales import DjangoDailySalesQuery
 from reporting.infrastructure.queries.dashboard import DjangoDashboardQuery
+from reporting.infrastructure.queries.inventory_report import DjangoInventoryReportQuery
 from reporting.infrastructure.queries.payment_methods import DjangoPaymentMethodSalesQuery
 from reporting.infrastructure.queries.profit import DjangoProfitReportQuery
 from reporting.infrastructure.queries.sales_report import DjangoSalesReportQuery
@@ -118,7 +120,7 @@ class InventoryReportView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request):
-        report = SalesQueryBuilder().get_inventory_report()
+        report = GetInventoryReportUseCase(DjangoInventoryReportQuery()).execute()
         return Response(InventoryReportSerializer(report).data)
 
 

@@ -142,6 +142,8 @@ ignore_imports = [
     "reporting.infrastructure.queries.profit:sales.infrastructure.models",
     "reporting.infrastructure.queries.dashboard:sales.infrastructure.models",
     "reporting.infrastructure.queries.dashboard:catalog.infrastructure.models",
+    "reporting.infrastructure.queries.inventory_report:catalog.infrastructure.models",
+    "reporting.infrastructure.queries.inventory_report:inventory.infrastructure.models",
     "sales.infrastructure.adapters:shifts.infrastructure.models",
     "shifts.infrastructure.adapters:sales.infrastructure.models",
     "purchasing.infrastructure.adapters:inventory.application.commands",
