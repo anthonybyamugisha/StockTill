@@ -251,7 +251,7 @@ business rules end up validated only through the slowest, most fragile tests.
   tests intentionally ignore.
 
 This split mirrors Clean Architecture: the domain is proven in isolation, the wiring is proven at the
-edges. The current suite is **303 backend tests** and **81 frontend unit tests**, plus Playwright
+edges. The current suite is **342 backend tests** and **84 frontend unit tests**, plus Playwright
 end-to-end scenarios; deepening each context's domain suite is the top item on the roadmap.
 
 ## 4. Why this is more than "just Django"
@@ -367,9 +367,12 @@ An administrator creates a user with a password, but that password is explicitly
 - the change is audited as `auth.password_changed`, and the flag is cleared in the same database
   write as the new hash.
 
-Existing accounts are migrated with the flag off, so only accounts created through the user-management
-screen enter this flow. The temporary password is never stored in plain text or written to the audit
-log.
+The rule follows the *first sign-in*, not the account's creation date. A login is treated as a first
+login whenever the account has never recorded one (`last_login` is `null`), so an account created
+before the flag existed is pulled into the flow the first time it signs in. The sign-in is audited as
+`auth.first_login`, and a data migration backfills the flag for legacy accounts that have never signed
+in. The seeded superuser is exempt, which keeps the deployment's break-glass account usable, and the
+temporary password is never stored in plain text or written to the audit log.
 
 API: `POST /api/v1/accounts/change-password/` with `current_password` and `new_password`.
 
@@ -379,8 +382,8 @@ Every money- or security-relevant action writes an immutable entry: **who** (the
 (`action`, `entity_type`, `entity_id`), **when** (timestamp) and the **before/after** values, so a
 change can be reconstructed rather than merely noticed. Recorded activity covers:
 
-- **Authentication** --- successful and failed logins, blocked attempts (deactivated/locked), logout,
-  and password changes made after a temporary password.
+- **Authentication** --- successful and failed logins, first sign-ins that trigger a password change,
+  blocked attempts (deactivated/locked), logout, and password changes made after a temporary password.
 - **Users** --- created, updated, **role changes**, deactivated.
 - **Catalog** --- product created/updated (price changes as before/after diffs) and deactivated;
   category created/deactivated.
