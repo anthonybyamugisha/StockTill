@@ -3,7 +3,7 @@ import pytest
 from accounts.application.commands import ChangePasswordCommand
 from accounts.application.use_cases import ChangePasswordUseCase
 from accounts.domain.entities import Role, User
-from accounts.domain.errors import InvalidCurrentPasswordError
+from accounts.domain.errors import InvalidCurrentPasswordError, WeakPasswordError
 from accounts.domain.password import PasswordHasher
 from accounts.domain.repository import UserRepository
 
@@ -102,3 +102,15 @@ def test_change_password_rejects_a_wrong_current_password():
 
     assert user.must_change_password is True
     assert repo.saves == 1
+
+
+def test_change_password_rejects_a_short_new_password():
+    hasher = FakePasswordHasher()
+    repo = FakeUserRepository()
+    user = make_user(hasher)
+    repo.save(user)
+
+    with pytest.raises(WeakPasswordError, match="at least 8"):
+        ChangePasswordUseCase(repo, hasher).execute(
+            ChangePasswordCommand(user_id=user.id, current_password="temporary1", new_password="short1")
+        )
