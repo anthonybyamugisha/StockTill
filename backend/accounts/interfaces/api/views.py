@@ -3,21 +3,25 @@ from uuid import UUID
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.application.commands import (
+    ChangePasswordCommand,
     CreateUserCommand,
     DeactivateUserCommand,
     UpdateUserCommand,
 )
 from accounts.application.use_cases import (
     AuthenticateUserUseCase,
+    ChangePasswordUseCase,
     CreateUserUseCase,
     DeactivateUserUseCase,
     UpdateUserUseCase,
 )
 from accounts.domain.entities import Role
+from accounts.domain.errors import DomainError
 from accounts.infrastructure.audit_repository import DjangoAuditRepository
 from accounts.infrastructure.models import UserModel
 from accounts.infrastructure.password_hasher import DjangoPasswordHasher
@@ -25,6 +29,7 @@ from accounts.infrastructure.repository import DjangoUserRepository
 from accounts.interfaces.api.permissions import IsAdmin
 from accounts.interfaces.api.serializers import (
     AuditLogSerializer,
+    ChangePasswordSerializer,
     CreateUserSerializer,
     LoginSerializer,
     UserSerializer,
@@ -161,6 +166,32 @@ class CurrentUserView(APIView):
         if not request.user.is_authenticated:
             return Response({"detail": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(UserSerializer(request.user).data)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        use_case = ChangePasswordUseCase(
+            DjangoUserRepository(), DjangoPasswordHasher(), build_audit_recorder()
+        )
+        try:
+            use_case.execute(
+                ChangePasswordCommand(
+                    user_id=request.user.id,
+                    current_password=data["current_password"],
+                    new_password=data["new_password"],
+                )
+            )
+        except DomainError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        model = UserModel.objects.get(id=request.user.id)
+        return Response(UserSerializer(model).data)
 
 
 class AuditLogView(APIView):
