@@ -1,25 +1,37 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { completeSale, CompleteSaleRequest, PaymentInput, CartItem, Sale } from '../api/pos';
+import {
+  completeSale,
+  CompleteSaleRequest,
+  getSale,
+  PaymentInput,
+  CartItem,
+  Sale,
+} from '../api/pos';
 import { queueSale } from '../offline/saleQueue';
 import { isNetworkError } from '../offline/networkError';
 import { getApiErrorMessage } from '../../../shared/http/errors';
 import { formatMoney } from '../../../shared/utils/money';
 import { Modal } from '../../../shared/ui/Modal';
 import { Button } from '../../../shared/ui/Button';
+import { Input } from '../../../shared/ui/Input';
 import { Receipt } from '../../../shared/ui/Receipt';
 import { toast } from '../../../shared/ui/toast';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { getSettings } from '../../settings/api/settings';
-
-const paymentSchema = z.object({
-  tendered: z.string().optional(),
-});
-
-type PaymentFormData = z.infer<typeof paymentSchema>;
+import { PaymentMethodSelector } from '../../payments/components/PaymentMethodSelector';
+import { MobileMoneyForm } from '../../payments/components/MobileMoneyForm';
+import { PaymentStatusPanel } from '../../payments/components/PaymentStatusPanel';
+import { usePaymentIntent } from '../../payments/hooks/usePaymentIntent';
+import { MobileNetwork, PaymentMethod, paymentMethodLabel } from '../../payments/lib/paymentMethods';
+import { isFailure, isNeedsReview } from '../../payments/lib/intentStatus';
+import {
+  calculateChange,
+  normalizePhone,
+  validatePhone,
+  validateReference,
+  validateTendered,
+} from '../../payments/lib/validation';
 
 interface PaymentResult {
   receipt_number: string;
@@ -35,39 +47,61 @@ interface PaymentModalProps {
   onComplete: () => void;
 }
 
+interface SaleInput {
+  method: 'cash' | 'card' | 'bank_transfer';
+  tendered?: string;
+  reference?: string;
+}
+
+function newIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function PaymentModal({ isOpen, onClose, items, total, onComplete }: PaymentModalProps) {
-  const { register, handleSubmit, watch } = useForm<PaymentFormData>({
-    resolver: zodResolver(paymentSchema),
-    defaultValues: { tendered: '' },
-  });
   const queryClient = useQueryClient();
+  const [method, setMethod] = useState<PaymentMethod>('cash');
+  const [tendered, setTendered] = useState('');
+  const [reference, setReference] = useState('');
+  const [phone, setPhone] = useState('');
+  const [network, setNetwork] = useState<MobileNetwork>('mtn');
+  const [formError, setFormError] = useState<string | null>(null);
   const [result, setResult] = useState<PaymentResult | null>(null);
+  const idempotencyKey = useRef(newIdempotencyKey());
+  const paymentIntent = usePaymentIntent();
   const { user } = useAuth();
   const cashierName = user ? `${user.first_name} ${user.last_name}`.trim() : '';
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
 
-  const tenderedInput = watch('tendered') ?? '';
-  const tenderedValue = parseFloat(tenderedInput);
-  const hasTendered = tenderedInput.trim() !== '' && Number.isFinite(tenderedValue);
-  const shortfall = hasTendered && tenderedValue < total;
-  const change = hasTendered && tenderedValue >= total ? tenderedValue - total : 0;
+  const saleLines = items.map((item) => ({
+    product_id: item.product_id,
+    product_name: item.name,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    unit_cost: item.unit_cost,
+  }));
 
-  const mutation = useMutation({
-    mutationFn: async (data: PaymentFormData): Promise<PaymentResult> => {
-      const payment: PaymentInput = { method: 'cash', amount: total.toFixed(2) };
-      const tendered = data.tendered?.trim();
-      if (tendered) payment.tendered = Number(tendered).toFixed(2);
+  const tenderedError = tendered.trim() ? validateTendered(tendered, total) : null;
+  const change = calculateChange(tendered, total);
+
+  const saleMutation = useMutation({
+    mutationFn: async (input: SaleInput): Promise<PaymentResult> => {
+      const payment: PaymentInput = { method: input.method, amount: total.toFixed(2) };
+
+      if (input.method === 'cash') {
+        const cashTendered = input.tendered?.trim();
+        if (cashTendered) payment.tendered = Number(cashTendered).toFixed(2);
+      } else {
+        payment.reference = input.reference?.trim();
+        payment.provider = 'manual';
+      }
 
       const payload: CompleteSaleRequest = {
-        lines: items.map((i) => ({
-          product_id: i.product_id,
-          product_name: i.name,
-          quantity: i.quantity,
-          unit_price: i.unit_price,
-          unit_cost: i.unit_cost,
-        })),
+        lines: saleLines,
         payments: [payment],
-        idempotency_key: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        idempotency_key: idempotencyKey.current,
       };
 
       try {
@@ -91,6 +125,83 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
       }
     },
   });
+
+  const intent = paymentIntent.intent;
+  const saleId = intent?.sale_id ?? null;
+  const saleQuery = useQuery({
+    queryKey: ['sale', saleId],
+    queryFn: () => getSale(saleId as string),
+    enabled: intent?.status === 'paid' && saleId !== null,
+    retry: 2,
+  });
+
+  useEffect(() => {
+    if (!saleQuery.data || result) return;
+    setResult({
+      receipt_number: saleQuery.data.receipt_number,
+      queued: false,
+      sale: saleQuery.data,
+    });
+    queryClient.invalidateQueries();
+    toast.success(`Sale ${saleQuery.data.receipt_number} completed`);
+  }, [saleQuery.data, result, queryClient]);
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    setFormError(null);
+
+    if (method === 'cash') {
+      const error = validateTendered(tendered, total);
+      if (error) {
+        setFormError(error);
+        return;
+      }
+      saleMutation.mutate({ method, tendered });
+      return;
+    }
+
+    if (method === 'mobile_money') {
+      const error = validatePhone(phone);
+      if (error) {
+        setFormError(error);
+        return;
+      }
+      paymentIntent.start({
+        method: 'mobile_money',
+        amount: total.toFixed(2),
+        phone: normalizePhone(phone),
+        network,
+        idempotency_key: idempotencyKey.current,
+        sale: { lines: saleLines },
+      });
+      return;
+    }
+
+    const error = validateReference(method, reference);
+    if (error) {
+      setFormError(error);
+      return;
+    }
+    saleMutation.mutate({ method, reference });
+  };
+
+  const handleMethodChange = (next: PaymentMethod) => {
+    setMethod(next);
+    setFormError(null);
+  };
+
+  const handleRetry = () => {
+    idempotencyKey.current = newIdempotencyKey();
+    setFormError(null);
+    paymentIntent.reset();
+  };
+
+  const handleClose = () => {
+    if (intent?.status === 'pending') {
+      paymentIntent.cancel();
+    }
+    onClose();
+  };
 
   if (result) {
     return (
@@ -152,61 +263,125 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
     );
   }
 
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Payment"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button
-            onClick={handleSubmit((data) => mutation.mutate(data))}
-            disabled={mutation.isPending || shortfall}
-          >
-            {mutation.isPending ? 'Processing...' : 'Complete Sale'}
-          </Button>
-        </>
-      }
-    >
-      <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
-        <div className="rounded-lg bg-surface-50 px-4 py-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-surface-500">Amount due</span>
-            <span className="text-xl font-semibold text-surface-600">{formatMoney(total)}</span>
-          </div>
-          <p className="mt-1 text-xs text-surface-400">Cash payment</p>
-        </div>
+  const busy = saleMutation.isPending || paymentIntent.isStarting;
+  const settled = intent !== null && (isFailure(intent.status) || isNeedsReview(intent.status));
+  const footer = intent ? (
+    settled ? (
+      <Button variant="secondary" onClick={onClose}>Close</Button>
+    ) : null
+  ) : (
+    <>
+      <Button variant="secondary" onClick={handleClose}>Cancel</Button>
+      <Button type="submit" form="payment-form" disabled={busy}>
+        {busy
+          ? 'Processing...'
+          : method === 'mobile_money'
+            ? 'Send Payment Request'
+            : 'Complete Sale'}
+      </Button>
+    </>
+  );
 
-        <div>
-          <label className="label">Amount Tendered</label>
-          <input
-            type="number"
-            step="0.01"
-            inputMode="decimal"
-            {...register('tendered')}
-            className="input"
-            placeholder={total.toFixed(2)}
-          />
-          {shortfall && !mutation.error && (
-            <p className="mt-1 text-xs text-error">
-              Tendered is less than the amount due.
+  const intentError =
+    intent?.status === 'paid' && saleId === null
+      ? 'Payment received, but no sale was linked. Ask a manager to review it.'
+      : saleQuery.error
+        ? getApiErrorMessage(saleQuery.error, 'Payment received, but the receipt could not be loaded.')
+        : paymentIntent.error;
+
+  return (
+    <Modal isOpen={isOpen} onClose={handleClose} title="Payment" footer={footer}>
+      {intent ? (
+        <PaymentStatusPanel
+          intent={intent}
+          error={intentError}
+          isCancelling={paymentIntent.isCancelling}
+          onCancel={paymentIntent.cancel}
+          onRetry={handleRetry}
+        />
+      ) : (
+        <form id="payment-form" onSubmit={handleSubmit} className="space-y-4">
+          <div className="rounded-lg bg-surface-50 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-surface-500">Amount due</span>
+              <span className="text-xl font-semibold text-surface-600">{formatMoney(total)}</span>
+            </div>
+            <p className="mt-1 text-xs text-surface-400">
+              {method === 'mobile_money'
+                ? 'The customer approves the payment on their phone'
+                : `${paymentMethodLabel(method)} payment`}
             </p>
-          )}
-          {change > 0 && (
-            <div className="mt-2 flex items-center justify-between rounded bg-green-50 px-3 py-2 text-sm text-green-700">
-              <span>Change</span>
-              <span className="font-semibold">{formatMoney(change)}</span>
+          </div>
+
+          <PaymentMethodSelector
+            value={method}
+            onChange={handleMethodChange}
+            disabled={busy}
+          />
+
+          {method === 'cash' && (
+            <div>
+              <Input
+                label="Amount Tendered"
+                type="number"
+                step="0.01"
+                inputMode="decimal"
+                value={tendered}
+                onChange={(event) => setTendered(event.target.value)}
+                placeholder={total.toFixed(2)}
+                disabled={busy}
+              />
+              {tenderedError && (
+                <p className="mt-1 text-xs text-error">{tenderedError}</p>
+              )}
+              {change > 0 && (
+                <div className="mt-2 flex items-center justify-between rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+                  <span>Change</span>
+                  <span className="font-semibold">{formatMoney(change)}</span>
+                </div>
+              )}
             </div>
           )}
-        </div>
 
-        {mutation.error && (
-          <div className="rounded bg-red-50 px-3 py-2 text-sm text-error">
-            {getApiErrorMessage(mutation.error)}
-          </div>
-        )}
-      </form>
+          {method === 'mobile_money' && (
+            <MobileMoneyForm
+              phone={phone}
+              onPhoneChange={setPhone}
+              network={network}
+              onNetworkChange={setNetwork}
+              amount={total}
+              disabled={busy}
+              error={formError}
+            />
+          )}
+
+          {(method === 'card' || method === 'bank_transfer') && (
+            <div>
+              <Input
+                label="Payment reference"
+                value={reference}
+                onChange={(event) => setReference(event.target.value)}
+                placeholder="Terminal slip or bank reference"
+                disabled={busy}
+                autoComplete="off"
+              />
+              <p className="mt-1 text-xs text-surface-400">
+                Complete the payment on your terminal or bank app, then record the reference.
+              </p>
+            </div>
+          )}
+
+          {formError && method !== 'mobile_money' && (
+            <div className="rounded bg-red-50 px-3 py-2 text-sm text-error">{formError}</div>
+          )}
+
+          {saleMutation.error && (
+            <div className="rounded bg-red-50 px-3 py-2 text-sm text-error">
+              {getApiErrorMessage(saleMutation.error)}
+            </div>
+          )}
+        </form>
+      )}
     </Modal>
   );
 }
