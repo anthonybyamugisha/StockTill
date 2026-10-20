@@ -31,6 +31,11 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
 
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+
 class AuditLogSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     user_id = serializers.UUIDField(allow_null=True)
