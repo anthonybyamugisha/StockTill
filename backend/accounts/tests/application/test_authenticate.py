@@ -221,3 +221,34 @@ def test_first_login_is_recorded_in_the_audit_trail():
     actions = [entry["action"] for entry in audit.entries]
     assert "auth.first_login" in actions
     assert "auth.login" in actions
+
+
+def test_first_login_audit_entry_names_the_user_and_the_flag():
+    repo = FakeUserRepository()
+    hasher = FakePasswordHasher()
+    audit = RecordingAudit()
+    user = User(email="flagged@shop.com", first_name="Flag", last_name="User", role=Role.CASHIER)
+    user.set_password("password123", hasher)
+    repo.save(user)
+
+    AuthenticateUserUseCase(repo, hasher, audit).execute("flagged@shop.com", "password123")
+
+    entry = next(e for e in audit.entries if e["action"] == "auth.first_login")
+    assert entry["user_id"] == user.id
+    assert entry["after"] == {"email": "flagged@shop.com", "password_change_required": True}
+
+
+def test_returning_user_does_not_get_a_first_login_entry():
+    repo = FakeUserRepository()
+    hasher = FakePasswordHasher()
+    audit = RecordingAudit()
+    user = User(email="steady@shop.com", first_name="Steady", last_name="User", role=Role.CASHIER)
+    user.set_password("password123", hasher)
+    user.last_login = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)
+    repo.save(user)
+
+    AuthenticateUserUseCase(repo, hasher, audit).execute("steady@shop.com", "password123")
+
+    actions = [entry["action"] for entry in audit.entries]
+    assert "auth.first_login" not in actions
+    assert "auth.login" in actions
