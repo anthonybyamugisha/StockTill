@@ -148,3 +148,28 @@ def test_business_endpoints_reopen_after_a_change(api_client, pending_user):
     response = api_client.get("/api/v1/catalog/products/")
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_weak_password_is_rejected_over_the_api(api_client, pending_user):
+    sign_in(api_client, pending_user.email)
+
+    response = api_client.post(
+        "/api/v1/accounts/change-password/",
+        {"current_password": TEMPORARY_PASSWORD, "new_password": "onlyletters"},
+    )
+
+    assert response.status_code == 400
+    assert "letter and one number" in response.data["detail"]
+
+
+@pytest.mark.django_db
+def test_short_password_is_rejected_over_the_api(api_client, pending_user):
+    sign_in(api_client, pending_user.email)
+
+    response = api_client.post(
+        "/api/v1/accounts/change-password/",
+        {"current_password": TEMPORARY_PASSWORD, "new_password": "short1"},
+    )
+
+    assert response.status_code == 400
