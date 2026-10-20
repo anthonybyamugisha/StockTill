@@ -41,3 +41,13 @@ def test_changing_a_password_clears_the_first_login_flag():
     assert user.must_change_password is False
     assert user.check_password("permanent1", hasher) is True
     assert user.check_password("temporary1", hasher) is False
+
+import pytest
+
+from accounts.domain.errors import WeakPasswordError
+from accounts.domain.password import validate_password_strength
+
+
+def test_password_strength_rejects_short_passwords():
+    with pytest.raises(WeakPasswordError, match="at least 8"):
+        validate_password_strength("abc123")
