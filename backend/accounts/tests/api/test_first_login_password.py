@@ -74,10 +74,24 @@ def test_login_reports_the_pending_flag(api_client, pending_user):
 
 
 @pytest.mark.django_db
-def test_pending_user_is_blocked_from_business_endpoints(api_client, pending_user):
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/catalog/products/",
+        "/api/v1/inventory/items/",
+        "/api/v1/sales/",
+        "/api/v1/shifts/current/",
+        "/api/v1/reporting/dashboard/",
+        "/api/v1/reporting/sales-summary/csv/",
+        "/api/v1/accounts/users/",
+        "/api/v1/accounts/audit-log/",
+        "/api/v1/settings/",
+    ],
+)
+def test_pending_user_is_blocked_from_business_endpoints(api_client, pending_user, path):
     sign_in(api_client, pending_user.email)
 
-    response = api_client.get("/api/v1/catalog/products/")
+    response = api_client.get(path)
 
     assert response.status_code == 403
     assert response.json()["code"] == "password_change_required"
