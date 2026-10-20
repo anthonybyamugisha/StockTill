@@ -1,0 +1,108 @@
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useMutation } from '@tanstack/react-query';
+import { changePassword } from '../api/auth';
+import { confirmationIssue, passwordIssue } from '../lib/passwordPolicy';
+import { Input } from '../../../shared/ui/Input';
+import logo from '../../../logo_image.png';
+
+const changePasswordSchema = z
+  .object({
+    current_password: z.string().min(1, 'Enter your current password'),
+    new_password: z.string().superRefine((value, ctx) => {
+      const issue = passwordIssue(value);
+      if (issue) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue });
+      }
+    }),
+    confirm_password: z.string(),
+  })
+  .superRefine((values, ctx) => {
+    const issue = confirmationIssue(values.new_password, values.confirm_password);
+    if (issue) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['confirm_password'],
+        message: issue,
+      });
+    }
+  });
+
+type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
+
+export function ChangePasswordPage() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ChangePasswordFormData>({
+    resolver: zodResolver(changePasswordSchema),
+  });
+
+  const mutation = useMutation({
+    mutationFn: (data: ChangePasswordFormData) =>
+      changePassword({
+        current_password: data.current_password,
+        new_password: data.new_password,
+      }),
+    onSuccess: () => {
+      window.location.href = '/';
+    },
+  });
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-surface-50">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <img
+            src={logo}
+            alt="StockTill logo"
+            className="mx-auto mb-4 h-16 w-16 object-contain"
+          />
+          <h1 className="text-2xl font-semibold text-surface-600">Choose a new password</h1>
+          <p className="mt-2 text-sm text-surface-400">
+            Your administrator gave you a temporary password. Replace it with one only you know
+            before continuing.
+          </p>
+        </div>
+
+        <form
+          onSubmit={handleSubmit((data) => mutation.mutate(data))}
+          className="card space-y-4"
+        >
+          <Input
+            label="Current password"
+            type="password"
+            error={errors.current_password?.message}
+            {...register('current_password')}
+          />
+
+          <Input
+            label="New password"
+            type="password"
+            error={errors.new_password?.message}
+            {...register('new_password')}
+          />
+
+          <Input
+            label="Confirm new password"
+            type="password"
+            error={errors.confirm_password?.message}
+            {...register('confirm_password')}
+          />
+
+          {mutation.error && (
+            <div className="rounded bg-red-50 px-3 py-2 text-sm text-error">
+              {(mutation.error as Error).message}
+            </div>
+          )}
+
+          <button type="submit" disabled={mutation.isPending} className="btn-primary w-full">
+            {mutation.isPending ? 'Updating password...' : 'Update password'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
