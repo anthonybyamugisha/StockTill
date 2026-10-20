@@ -72,10 +72,13 @@ export function ChangePasswordPage() {
             alt="StockTill logo"
             className="mx-auto mb-4 h-16 w-16 object-contain"
           />
-          <h1 className="text-2xl font-semibold text-surface-600">Choose a new password</h1>
+          <h1 className="text-2xl font-semibold text-surface-600">
+            {user?.must_change_password ? 'Choose a new password' : 'Change your password'}
+          </h1>
           <p className="mt-2 text-sm text-surface-400">
-            Your administrator gave you a temporary password. Replace it with one only you know
-            before continuing.
+            {user?.must_change_password
+              ? 'Your administrator gave you a temporary password. Replace it with one only you know before continuing.'
+              : 'Use a password only you know. If someone else has seen your password, change it now.'}
           </p>
         </div>
 
