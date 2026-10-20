@@ -29,6 +29,7 @@ from reporting.infrastructure.queries.top_products import DjangoTopProductsQuery
 from reporting.interfaces.api.csv_export import (
     write_cashier_sales_csv,
     write_daily_sales_csv,
+    write_inventory_report_csv,
     write_low_stock_csv,
     write_profit_report_csv,
     write_sales_report_csv,
@@ -202,6 +203,14 @@ class LowStockCSVView(APIView):
     def get(self, request):
         items = GetLowStockItemsUseCase(DjangoLowStockQuery()).execute()
         return _csv_response(write_low_stock_csv(items), "low_stock.csv")
+
+
+class InventoryReportCSVView(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request):
+        report = GetInventoryReportUseCase(DjangoInventoryReportQuery()).execute()
+        return _csv_response(write_inventory_report_csv(report), "inventory_report.csv")
 
 
 class SalesReportView(APIView):
