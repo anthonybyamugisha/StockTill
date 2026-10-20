@@ -58,3 +58,26 @@ def test_a_user_is_not_a_superuser_by_default():
     user = User(email="person@shop.com", first_name="Person", last_name="User", role=Role.ADMIN)
 
     assert user.is_superuser is False
+
+
+def test_requiring_a_password_change_twice_keeps_the_flag():
+    user = User(email="twice@shop.com", first_name="Twice", last_name="User", role=Role.CASHIER)
+
+    user.require_password_change()
+    user.require_password_change()
+
+    assert user.must_change_password is True
+
+
+def test_a_successful_login_ends_the_first_login():
+    user = User(email="fresh@shop.com", first_name="Fresh", last_name="User", role=Role.CASHIER)
+    user.register_successful_login()
+
+    assert user.is_first_login is False
+    assert user.last_login is not None
+
+
+def test_a_new_user_has_no_login_timestamp():
+    user = User(email="blank@shop.com", first_name="Blank", last_name="User", role=Role.CASHIER)
+
+    assert user.last_login is None
