@@ -2,13 +2,9 @@ from uuid import UUID
 
 from shared.application.audit import AuditPort, NullAuditPort
 from shared.domain.clock import Clock
-from shifts.application.commands import (
-    CloseShiftCommand,
-    OpenShiftCommand,
-    RecordCashMovementCommand,
-)
+from shifts.application.commands import CloseShiftCommand, OpenShiftCommand
 from shifts.application.ports import CashTotals, SalesSummaryPort
-from shifts.domain.entities import CashMovement, Shift
+from shifts.domain.entities import Shift
 from shifts.domain.errors import NoOpenShiftError, ShiftAlreadyOpenError
 from shifts.domain.repository import CashMovementRepository, ShiftRepository
 
@@ -93,66 +89,4 @@ class CloseShiftUseCase:
                 "variance": str(variance.amount) if variance is not None else None,
             },
         )
-        return shift, totals
-
-
-class RecordCashMovementUseCase:
-    def __init__(
-        self,
-        shift_repository: ShiftRepository,
-        movement_repository: CashMovementRepository,
-        clock: Clock,
-        audit: AuditPort | None = None,
-    ):
-        self._shift_repo = shift_repository
-        self._movement_repo = movement_repository
-        self._clock = clock
-        self._audit = audit or NullAuditPort()
-
-    def execute(self, command: RecordCashMovementCommand) -> CashMovement:
-        shift = self._shift_repo.get_by_id(command.shift_id)
-        if shift is None or not shift.is_open:
-            raise NoOpenShiftError("No open shift with that id")
-        movement = CashMovement(
-            shift_id=shift.id,
-            type=command.type,
-            amount=command.amount,
-            reason=command.reason,
-            user_id=command.user_id,
-            created_at=self._clock.now(),
-        )
-        self._movement_repo.save(movement)
-        self._audit.record(
-            user_id=command.user_id,
-            action="shift.cash_movement",
-            entity_type="shift",
-            entity_id=str(shift.id),
-            after={
-                "type": command.type.value,
-                "amount": str(command.amount.amount),
-                "reason": command.reason,
-            },
-        )
-        return movement
-
-
-class GetShiftReportUseCase:
-    """Produces the data for an X-report (open shift) or Z-report (closed shift)."""
-
-    def __init__(
-        self,
-        shift_repository: ShiftRepository,
-        movement_repository: CashMovementRepository,
-        sales_port: SalesSummaryPort,
-    ):
-        self._shift_repo = shift_repository
-        self._movement_repo = movement_repository
-        self._sales_port = sales_port
-
-    def execute(self, shift_id: UUID) -> tuple[Shift, CashTotals]:
-        shift = self._shift_repo.get_by_id(shift_id)
-        if shift is None:
-            raise NoOpenShiftError("Shift not found")
-        shift.cash_movements = self._movement_repo.list_by_shift(shift_id)
-        totals = self._sales_port.cash_totals(shift_id)
         return shift, totals
