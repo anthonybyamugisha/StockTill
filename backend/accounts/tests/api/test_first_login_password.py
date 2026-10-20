@@ -199,3 +199,22 @@ def test_wrong_current_password_is_rejected(api_client, pending_user):
 
     assert response.status_code == 400
     assert "Current password is incorrect" in response.data["detail"]
+
+
+@pytest.mark.django_db
+def test_password_change_requires_authentication(api_client):
+    response = api_client.post(
+        "/api/v1/accounts/change-password/",
+        {"current_password": TEMPORARY_PASSWORD, "new_password": PERMANENT_PASSWORD},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_pending_user_can_log_out(api_client, pending_user):
+    sign_in(api_client, pending_user.email)
+
+    response = api_client.post("/api/v1/accounts/logout/")
+
+    assert response.status_code == 204
