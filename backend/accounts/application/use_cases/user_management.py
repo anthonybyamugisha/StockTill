@@ -31,6 +31,7 @@ class CreateUserUseCase:
             role=command.role,
         )
         user.set_password(command.password, self._hasher)
+        user.require_password_change()
         self._repo.save(user)
         self._audit.record(
             user_id=command.actor_id,
