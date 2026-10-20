@@ -1,4 +1,5 @@
 import { apiClient } from '../../../shared/http/client';
+import { reportExport } from '../lib/export';
 
 export interface SalesSummary {
   total_sales: number;
@@ -97,18 +98,33 @@ export async function getInventoryReport(): Promise<InventoryReport> {
   return res.data;
 }
 
-export async function downloadSalesReportCsv(dateFrom: string, dateTo: string): Promise<void> {
-  const res = await apiClient.get<Blob>('/reporting/sales-report/csv/', {
-    params: { date_from: dateFrom, date_to: dateTo },
-    responseType: 'blob',
-  });
+async function downloadCsv(
+  path: string,
+  filename: string,
+  params?: Record<string, string>,
+): Promise<void> {
+  const res = await apiClient.get<Blob>(path, { params, responseType: 'blob' });
 
   const url = URL.createObjectURL(res.data);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'sales_report.csv';
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function downloadReportCsv(
+  reportId: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<void> {
+  const config = reportExport(reportId);
+  if (!config) {
+    throw new Error(`Unknown report: ${reportId}`);
+  }
+
+  const params = config.dated ? { date_from: dateFrom, date_to: dateTo } : undefined;
+  await downloadCsv(config.path, config.filename, params);
 }

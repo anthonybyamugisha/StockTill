@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems, getInventoryReport, downloadSalesReportCsv, CashierSales } from '../api/reports';
+import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems, getInventoryReport, downloadReportCsv, CashierSales } from '../api/reports';
 import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Input } from '../../../shared/ui/Input';
@@ -17,12 +17,6 @@ export function ReportsPage() {
   const [dateFrom, setDateFrom] = useState(daysAgoISO(30));
   const [dateTo, setDateTo] = useState(todayISO());
 
-  const exportMutation = useMutation({
-    mutationFn: () => downloadSalesReportCsv(dateFrom, dateTo),
-    onSuccess: () => toast.success('Sales report exported as CSV'),
-    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not export the report')),
-  });
-
   const reports = [
     { id: 'sales', label: 'Sales Report' },
     { id: 'profit', label: 'Profit Report' },
@@ -31,6 +25,14 @@ export function ReportsPage() {
     { id: 'lowstock', label: 'Low Stock' },
     { id: 'cashier', label: 'Sales by Cashier' },
   ];
+
+  const activeLabel = reports.find((r) => r.id === activeReport)?.label ?? 'Report';
+
+  const exportMutation = useMutation({
+    mutationFn: () => downloadReportCsv(activeReport, dateFrom, dateTo),
+    onSuccess: () => toast.success(`${activeLabel} exported as CSV`),
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Could not export the report')),
+  });
 
   return (
     <div className="space-y-4">
