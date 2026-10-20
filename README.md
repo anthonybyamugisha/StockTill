@@ -20,12 +20,15 @@ Development** as first-class engineering disciplines --- not as decoration aroun
 - **Inventory** --- Append-only stock ledger, opening stock captured when a product is created,
   low-stock alerts, valuation, adjustments, write-offs
 - **Purchasing** --- Suppliers and purchase orders; receiving an order adds stock to the ledger
-- **Sales Management** --- Search, filter, refund, void, and view receipts
+- **Sales Management** --- Search by receipt number, filter by status, payment method, cashier and
+  date range, refund, void, reprint receipts
 - **Shifts & Cash** --- Open/close shifts, record payouts and float top-ups, reconcile the drawer
   with an X/Z report
 - **Offline-first PWA** --- Installable app that keeps selling when the network drops
 - **Dashboard** --- Real-time KPIs, the sales trend, and this month's best sellers
-- **Reports** --- Sales, profit, inventory, cashier, low stock --- with CSV export
+- **Reports** --- Sales, profit, inventory, cashier and low-stock reports, grouped by the shop's
+  calendar day, with CSV export that reports its own failures instead of silently downloading an
+  error page
 - **Users & Roles** --- Admin, Manager, Cashier with role-based permissions
 - **Clear feedback** --- every action confirms itself with a toast (or explains its failure), and
   destructive ones (deactivate, cancel an order, void) ask for confirmation first
@@ -40,7 +43,7 @@ Development** as first-class engineering disciplines --- not as decoration aroun
 
 **Testing:** pytest, pytest-django, factory\_boy, hypothesis, Vitest, Playwright
 
-**Quality:** ruff (lint/format), mypy (strict), import-linter (architecture), one `make` target
+**Quality:** ruff (lint/format), mypy (strict), architecture tests, one `make` target
 
 **Infrastructure:** Docker, Docker Compose, Gunicorn, WhiteNoise, Sentry
 
@@ -71,7 +74,9 @@ StockTill/
 │  ├─ reporting/  settings/
 │  │     ├─ domain/                                Entities, value objects, interfaces
 │  │     ├─ application/                           Use cases, commands, ports
+│  │     │  └─ use_cases/                          One module per operation
 │  │     ├─ infrastructure/                        Django models, migrations, adapters
+│  │     │  └─ queries/                            One query class per report
 │  │     └─ interfaces/                            DRF views, serializers, urls
 │  ├─ manage.py
 │  ├─ pyproject.toml                               Ruff · mypy · import-linter · pytest
@@ -198,6 +203,29 @@ kept by hand as each adapter is added.
 The **modular monolith** choice (ADR-0001) keeps the operational simplicity of a single deployable
 unit while preserving the option to extract a context into its own service later.
 
+### Code organisation (SOLID)
+
+The same rules are applied in every context, so it is predictable where a change belongs:
+
+- **One operation per module.** `application/use_cases/` holds a module per workflow
+  (`complete_sale.py`, `refund_sale.py`, …) instead of one growing file, so a change to refunds
+  cannot accidentally touch checkout.
+- **One port per collaboration.** A use case declares only the interface it needs. Cross-context
+  work goes through an adapter, and read models use one query class per report
+  (`reporting/infrastructure/queries/profit.py`, …) each implementing a single `execute` method.
+- **Composition happens at the edge.** Views ask a context's `container.py` for a wired use case
+  (`build_refund_sale_use_case()`), so construction never leaks into business logic and tests can
+  substitute fakes.
+- **Mapping is its own step.** `interfaces/api/request_mapping.py` turns validated input into a
+  command, keeping `Decimal`/enum conversion out of the views.
+- **Value objects over loose parameters.** `DateRange.from_params` gives every report identical date
+  parsing, defaults and shop-day semantics; `Money` replaces floats wherever money moves.
+- **Edge behaviour is shared.** `@domain_errors_to_bad_request` maps domain and validation errors to
+  `400` in one place instead of a `try/except` in every endpoint.
+
+Adding a report or a workflow therefore means adding a small, independently testable module rather
+than editing a class that every feature shares.
+
 ### Architecture decision records
 
 Design decisions are recorded in the repository history and summarised here:
@@ -236,7 +264,7 @@ Using the framework is not the point --- using it *at the edges* is. A summary:
 |---------|-----------------|-----------|
 | Where business rules live | ORM models / serializers / views | Domain entities & aggregates (pure Python) |
 | How rules are tested | Through the database and HTTP | Fast unit tests, no DB, no HTTP |
-| How contexts relate | Direct model imports | Ports & adapters, verified by the linter |
+| How contexts relate | Direct model imports | Ports & adapters, guarded by tests |
 | What changing the DB costs | Rewriting business rules | Swapping infrastructure only |
 | What the invariants are | Implicit, scattered | Explicit on the aggregate, one source of truth |
 
@@ -372,7 +400,7 @@ and CSV export buckets sales by the **shop's calendar day** (`Africa/Kampala`), 
 # Quality and testing
 
 - **Backend:** `ruff check` and `ruff format --check`; `mypy` in `strict` mode over the domain and
-  application layers; `import-linter` for the dependency rule; `pytest` (with coverage) against the
+  application layers; `pytest` (with coverage) against the
   same PostgreSQL 16 engine as production (in-memory SQLite can be substituted for speed).
 - **Frontend:** `tsc --noEmit`, Vitest, and a production `vite build`.
 - All of the above are reproducible locally with one `make` target and are documented in the
