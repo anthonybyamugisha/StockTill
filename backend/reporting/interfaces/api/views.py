@@ -1,6 +1,3 @@
-import csv
-from io import StringIO
-
 from django.http import HttpResponse
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -29,6 +26,7 @@ from reporting.infrastructure.queries.profit import DjangoProfitReportQuery
 from reporting.infrastructure.queries.sales_report import DjangoSalesReportQuery
 from reporting.infrastructure.queries.sales_summary import DjangoSalesSummaryQuery
 from reporting.infrastructure.queries.top_products import DjangoTopProductsQuery
+from reporting.interfaces.api.csv_export import write_sales_report_csv
 from reporting.interfaces.api.date_range import DateRange
 from reporting.interfaces.api.serializers import (
     CashierSalesSerializer,
@@ -153,21 +151,6 @@ class SalesReportCSVView(APIView):
             dates.date_from, dates.date_to
         )
 
-        output = StringIO()
-        writer = csv.writer(output)
-        writer.writerow(["Receipt", "Date", "Cashier", "Total", "Payment Method", "Status"])
-        for row in rows:
-            writer.writerow(
-                [
-                    row.receipt_number,
-                    row.date.isoformat(),
-                    row.cashier_name,
-                    str(row.total),
-                    row.payment_method,
-                    row.status,
-                ]
-            )
-
-        response = HttpResponse(output.getvalue(), content_type="text/csv")
+        response = HttpResponse(write_sales_report_csv(rows), content_type="text/csv")
         response["Content-Disposition"] = "attachment; filename=sales_report.csv"
         return response
