@@ -5,4 +5,13 @@ class InvalidCurrentPasswordError(DomainError):
     pass
 
 
-__all__ = ["DomainError", "InvalidCredentialsError", "InvalidCurrentPasswordError"]
+class WeakPasswordError(DomainError):
+    pass
+
+
+__all__ = [
+    "DomainError",
+    "InvalidCredentialsError",
+    "InvalidCurrentPasswordError",
+    "WeakPasswordError",
+]
