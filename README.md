@@ -26,7 +26,8 @@ Development** as first-class engineering disciplines --- not as decoration aroun
 - **Reports**. Sales, profit, inventory, cashier and low-stock reports, grouped by the shop's
   calendar day, with CSV export that reports its own failures instead of silently downloading an
   error page
-- **Users & Roles**. Admin, Manager, Cashier with role-based permissions; an administrator-issued\ntemporary password that the user must replace at first sign-in
+- **Users & Roles**. Admin, Manager, Cashier with role-based permissions; an administrator-issued
+temporary password that the user must replace at first sign-in
 - **Clear feedback**. Every action confirms itself with a toast (or explains its failure), and
   destructive ones (deactivate, cancel an order, void) ask for confirmation first
 - **Audit Log**. An immutable record of who did what and when, with before/after values for
@@ -378,7 +379,8 @@ Every money- or security-relevant action writes an immutable entry: **who** (the
 (`action`, `entity_type`, `entity_id`), **when** (timestamp) and the **before/after** values, so a
 change can be reconstructed rather than merely noticed. Recorded activity covers:
 
-- **Authentication** --- successful and failed logins, blocked attempts (deactivated/locked), logout,\n  and password changes made after a temporary password.
+- **Authentication** --- successful and failed logins, blocked attempts (deactivated/locked), logout,
+  and password changes made after a temporary password.
 - **Users** --- created, updated, **role changes**, deactivated.
 - **Catalog** --- product created/updated (price changes as before/after diffs) and deactivated;
   category created/deactivated.
@@ -427,7 +429,9 @@ and CSV export buckets sales by the **shop's calendar day** (`Africa/Kampala`), 
 # Security highlights
 
 Session authentication served over HTTPS with HSTS; role-based permission classes (least
-privilege); account lockout after repeated failed logins; PBKDF2 password hashing; temporary\nadministrator-issued passwords that must be replaced at first sign-in (enforced by API middleware,\nnot just the UI); CSRF protection
+privilege); account lockout after repeated failed logins; PBKDF2 password hashing; temporary
+administrator-issued passwords that must be replaced at first sign-in (enforced by API middleware,
+not just the UI); CSRF protection
 with trusted origins; idempotency keys with a unique constraint to prevent duplicate charges; an
 append-only **audit log** that records the acting user, the action and the before/after values for
 logins, user and role changes, price and stock changes, sales, voids, refunds, shifts, purchasing and
