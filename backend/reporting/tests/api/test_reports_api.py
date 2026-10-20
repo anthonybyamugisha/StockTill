@@ -272,3 +272,36 @@ def test_profit_report_groups_sales_on_the_shop_day(api_client, manager_user, sa
 
     assert response.status_code == 200
     assert [row["date"] for row in response.data] == ["2026-10-18"]
+
+
+@pytest.mark.django_db
+def test_sales_summary_csv_export(api_client, manager_user, sale):
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get(
+        "/api/v1/reporting/sales-summary/csv/",
+        {"date_from": "2000-01-01", "date_to": "2100-01-01"},
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "text/csv"
+    assert response["Content-Disposition"] == "attachment; filename=sales_summary.csv"
+    body = response.content.decode()
+    assert body.startswith("From,To,Total Sales,Revenue,Cost,Gross Profit,Average Sale")
+    assert "2000-01-01,2100-01-01,1,1500.00,1000.00,500.00,1500.00" in body
+
+
+@pytest.mark.django_db
+def test_daily_sales_csv_export(api_client, manager_user, sale):
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get(
+        "/api/v1/reporting/daily-sales/csv/",
+        {"date_from": "2000-01-01", "date_to": "2100-01-01"},
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Disposition"] == "attachment; filename=daily_sales.csv"
+    body = response.content.decode()
+    assert body.startswith("Date,Transactions,Total")
+    assert "1,1500.00" in body
