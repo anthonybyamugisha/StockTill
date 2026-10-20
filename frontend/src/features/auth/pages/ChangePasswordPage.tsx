@@ -88,6 +88,9 @@ export function ChangePasswordPage() {
             error={errors.new_password?.message}
             {...register('new_password')}
           />
+          <p className="-mt-2 text-xs text-surface-400">
+            Use at least 8 characters, with a letter and a number.
+          </p>
 
           <Input
             label="Confirm new password"
