@@ -39,8 +39,8 @@ class PaymentIntentSerializer(serializers.Serializer):
     method = serializers.CharField()
     network = serializers.CharField(allow_null=True)
     phone = serializers.CharField()
-    amount = serializers.DecimalField(max_digits=14, decimal_places=2)
-    currency = serializers.CharField()
+    amount = serializers.SerializerMethodField()
+    currency = serializers.SerializerMethodField()
     status = serializers.CharField()
     provider = serializers.CharField()
     gateway_reference = serializers.CharField(allow_null=True)
@@ -49,6 +49,12 @@ class PaymentIntentSerializer(serializers.Serializer):
     sale_id = serializers.UUIDField(allow_null=True)
     created_at = serializers.DateTimeField()
     expires_at = serializers.DateTimeField(allow_null=True)
+
+    def get_amount(self, obj) -> str:
+        return str(obj.amount.amount)
+
+    def get_currency(self, obj) -> str:
+        return obj.amount.currency
 
 
 class CancelPaymentIntentSerializer(serializers.Serializer):
