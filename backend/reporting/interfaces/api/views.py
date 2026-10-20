@@ -8,11 +8,13 @@ from rest_framework.views import APIView
 
 from accounts.interfaces.api.permissions import IsManager
 from reporting.application.use_cases import (
+    GetCashierSalesUseCase,
     GetDailySalesUseCase,
     GetSalesByPaymentMethodUseCase,
     GetSalesSummaryUseCase,
     GetTopProductsUseCase,
 )
+from reporting.infrastructure.queries.cashier_sales import DjangoCashierSalesQuery
 from reporting.infrastructure.queries.daily_sales import DjangoDailySalesQuery
 from reporting.infrastructure.queries.payment_methods import DjangoPaymentMethodSalesQuery
 from reporting.infrastructure.queries.sales_summary import DjangoSalesSummaryQuery
@@ -81,7 +83,9 @@ class CashierSalesView(APIView):
 
     def get(self, request):
         dates = DateRange.from_params(request.query_params)
-        data = SalesQueryBuilder().get_cashier_sales(dates.date_from, dates.date_to)
+        data = GetCashierSalesUseCase(DjangoCashierSalesQuery()).execute(
+            dates.date_from, dates.date_to
+        )
         return Response(CashierSalesSerializer(data, many=True).data)
 
 

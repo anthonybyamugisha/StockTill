@@ -2,12 +2,10 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.db.models import Count, Sum
 from django.utils import timezone
 
 from catalog.infrastructure.models import ProductModel
 from reporting.application.queries import (
-    CashierSales,
     DashboardStats,
     InventoryReport,
     LowStockItem,
@@ -36,24 +34,6 @@ class SalesQueryBuilder:
     def _stock_counts(self) -> tuple[int, int]:
         levels = StockLevels.load()
         return levels.low, levels.out
-
-    def get_cashier_sales(self, date_from: date, date_to: date) -> list[CashierSales]:
-        names = self._cashier_names()
-        sales = (
-            SaleModel.objects.filter(created_at__date__range=(date_from, date_to))
-            .values("cashier_id")
-            .annotate(count=Count("id"), total=Sum("total"))
-            .order_by("-total")
-        )
-        return [
-            CashierSales(
-                cashier_id=row["cashier_id"],
-                cashier_name=names.get(row["cashier_id"], ""),
-                transaction_count=row["count"],
-                total=row["total"],
-            )
-            for row in sales
-        ]
 
     def get_sales_report(self, date_from: date, date_to: date) -> list[SalesReportRow]:
         names = self._cashier_names()
