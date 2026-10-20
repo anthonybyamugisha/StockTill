@@ -358,3 +358,24 @@ def test_legacy_account_reaches_the_dashboard_after_changing(api_client):
     response = api_client.get("/api/v1/reporting/dashboard/")
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_seeded_superuser_logs_in_without_a_change(api_client):
+    user = User(email="seed@shop.com", first_name="Seed", last_name="Admin", role=Role.ADMIN)
+    user.set_password(TEMPORARY_PASSWORD, DjangoPasswordHasher())
+    UserModel.objects.create(
+        id=user.id,
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        role=user.role.value,
+        password=user.password_hash,
+        is_active=True,
+        is_superuser=True,
+    )
+
+    response = sign_in(api_client, "seed@shop.com")
+
+    assert response.status_code == 200
+    assert response.data["must_change_password"] is False
