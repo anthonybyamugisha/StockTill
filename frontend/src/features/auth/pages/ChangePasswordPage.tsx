@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 import { changePassword } from '../api/auth';
 import { confirmationIssue, passwordIssue } from '../lib/passwordPolicy';
 import { Input } from '../../../shared/ui/Input';
+import { getApiErrorMessage } from '../../../shared/http/errors';
 import logo from '../../../logo_image.png';
 
 const changePasswordSchema = z
@@ -94,7 +95,7 @@ export function ChangePasswordPage() {
 
           {mutation.error && (
             <div className="rounded bg-red-50 px-3 py-2 text-sm text-error">
-              {(mutation.error as Error).message}
+              {getApiErrorMessage(mutation.error, 'Could not update your password')}
             </div>
           )}
 
