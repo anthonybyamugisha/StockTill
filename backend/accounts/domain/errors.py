@@ -1,3 +1,8 @@
-from shared.domain.errors import InvalidCredentialsError  # noqa: F401
+from shared.domain.errors import DomainError, InvalidCredentialsError
 
-__all__ = ["InvalidCredentialsError"]
+
+class InvalidCurrentPasswordError(DomainError):
+    pass
+
+
+__all__ = ["DomainError", "InvalidCredentialsError", "InvalidCurrentPasswordError"]
