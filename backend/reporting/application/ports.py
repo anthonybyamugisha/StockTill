@@ -4,23 +4,52 @@ from typing import Protocol
 from reporting.application.queries import (
     CashierSales,
     DailySales,
+    DashboardStats,
+    InventoryReport,
+    LowStockItem,
+    ProfitReport,
     SalesByPaymentMethod,
+    SalesReportRow,
     SalesSummary,
     TopProduct,
 )
 
 
-class SalesQueryPort(Protocol):
-    def get_sales_summary(self, date_from: date, date_to: date) -> SalesSummary: ...
+class SalesSummaryQueryPort(Protocol):
+    def execute(self, date_from: date, date_to: date) -> SalesSummary: ...
 
-    def get_top_products(
-        self, date_from: date, date_to: date, limit: int = 10
-    ) -> list[TopProduct]: ...
 
-    def get_sales_by_payment_method(
-        self, date_from: date, date_to: date
-    ) -> list[SalesByPaymentMethod]: ...
+class TopProductsQueryPort(Protocol):
+    def execute(self, date_from: date, date_to: date, limit: int = 10) -> list[TopProduct]: ...
 
-    def get_daily_sales(self, date_from: date, date_to: date) -> list[DailySales]: ...
 
-    def get_cashier_sales(self, date_from: date, date_to: date) -> list[CashierSales]: ...
+class PaymentMethodSalesQueryPort(Protocol):
+    def execute(self, date_from: date, date_to: date) -> list[SalesByPaymentMethod]: ...
+
+
+class DailySalesQueryPort(Protocol):
+    def execute(self, date_from: date, date_to: date) -> list[DailySales]: ...
+
+
+class CashierSalesQueryPort(Protocol):
+    def execute(self, date_from: date, date_to: date) -> list[CashierSales]: ...
+
+
+class ProfitReportQueryPort(Protocol):
+    def execute(self, date_from: date, date_to: date) -> list[ProfitReport]: ...
+
+
+class SalesReportQueryPort(Protocol):
+    def execute(self, date_from: date, date_to: date) -> list[SalesReportRow]: ...
+
+
+class DashboardQueryPort(Protocol):
+    def execute(self) -> DashboardStats: ...
+
+
+class InventoryReportQueryPort(Protocol):
+    def execute(self) -> InventoryReport: ...
+
+
+class LowStockQueryPort(Protocol):
+    def execute(self) -> list[LowStockItem]: ...
