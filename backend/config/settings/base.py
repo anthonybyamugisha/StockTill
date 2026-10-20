@@ -143,7 +143,7 @@ MTN_MOMO_API_KEY = os.environ.get("MTN_MOMO_API_KEY", "")
 MTN_MOMO_TARGET_ENVIRONMENT = os.environ.get("MTN_MOMO_TARGET_ENVIRONMENT", "sandbox")
 MTN_MOMO_CALLBACK_URL = os.environ.get("MTN_MOMO_CALLBACK_URL", "")
 
-AIRTEL_MONEY_BASE_URL = os.environ.get("AIRTEL_MONEY_BASE_URL", "https://openapiuat.airtel.africa")
+AIRTEL_MONEY_BASE_URL = os.environ.get("AIRTEL_MONEY_BASE_URL", "https://openapiuat.airtel.ug")
 AIRTEL_MONEY_CLIENT_ID = os.environ.get("AIRTEL_MONEY_CLIENT_ID", "")
 AIRTEL_MONEY_CLIENT_SECRET = os.environ.get("AIRTEL_MONEY_CLIENT_SECRET", "")
 AIRTEL_MONEY_COUNTRY = os.environ.get("AIRTEL_MONEY_COUNTRY", "UG")

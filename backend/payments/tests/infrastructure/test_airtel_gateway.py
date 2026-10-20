@@ -1,3 +1,4 @@
+import base64
 import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -5,6 +6,10 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from cryptography.hazmat.primitives import padding, serialization
+from cryptography.hazmat.primitives.asymmetric import padding as asymmetric_padding
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from payments.application.ports import GatewayOutcome
 from payments.domain.entities import MobileNetwork, PaymentIntent, PaymentMethod
@@ -13,6 +18,38 @@ from payments.infrastructure.gateways.airtel import AirtelMoneyGateway
 from shared.domain.money import Money
 
 NOW = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
+
+PRIVATE_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+PUBLIC_KEY = base64.b64encode(
+    PRIVATE_KEY.public_key().public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+).decode()
+
+
+def _encryption_key_response() -> httpx.Response:
+    return httpx.Response(200, json={"data": {"key": PUBLIC_KEY}})
+
+
+def _signed_body(request: httpx.Request) -> dict:
+    key_material = (
+        PRIVATE_KEY.decrypt(
+            base64.b64decode(request.headers["x-key"]),
+            asymmetric_padding.PKCS1v15(),
+        )
+        .decode()
+        .split(":")
+    )
+    key, iv = (base64.b64decode(part) for part in key_material)
+    decryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
+    padded = (
+        decryptor.update(base64.b64decode(request.headers["x-signature"])) + decryptor.finalize()
+    )
+    unpadder = padding.PKCS7(128).unpadder()
+    body = unpadder.update(padded) + unpadder.finalize()
+    assert body == request.content
+    return json.loads(body)
 
 
 def _intent(*, gateway_reference: str | None = None) -> PaymentIntent:
@@ -61,7 +98,9 @@ def test_request_payment_asks_airtel_to_charge_the_customer():
         if request.url.path == "/auth/oauth2/token":
             assert json.loads(request.content)["grant_type"] == "client_credentials"
             return httpx.Response(200, json={"access_token": "token-1", "expires_in": 3600})
-        if request.url.path == "/merchant/v1/payments/":
+        if request.url.path == "/v1/rsa/encryption-keys":
+            return _encryption_key_response()
+        if request.url.path == "/merchant/v2/payments/":
             return httpx.Response(
                 200,
                 json={
@@ -78,13 +117,16 @@ def test_request_payment_asks_airtel_to_charge_the_customer():
     assert result.provider == "airtel"
     assert result.reference == "airtel-ref-1"
 
-    charge = requests[1]
+    assert requests[1].url.path == "/v1/rsa/encryption-keys"
+    charge = requests[2]
     assert charge.headers["Authorization"] == "Bearer token-1"
     assert charge.headers["X-Country"] == "UG"
     assert charge.headers["X-Currency"] == "UGX"
     assert charge.headers["X-Callback-Url"].endswith("/payments/callbacks/airtel/")
+    assert charge.headers["x-signature"]
+    assert charge.headers["x-key"]
 
-    body = json.loads(charge.content)
+    body = _signed_body(charge)
     assert body["reference"] == "PAY-AIRTEL-1"
     assert body["subscriber"] == {
         "country": "UG",
@@ -189,6 +231,8 @@ def test_a_rejected_charge_raises_a_gateway_error():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/auth/oauth2/token":
             return httpx.Response(200, json={"access_token": "token-1", "expires_in": 3600})
+        if request.url.path == "/v1/rsa/encryption-keys":
+            return _encryption_key_response()
         return httpx.Response(
             200,
             json={"status": {"code": "400", "message": "Invalid subscriber"}},

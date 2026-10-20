@@ -13,6 +13,7 @@ from payments.application.ports import (
 )
 from payments.domain.entities import PaymentIntent
 from payments.domain.errors import GatewayError, InvalidCallbackError
+from payments.infrastructure.gateways.airtel_signing import sign_payload
 
 
 class AirtelMoneyGateway(PaymentGatewayPort):
@@ -38,6 +39,7 @@ class AirtelMoneyGateway(PaymentGatewayPort):
         self._client = client or httpx.Client(timeout=15)
         self._token: str | None = None
         self._token_expires_at: datetime | None = None
+        self._public_key: str | None = None
 
     def provider_name(self) -> str:
         return "airtel"
@@ -68,7 +70,13 @@ class AirtelMoneyGateway(PaymentGatewayPort):
             },
         }
 
-        response = self._post("/merchant/v1/payments/", headers=headers, json=payload)
+        try:
+            signed = sign_payload(self._encryption_key(), payload)
+        except (TypeError, ValueError) as error:
+            raise GatewayError("Could not sign the Airtel Money request") from error
+        headers.update(signed.headers)
+
+        response = self._post("/merchant/v2/payments/", headers=headers, content=signed.body)
         if response.status_code not in {200, 201, 202}:
             raise GatewayError(self._error_message(response, "Airtel Money rejected the request"))
 
@@ -155,6 +163,31 @@ class AirtelMoneyGateway(PaymentGatewayPort):
     def _auth_headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._access_token()}"}
 
+    def _encryption_key(self) -> str:
+        if self._public_key:
+            return self._public_key
+
+        response = self._get(
+            "/v1/rsa/encryption-keys",
+            headers={
+                **self._auth_headers(),
+                "X-Country": self._country,
+                "X-Currency": self._currency,
+            },
+        )
+        if response.status_code != 200:
+            raise GatewayError(
+                self._error_message(response, "Airtel Money did not provide a signing key")
+            )
+
+        data = response.json()
+        key = (data.get("data") or {}).get("key")
+        if not key:
+            raise GatewayError("Airtel Money did not provide a signing key")
+
+        self._public_key = str(key)
+        return self._public_key
+
     def _access_token(self) -> str:
         now = datetime.now(UTC)
         if self._token and self._token_expires_at and now < self._token_expires_at:
@@ -190,9 +223,15 @@ class AirtelMoneyGateway(PaymentGatewayPort):
         *,
         headers: dict[str, str],
         json: dict[str, Any] | None = None,
+        content: bytes | None = None,
     ) -> httpx.Response:
         try:
-            return self._client.post(f"{self._base_url}{path}", headers=headers, json=json)
+            return self._client.post(
+                f"{self._base_url}{path}",
+                headers=headers,
+                json=json,
+                content=content,
+            )
         except httpx.HTTPError as error:
             raise GatewayError("Could not reach Airtel Money") from error
 
