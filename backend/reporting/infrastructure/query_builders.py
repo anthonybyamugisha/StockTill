@@ -10,7 +10,6 @@ from reporting.application.queries import (
     InventoryReport,
     LowStockItem,
     ProfitReport,
-    SalesReportRow,
 )
 from reporting.infrastructure.directories import CashierDirectory, CatalogDirectory
 from reporting.infrastructure.stock_levels import StockLevels
@@ -34,26 +33,6 @@ class SalesQueryBuilder:
     def _stock_counts(self) -> tuple[int, int]:
         levels = StockLevels.load()
         return levels.low, levels.out
-
-    def get_sales_report(self, date_from: date, date_to: date) -> list[SalesReportRow]:
-        names = self._cashier_names()
-        sales = SaleModel.objects.filter(created_at__date__range=(date_from, date_to)).order_by(
-            "-created_at"
-        )
-        rows = []
-        for sale in sales:
-            for payment in sale.payments.all():
-                rows.append(
-                    SalesReportRow(
-                        receipt_number=sale.receipt_number,
-                        date=sale.created_at,
-                        cashier_name=names.get(sale.cashier_id, ""),
-                        total=sale.total,
-                        payment_method=payment.method,
-                        status=sale.status,
-                    )
-                )
-        return rows
 
     def get_profit_report(self, date_from: date, date_to: date) -> list[ProfitReport]:
         sales = SaleModel.objects.filter(

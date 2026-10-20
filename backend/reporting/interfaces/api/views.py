@@ -11,12 +11,14 @@ from reporting.application.use_cases import (
     GetCashierSalesUseCase,
     GetDailySalesUseCase,
     GetSalesByPaymentMethodUseCase,
+    GetSalesReportUseCase,
     GetSalesSummaryUseCase,
     GetTopProductsUseCase,
 )
 from reporting.infrastructure.queries.cashier_sales import DjangoCashierSalesQuery
 from reporting.infrastructure.queries.daily_sales import DjangoDailySalesQuery
 from reporting.infrastructure.queries.payment_methods import DjangoPaymentMethodSalesQuery
+from reporting.infrastructure.queries.sales_report import DjangoSalesReportQuery
 from reporting.infrastructure.queries.sales_summary import DjangoSalesSummaryQuery
 from reporting.infrastructure.queries.top_products import DjangoTopProductsQuery
 from reporting.infrastructure.query_builders import SalesQueryBuilder
@@ -119,7 +121,9 @@ class SalesReportView(APIView):
 
     def get(self, request):
         dates = DateRange.from_params(request.query_params)
-        rows = SalesQueryBuilder().get_sales_report(dates.date_from, dates.date_to)
+        rows = GetSalesReportUseCase(DjangoSalesReportQuery()).execute(
+            dates.date_from, dates.date_to
+        )
         return Response(SalesReportRowSerializer(rows, many=True).data)
 
 
@@ -136,7 +140,9 @@ class SalesReportCSVView(APIView):
 
     def get(self, request):
         dates = DateRange.from_params(request.query_params)
-        rows = SalesQueryBuilder().get_sales_report(dates.date_from, dates.date_to)
+        rows = GetSalesReportUseCase(DjangoSalesReportQuery()).execute(
+            dates.date_from, dates.date_to
+        )
 
         output = StringIO()
         writer = csv.writer(output)
