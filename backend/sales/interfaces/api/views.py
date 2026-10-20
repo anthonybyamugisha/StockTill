@@ -1,4 +1,3 @@
-from decimal import Decimal
 from uuid import UUID
 
 from rest_framework import status
@@ -7,19 +6,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.interfaces.api.permissions import IsManager
-from sales.application.commands import (
-    CompleteSaleCommand,
-    LineItem,
-    PaymentInput,
-    RefundSaleCommand,
-    VoidSaleCommand,
-)
 from sales.application.use_cases import CompleteSaleUseCase, RefundSaleUseCase, VoidSaleUseCase
-from sales.domain.entities import DiscountType, PaymentMethod, SaleStatus
+from sales.domain.entities import SaleStatus
 from sales.infrastructure.adapters import CatalogAdapter, InventoryAdapter, ShiftAdapter
 from sales.infrastructure.idempotency import CacheIdempotencyPort
 from sales.infrastructure.receipt_number import DatabaseReceiptNumberPort
 from sales.infrastructure.repository import DjangoRefundRepository, DjangoSaleRepository
+from sales.interfaces.api.request_mapping import (
+    to_complete_sale_command,
+    to_refund_sale_command,
+    to_void_sale_command,
+)
 from sales.interfaces.api.serializers import (
     CompleteSaleSerializer,
     RefundSaleSerializer,
@@ -28,7 +25,6 @@ from sales.interfaces.api.serializers import (
 )
 from shared.domain.clock import SystemClock
 from shared.domain.errors import DomainError
-from shared.domain.money import Money
 from shared.infrastructure.audit import build_audit_recorder
 
 
@@ -60,35 +56,12 @@ class SaleListCreateView(APIView):
     def post(self, request):
         serializer = CompleteSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
 
-        lines = [
-            LineItem(
-                product_id=ln["product_id"],
-                quantity=ln["quantity"],
-                unit_price=Money(ln["unit_price"]),
-                unit_cost=Money(ln["unit_cost"]),
-                product_name=ln.get("product_name", ""),
-                discount_type=DiscountType(ln["discount_type"])
-                if ln.get("discount_type")
-                else None,
-                discount_value=Decimal(str(ln["discount_value"]))
-                if ln.get("discount_value")
-                else None,
-            )
-            for ln in data["lines"]
-        ]
-        payments = [
-            PaymentInput(
-                method=PaymentMethod(p["method"]),
-                amount=Money(p["amount"]),
-                tendered=Money(p["tendered"]) if p.get("tendered") else None,
-                reference=p.get("reference"),
-                provider=p.get("provider"),
-            )
-            for p in data["payments"]
-        ]
-
+        command = to_complete_sale_command(
+            serializer.validated_data,
+            cashier_id=request.user.id,
+            shift_id=ShiftAdapter().open_shift_id(request.user.id),
+        )
         use_case = CompleteSaleUseCase(
             DjangoSaleRepository(),
             InventoryAdapter(),
@@ -99,16 +72,7 @@ class SaleListCreateView(APIView):
             build_audit_recorder(),
         )
         try:
-            sale = use_case.execute(
-                CompleteSaleCommand(
-                    cashier_id=request.user.id,
-                    lines=lines,
-                    payments=payments,
-                    idempotency_key=data["idempotency_key"],
-                    notes=data.get("notes", ""),
-                    shift_id=ShiftAdapter().open_shift_id(request.user.id),
-                )
-            )
+            sale = use_case.execute(command)
         except (ValueError, DomainError) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(SaleSerializer(sale).data, status=status.HTTP_201_CREATED)
@@ -131,7 +95,6 @@ class RefundSaleView(APIView):
     def post(self, request):
         serializer = RefundSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
         use_case = RefundSaleUseCase(
             DjangoSaleRepository(),
             DjangoRefundRepository(),
@@ -141,14 +104,7 @@ class RefundSaleView(APIView):
         )
         try:
             refund = use_case.execute(
-                RefundSaleCommand(
-                    sale_id=data["sale_id"],
-                    line_id=data.get("line_id"),
-                    quantity=data["quantity"],
-                    reason=data["reason"],
-                    restock=data["restock"],
-                    user_id=request.user.id,
-                )
+                to_refund_sale_command(serializer.validated_data, user_id=request.user.id)
             )
         except (ValueError, DomainError) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -163,17 +119,12 @@ class VoidSaleView(APIView):
     def post(self, request):
         serializer = VoidSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
         use_case = VoidSaleUseCase(
             DjangoSaleRepository(), InventoryAdapter(), SystemClock(), build_audit_recorder()
         )
         try:
             sale = use_case.execute(
-                VoidSaleCommand(
-                    sale_id=data["sale_id"],
-                    reason=data["reason"],
-                    user_id=request.user.id,
-                )
+                to_void_sale_command(serializer.validated_data, user_id=request.user.id)
             )
         except (ValueError, DomainError) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
