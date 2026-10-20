@@ -4,9 +4,7 @@ from reporting.interfaces.api.date_range import DateRange
 
 
 def _freeze_shop_today(monkeypatch, today: date) -> None:
-    monkeypatch.setattr(
-        "reporting.interfaces.api.date_range.timezone.localdate", lambda: today
-    )
+    monkeypatch.setattr("reporting.interfaces.api.date_range.timezone.localdate", lambda: today)
 
 
 def test_defaults_to_the_month_to_date(monkeypatch):
