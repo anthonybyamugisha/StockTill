@@ -148,13 +148,13 @@ def test_intents_can_be_filtered(repository):
     repository.save(failed)
 
     assert len(repository.list_intents()) == 3
-    assert sorted(
-        intent.tx_ref for intent in repository.list_intents(cashier_id=cashier_id)
-    ) == ["PAY-ONE", "PAY-THREE"]
-    assert [
-        intent.tx_ref
-        for intent in repository.list_intents(status=PaymentStatus.FAILED)
-    ] == ["PAY-THREE"]
+    assert sorted(intent.tx_ref for intent in repository.list_intents(cashier_id=cashier_id)) == [
+        "PAY-ONE",
+        "PAY-THREE",
+    ]
+    assert [intent.tx_ref for intent in repository.list_intents(status=PaymentStatus.FAILED)] == [
+        "PAY-THREE"
+    ]
 
 
 @pytest.mark.django_db
