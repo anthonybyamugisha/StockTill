@@ -78,6 +78,8 @@ export function PaymentModal({ isOpen, onClose, items, total, onComplete }: Paym
     quantity: item.quantity,
     unit_price: item.unit_price,
     unit_cost: item.unit_cost,
+    discount_type: item.discount_type || null,
+    discount_value: item.discount_value || null,
   }));
 
   const tenderedError = tendered.trim() ? validateTendered(tendered, total) : null;

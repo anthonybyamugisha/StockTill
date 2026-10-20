@@ -1,11 +1,15 @@
 import { apiClient } from '../../../shared/http/client';
 
+export type CartDiscountType = 'percentage' | 'fixed';
+
 export interface CartItem {
   product_id: string;
   name: string;
   quantity: number;
   unit_price: string;
   unit_cost: string;
+  discount_type?: CartDiscountType | null;
+  discount_value?: string | null;
 }
 
 export interface ProductLookup {
@@ -40,6 +44,8 @@ export interface CompleteSaleRequest {
     quantity: number;
     unit_price: string;
     unit_cost: string;
+    discount_type?: CartDiscountType | null;
+    discount_value?: string | null;
   }>;
   payments: PaymentInput[];
   idempotency_key: string;

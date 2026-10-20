@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { CartItem } from '../api/pos';
+import { CartItem, CartDiscountType } from '../api/pos';
+import { discountAmount, lineGross, roundMoney } from '../lib/discounts';
 
 export function useCart() {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -28,9 +29,54 @@ export function useCart() {
     );
   }, []);
 
+  const updateDiscount = useCallback(
+    (productId: string, type: CartDiscountType, value: string) => {
+      setItems((prev) =>
+        prev.map((item) =>
+          item.product_id === productId
+            ? { ...item, discount_type: type, discount_value: value }
+            : item,
+        ),
+      );
+    },
+    [],
+  );
+
+  const clearDiscount = useCallback((productId: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.product_id === productId
+          ? { ...item, discount_type: null, discount_value: null }
+          : item,
+      ),
+    );
+  }, []);
+
   const clearCart = useCallback(() => setItems([]), []);
 
-  const subtotal = items.reduce((sum, i) => sum + parseFloat(i.unit_price) * i.quantity, 0);
+  const subtotal = roundMoney(
+    items.reduce((sum, item) => sum + lineGross(item.unit_price, item.quantity), 0),
+  );
+  const discountTotal = roundMoney(
+    items.reduce(
+      (sum, item) =>
+        sum +
+        discountAmount(item.unit_price, item.quantity, item.discount_type, item.discount_value),
+      0,
+    ),
+  );
+  const total = roundMoney(subtotal - discountTotal);
 
-  return { items, addItem, removeItem, updateQuantity, clearCart, subtotal };
+  return {
+    items,
+    addItem,
+    removeItem,
+    updateQuantity,
+    updateDiscount,
+    clearDiscount,
+    clearCart,
+    subtotal,
+    discountTotal,
+    total,
+  };
 }
