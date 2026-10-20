@@ -1,8 +1,21 @@
 from datetime import date, datetime
 from decimal import Decimal
+from uuid import UUID
 
-from reporting.application.queries import DailySales, ProfitReport, SalesReportRow, SalesSummary
-from reporting.interfaces.api.csv_export import write_daily_sales_csv, write_profit_report_csv, write_sales_report_csv, write_sales_summary_csv
+from reporting.application.queries import (
+    DailySales,
+    ProfitReport,
+    SalesReportRow,
+    SalesSummary,
+    TopProduct,
+)
+from reporting.interfaces.api.csv_export import (
+    write_daily_sales_csv,
+    write_profit_report_csv,
+    write_sales_report_csv,
+    write_sales_summary_csv,
+    write_top_products_csv,
+)
 
 
 def _row(cashier_name: str = "Grace Nakato") -> SalesReportRow:
@@ -81,3 +94,19 @@ def test_writes_profit_by_day():
 
     assert lines[0] == "Date,Revenue,Cost,Gross Profit"
     assert lines[1] == "2026-10-18,1500.00,1000.00,500.00"
+
+
+def test_writes_top_products():
+    rows = [
+        TopProduct(
+            product_id=UUID("00000000-0000-0000-0000-000000000001"),
+            product_name="Sugar 1kg",
+            quantity_sold=2,
+            revenue=Decimal("3000.00"),
+        )
+    ]
+
+    lines = write_top_products_csv(rows).splitlines()
+
+    assert lines[0] == "Product,Qty Sold,Revenue"
+    assert lines[1] == "Sugar 1kg,2,3000.00"
