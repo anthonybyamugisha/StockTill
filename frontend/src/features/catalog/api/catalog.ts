@@ -14,6 +14,39 @@ export interface Product {
   is_active: boolean;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  description: string;
+  parent_id: string | null;
+  is_active: boolean;
+}
+
+export async function listCategories(activeOnly = true): Promise<Category[]> {
+  const res = await apiClient.get<Category[]>('/catalog/categories/', {
+    params: { active_only: activeOnly },
+  });
+  return res.data;
+}
+
+export async function createCategory(data: {
+  name: string;
+  description?: string;
+  parent_id?: string | null;
+}): Promise<Category> {
+  const res = await apiClient.post<Category>('/catalog/categories/', data);
+  return res.data;
+}
+
+export async function updateCategory(id: string, data: Partial<Category>): Promise<Category> {
+  const res = await apiClient.patch<Category>(`/catalog/categories/${id}/`, data);
+  return res.data;
+}
+
+export async function deactivateCategory(id: string): Promise<void> {
+  await apiClient.delete(`/catalog/categories/${id}/`);
+}
+
 export async function listProducts(options: { activeOnly?: boolean } = {}): Promise<Product[]> {
   const res = await apiClient.get<Product[]>('/catalog/products/', {
     params: { active_only: options.activeOnly ?? true },

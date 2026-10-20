@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getLowStock, getOutOfStock, adjustStock, AdjustStockRequest, StockItem } from '../api/inventory';
+import { getLowStock, getOutOfStock, adjustStock, StockItem } from '../api/inventory';
+import { AdjustStockModal } from '../components/AdjustStockModal';
 import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Badge } from '../../../shared/ui/Badge';
 import { Table } from '../../../shared/ui/Table';
-import { Modal } from '../../../shared/ui/Modal';
-import { Input } from '../../../shared/ui/Input';
-import { Select } from '../../../shared/ui/Select';
 import { listProducts, Product } from '../../catalog/api/catalog';
 import { toast } from '../../../shared/ui/toast';
 import { getApiErrorMessage } from '../../../shared/http/errors';
@@ -102,58 +100,4 @@ export function InventoryPage() {
   );
 }
 
-function AdjustStockModal({ products, onClose, onSubmit, isLoading }: {
-  products: Product[];
-  onClose: () => void;
-  onSubmit: (data: AdjustStockRequest) => void;
-  isLoading: boolean;
-}) {
-  const [form, setForm] = useState<AdjustStockRequest>({
-    product_id: '',
-    quantity: 1,
-    movement_type: 'adjustment_in',
-    reason: '',
-  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(form);
-  };
-
-  return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title="Adjust Stock"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>{isLoading ? 'Saving...' : 'Save'}</Button>
-        </>
-      }
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Select
-          label="Product"
-          value={form.product_id}
-          onChange={(e) => setForm({ ...form, product_id: e.target.value })}
-          options={products.map((p) => ({ value: p.id, label: p.name }))}
-        />
-        <Select
-          label="Movement Type"
-          value={form.movement_type}
-          onChange={(e) => setForm({ ...form, movement_type: e.target.value })}
-          options={[
-            { value: 'adjustment_in', label: 'Adjustment In' },
-            { value: 'adjustment_out', label: 'Adjustment Out' },
-            { value: 'opening', label: 'Opening Stock' },
-            { value: 'purchase', label: 'Purchase' },
-            { value: 'write_off', label: 'Write Off' },
-          ]}
-        />
-        <Input label="Quantity" type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: parseInt(e.target.value) })} />
-        <Input label="Reason" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} required />
-      </form>
-    </Modal>
-  );
-}
