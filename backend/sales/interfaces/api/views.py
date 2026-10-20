@@ -6,7 +6,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.interfaces.api.permissions import IsManager
-from sales.domain.entities import SaleStatus
 from sales.infrastructure.adapters import ShiftAdapter
 from sales.infrastructure.repository import DjangoSaleRepository
 from sales.interfaces.api.container import (
@@ -14,6 +13,7 @@ from sales.interfaces.api.container import (
     build_refund_sale_use_case,
     build_void_sale_use_case,
 )
+from sales.interfaces.api.filters import parse_status_filter
 from sales.interfaces.api.request_mapping import (
     to_complete_sale_command,
     to_refund_sale_command,
@@ -32,14 +32,10 @@ class SaleListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        status_param = request.query_params.get("status")
         try:
-            status_filter = SaleStatus(status_param) if status_param else None
-        except ValueError:
-            return Response(
-                {"detail": f"'{status_param}' is not a valid sale status."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            status_filter = parse_status_filter(request.query_params.get("status"))
+        except ValueError as error:
+            return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
         repo = DjangoSaleRepository()
         sales = repo.list_sales(
             cashier_id=UUID(request.query_params["cashier_id"])
