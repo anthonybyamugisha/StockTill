@@ -14,12 +14,11 @@ from reporting.application.queries import (
     InventoryReport,
     LowStockItem,
     ProfitReport,
-    SalesByPaymentMethod,
     SalesReportRow,
 )
 from reporting.infrastructure.directories import CashierDirectory, CatalogDirectory
 from reporting.infrastructure.stock_levels import StockLevels
-from sales.infrastructure.models import PaymentModel, SaleModel
+from sales.infrastructure.models import SaleModel
 from shared.domain.money import Money
 
 _MAX_FILLED_DAYS = 366
@@ -39,19 +38,6 @@ class SalesQueryBuilder:
     def _stock_counts(self) -> tuple[int, int]:
         levels = StockLevels.load()
         return levels.low, levels.out
-
-    def get_sales_by_payment_method(
-        self, date_from: date, date_to: date
-    ) -> list[SalesByPaymentMethod]:
-        payments = (
-            PaymentModel.objects.filter(sale__created_at__date__range=(date_from, date_to))
-            .values("method")
-            .annotate(count=Count("id"), total=Sum("amount"))
-        )
-        return [
-            SalesByPaymentMethod(method=row["method"], count=row["count"], total=row["total"])
-            for row in payments
-        ]
 
     def get_daily_sales(self, date_from: date, date_to: date) -> list[DailySales]:
         rows = (

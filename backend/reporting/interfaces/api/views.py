@@ -7,7 +7,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.interfaces.api.permissions import IsManager
-from reporting.application.use_cases import GetSalesSummaryUseCase, GetTopProductsUseCase
+from reporting.application.use_cases import (
+    GetSalesByPaymentMethodUseCase,
+    GetSalesSummaryUseCase,
+    GetTopProductsUseCase,
+)
+from reporting.infrastructure.queries.payment_methods import DjangoPaymentMethodSalesQuery
 from reporting.infrastructure.queries.sales_summary import DjangoSalesSummaryQuery
 from reporting.infrastructure.queries.top_products import DjangoTopProductsQuery
 from reporting.infrastructure.query_builders import SalesQueryBuilder
@@ -54,7 +59,9 @@ class SalesByPaymentMethodView(APIView):
 
     def get(self, request):
         dates = DateRange.from_params(request.query_params)
-        data = SalesQueryBuilder().get_sales_by_payment_method(dates.date_from, dates.date_to)
+        data = GetSalesByPaymentMethodUseCase(DjangoPaymentMethodSalesQuery()).execute(
+            dates.date_from, dates.date_to
+        )
         return Response(SalesByPaymentMethodSerializer(data, many=True).data)
 
 
