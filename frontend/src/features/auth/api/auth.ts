@@ -20,8 +20,9 @@ export interface User {
   must_change_password: boolean;
 }
 
-export async function login(data: LoginRequest): Promise<void> {
-  await apiClient.post('/accounts/login/', data);
+export async function login(data: LoginRequest): Promise<User> {
+  const res = await apiClient.post<User>('/accounts/login/', data);
+  return res.data;
 }
 
 export async function logout(): Promise<void> {
