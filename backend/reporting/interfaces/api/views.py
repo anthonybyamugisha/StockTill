@@ -26,7 +26,11 @@ from reporting.infrastructure.queries.profit import DjangoProfitReportQuery
 from reporting.infrastructure.queries.sales_report import DjangoSalesReportQuery
 from reporting.infrastructure.queries.sales_summary import DjangoSalesSummaryQuery
 from reporting.infrastructure.queries.top_products import DjangoTopProductsQuery
-from reporting.interfaces.api.csv_export import write_sales_report_csv, write_sales_summary_csv
+from reporting.interfaces.api.csv_export import (
+    write_daily_sales_csv,
+    write_sales_report_csv,
+    write_sales_summary_csv,
+)
 from reporting.interfaces.api.date_range import DateRange
 from reporting.interfaces.api.serializers import (
     CashierSalesSerializer,
@@ -103,6 +107,17 @@ class DailySalesView(APIView):
         dates = DateRange.from_params(request.query_params)
         data = GetDailySalesUseCase(DjangoDailySalesQuery()).execute(dates.date_from, dates.date_to)
         return Response(DailySalesSerializer(data, many=True).data)
+
+
+class DailySalesCSVView(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request):
+        dates = DateRange.from_params(request.query_params)
+        data = GetDailySalesUseCase(DjangoDailySalesQuery()).execute(
+            dates.date_from, dates.date_to
+        )
+        return _csv_response(write_daily_sales_csv(data), "daily_sales.csv")
 
 
 class CashierSalesView(APIView):
