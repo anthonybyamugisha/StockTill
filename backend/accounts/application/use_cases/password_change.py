@@ -3,12 +3,19 @@ from accounts.domain.entities import User
 from accounts.domain.errors import InvalidCurrentPasswordError, WeakPasswordError
 from accounts.domain.password import PasswordHasher, validate_password_strength
 from accounts.domain.repository import UserRepository
+from shared.application.audit import AuditPort, NullAuditPort
 
 
 class ChangePasswordUseCase:
-    def __init__(self, user_repository: UserRepository, password_hasher: PasswordHasher):
+    def __init__(
+        self,
+        user_repository: UserRepository,
+        password_hasher: PasswordHasher,
+        audit: AuditPort | None = None,
+    ):
         self._repo = user_repository
         self._hasher = password_hasher
+        self._audit = audit or NullAuditPort()
 
     def execute(self, command: ChangePasswordCommand) -> User:
         user = self._repo.get_by_id(command.user_id)
