@@ -8,10 +8,12 @@ from rest_framework.views import APIView
 
 from accounts.interfaces.api.permissions import IsManager
 from reporting.application.use_cases import (
+    GetDailySalesUseCase,
     GetSalesByPaymentMethodUseCase,
     GetSalesSummaryUseCase,
     GetTopProductsUseCase,
 )
+from reporting.infrastructure.queries.daily_sales import DjangoDailySalesQuery
 from reporting.infrastructure.queries.payment_methods import DjangoPaymentMethodSalesQuery
 from reporting.infrastructure.queries.sales_summary import DjangoSalesSummaryQuery
 from reporting.infrastructure.queries.top_products import DjangoTopProductsQuery
@@ -70,7 +72,7 @@ class DailySalesView(APIView):
 
     def get(self, request):
         dates = DateRange.from_params(request.query_params)
-        data = SalesQueryBuilder().get_daily_sales(dates.date_from, dates.date_to)
+        data = GetDailySalesUseCase(DjangoDailySalesQuery()).execute(dates.date_from, dates.date_to)
         return Response(DailySalesSerializer(data, many=True).data)
 
 

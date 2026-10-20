@@ -3,13 +3,11 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db.models import Count, Sum
-from django.db.models.functions import TruncDate
 from django.utils import timezone
 
 from catalog.infrastructure.models import ProductModel
 from reporting.application.queries import (
     CashierSales,
-    DailySales,
     DashboardStats,
     InventoryReport,
     LowStockItem,
@@ -38,24 +36,6 @@ class SalesQueryBuilder:
     def _stock_counts(self) -> tuple[int, int]:
         levels = StockLevels.load()
         return levels.low, levels.out
-
-    def get_daily_sales(self, date_from: date, date_to: date) -> list[DailySales]:
-        rows = (
-            SaleModel.objects.filter(created_at__date__range=(date_from, date_to))
-            .annotate(day=TruncDate("created_at"))
-            .values("day")
-            .annotate(count=Count("id"), total=Sum("total"))
-        )
-        sold: dict[date, DailySales] = {
-            row["day"]: DailySales(
-                date=row["day"], transaction_count=row["count"], total=row["total"] or 0
-            )
-            for row in rows
-        }
-        days = _date_range(date_from, date_to)
-        if len(days) > _MAX_FILLED_DAYS:
-            return [sold[day] for day in sorted(sold)]
-        return [sold.get(day, DailySales(date=day, transaction_count=0, total=0)) for day in days]
 
     def get_cashier_sales(self, date_from: date, date_to: date) -> list[CashierSales]:
         names = self._cashier_names()
