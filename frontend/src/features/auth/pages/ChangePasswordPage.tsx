@@ -75,6 +75,7 @@ export function ChangePasswordPage() {
           <Input
             label="Current password"
             type="password"
+            autoComplete="current-password"
             error={errors.current_password?.message}
             {...register('current_password')}
           />
@@ -82,6 +83,7 @@ export function ChangePasswordPage() {
           <Input
             label="New password"
             type="password"
+            autoComplete="new-password"
             error={errors.new_password?.message}
             {...register('new_password')}
           />
@@ -89,6 +91,7 @@ export function ChangePasswordPage() {
           <Input
             label="Confirm new password"
             type="password"
+            autoComplete="new-password"
             error={errors.confirm_password?.message}
             {...register('confirm_password')}
           />
