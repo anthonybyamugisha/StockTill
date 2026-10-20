@@ -76,7 +76,13 @@ export function DashboardPage() {
               labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ''}
               formatter={(value: number) => [formatMoney(value), 'Sales']}
             />
-            <Line type="monotone" dataKey="sales" stroke="#0078d4" strokeWidth={2} dot={false} />
+            <Line
+              type="monotone"
+              dataKey="sales"
+              stroke="#0078d4"
+              strokeWidth={2}
+              dot={{ r: 3, fill: '#0078d4', strokeWidth: 0 }}
+            />
           </LineChart>
         </ResponsiveContainer>
       </Card>
