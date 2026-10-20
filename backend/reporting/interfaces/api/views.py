@@ -12,6 +12,7 @@ from reporting.application.use_cases import (
     GetDailySalesUseCase,
     GetDashboardStatsUseCase,
     GetInventoryReportUseCase,
+    GetLowStockItemsUseCase,
     GetProfitReportUseCase,
     GetSalesByPaymentMethodUseCase,
     GetSalesReportUseCase,
@@ -22,12 +23,12 @@ from reporting.infrastructure.queries.cashier_sales import DjangoCashierSalesQue
 from reporting.infrastructure.queries.daily_sales import DjangoDailySalesQuery
 from reporting.infrastructure.queries.dashboard import DjangoDashboardQuery
 from reporting.infrastructure.queries.inventory_report import DjangoInventoryReportQuery
+from reporting.infrastructure.queries.low_stock import DjangoLowStockQuery
 from reporting.infrastructure.queries.payment_methods import DjangoPaymentMethodSalesQuery
 from reporting.infrastructure.queries.profit import DjangoProfitReportQuery
 from reporting.infrastructure.queries.sales_report import DjangoSalesReportQuery
 from reporting.infrastructure.queries.sales_summary import DjangoSalesSummaryQuery
 from reporting.infrastructure.queries.top_products import DjangoTopProductsQuery
-from reporting.infrastructure.query_builders import SalesQueryBuilder
 from reporting.interfaces.api.date_range import DateRange
 from reporting.interfaces.api.serializers import (
     CashierSalesSerializer,
@@ -139,7 +140,7 @@ class LowStockReportView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request):
-        items = SalesQueryBuilder().get_low_stock_items()
+        items = GetLowStockItemsUseCase(DjangoLowStockQuery()).execute()
         return Response(LowStockItemSerializer(items, many=True).data)
 
 
