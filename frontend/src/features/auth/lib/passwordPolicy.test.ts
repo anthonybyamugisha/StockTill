@@ -10,4 +10,12 @@ describe('passwordIssue', () => {
   it('accepts a password with letters and numbers', () => {
     expect(passwordIssue('permanent12')).toBeNull();
   });
+
+  it('rejects letters without a number', () => {
+    expect(passwordIssue('onlyletters')).toBe('Include at least one letter and one number');
+  });
+
+  it('rejects numbers without a letter', () => {
+    expect(passwordIssue('12345678')).toBe('Include at least one letter and one number');
+  });
 });
