@@ -5,6 +5,11 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -30,4 +35,9 @@ export async function getCurrentUser(): Promise<User> {
     return data;
   }
   throw new Error('Not authenticated');
+}
+
+export async function changePassword(data: ChangePasswordRequest): Promise<User> {
+  const res = await apiClient.post<User>('/accounts/change-password/', data);
+  return res.data;
 }
