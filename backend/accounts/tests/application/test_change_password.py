@@ -114,3 +114,19 @@ def test_change_password_rejects_a_short_new_password():
         ChangePasswordUseCase(repo, hasher).execute(
             ChangePasswordCommand(user_id=user.id, current_password="temporary1", new_password="short1")
         )
+
+
+def test_change_password_rejects_a_new_password_without_a_number():
+    hasher = FakePasswordHasher()
+    repo = FakeUserRepository()
+    user = make_user(hasher)
+    repo.save(user)
+
+    with pytest.raises(WeakPasswordError, match="letter and one number"):
+        ChangePasswordUseCase(repo, hasher).execute(
+            ChangePasswordCommand(
+                user_id=user.id,
+                current_password="temporary1",
+                new_password="onlyletters",
+            )
+        )
