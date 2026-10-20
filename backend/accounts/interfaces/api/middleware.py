@@ -1,6 +1,14 @@
 from django.http import JsonResponse
 
-PENDING_PASSWORD_PATHS = ("/api/v1/accounts/change-password/",)
+PENDING_PASSWORD_PATHS = (
+    "/api/v1/accounts/login/",
+    "/api/v1/accounts/logout/",
+    "/api/v1/accounts/me/",
+    "/api/v1/accounts/change-password/",
+    "/api/v1/health/",
+    "/api/schema/",
+    "/api/docs/",
+)
 
 
 class RequirePasswordChangeMiddleware:
