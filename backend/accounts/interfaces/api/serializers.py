@@ -10,6 +10,7 @@ class UserSerializer(serializers.Serializer):
     last_name = serializers.CharField(max_length=100)
     role = serializers.ChoiceField(choices=[r.value for r in Role])
     is_active = serializers.BooleanField(read_only=True)
+    must_change_password = serializers.BooleanField(read_only=True)
     last_login = serializers.DateTimeField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
 
