@@ -417,6 +417,26 @@ and CSV export buckets sales by the **shop's calendar day** (`Africa/Kampala`), 
   rather than silently connecting across missing days, and charts plot the numbers (money arrives as
   strings from DRF) with short `18 Oct` labels.
 
+Every report tab has a matching download endpoint, and the CSV is produced from the same query
+object as the JSON, never from a second SQL path that could drift:
+
+| Report | JSON | CSV |
+| --- | --- | --- |
+| Sales transactions | `/api/v1/reporting/sales-report/` | `/api/v1/reporting/sales-report/csv/` |
+| Sales summary | `/api/v1/reporting/sales-summary/` | `/api/v1/reporting/sales-summary/csv/` |
+| Daily sales | `/api/v1/reporting/daily-sales/` | `/api/v1/reporting/daily-sales/csv/` |
+| Profit | `/api/v1/reporting/profit/` | `/api/v1/reporting/profit/csv/` |
+| Best sellers | `/api/v1/reporting/top-products/` | `/api/v1/reporting/top-products/csv/` |
+| Cashier sales | `/api/v1/reporting/cashier-sales/` | `/api/v1/reporting/cashier-sales/csv/` |
+| Low stock | `/api/v1/reporting/low-stock/` | `/api/v1/reporting/low-stock/csv/` |
+| Inventory | `/api/v1/reporting/inventory/` | `/api/v1/reporting/inventory/csv/` |
+| Payment methods | `/api/v1/reporting/by-payment-method/` | `/api/v1/reporting/by-payment-method/csv/` |
+
+All CSV responses use `text/csv` with an `attachment` filename, money is written with two decimals,
+and dates are ISO. The undated reports (inventory, low stock) ignore the range; the others accept the
+same `date_from` / `date_to` parameters as their JSON counterpart. The reports screen sends the
+active tab's name through one mapping, so a tab can never download another tab's data.
+
 # Quality and testing
 
 - **Backend:** `ruff check` and `ruff format --check`; `mypy` in `strict` mode over the domain and
