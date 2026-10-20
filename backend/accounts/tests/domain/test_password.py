@@ -49,3 +49,8 @@ def test_changing_a_password_clears_the_first_login_flag():
 def test_password_strength_rejects_short_passwords():
     with pytest.raises(WeakPasswordError, match="at least 8"):
         validate_password_strength("abc123")
+
+
+def test_password_strength_rejects_letters_only():
+    with pytest.raises(WeakPasswordError, match="letter and one number"):
+        validate_password_strength("onlyletters")
