@@ -38,6 +38,7 @@ class DjangoUserRepository(UserRepository):
                 "last_login": user.last_login,
                 "failed_login_attempts": user.failed_login_attempts,
                 "locked_until": user.locked_until,
+                "must_change_password": user.must_change_password,
                 "password": user.password_hash,
             },
         )
@@ -56,5 +57,6 @@ class DjangoUserRepository(UserRepository):
             last_login=m.last_login,
             failed_login_attempts=m.failed_login_attempts,
             locked_until=m.locked_until,
+            must_change_password=m.must_change_password,
             password_hash=m.password,
         )
