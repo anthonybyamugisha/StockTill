@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { login } from '../api/auth';
+import { homePathFor } from '../lib/redirect';
 import logo from '../../../logo_image.png';
 
 const loginSchema = z.object({
@@ -23,8 +24,8 @@ export function LoginPage() {
 
   const mutation = useMutation({
     mutationFn: (data: LoginFormData) => login(data),
-    onSuccess: () => {
-      window.location.href = '/';
+    onSuccess: (user) => {
+      window.location.href = homePathFor(user);
     },
   });
 
