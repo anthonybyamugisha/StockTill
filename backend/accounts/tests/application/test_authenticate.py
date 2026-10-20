@@ -154,3 +154,26 @@ def test_second_login_does_not_reopen_the_first_login_rule():
     result = AuthenticateUserUseCase(repo, hasher).execute("return@shop.com", "password123")
 
     assert result.must_change_password is False
+
+
+class RecordingAudit:
+    def __init__(self):
+        self.entries = []
+
+    def record(self, **entry):
+        self.entries.append(entry)
+
+
+def test_first_login_is_recorded_in_the_audit_trail():
+    repo = FakeUserRepository()
+    hasher = FakePasswordHasher()
+    audit = RecordingAudit()
+    user = User(email="audit@shop.com", first_name="Audit", last_name="User", role=Role.CASHIER)
+    user.set_password("password123", hasher)
+    repo.save(user)
+
+    AuthenticateUserUseCase(repo, hasher, audit).execute("audit@shop.com", "password123")
+
+    actions = [entry["action"] for entry in audit.entries]
+    assert "auth.first_login" in actions
+    assert "auth.login" in actions
