@@ -333,3 +333,14 @@ def test_legacy_account_is_flagged_on_its_first_login(api_client):
     assert response.data["must_change_password"] is True
     legacy.refresh_from_db()
     assert legacy.must_change_password is True
+
+
+@pytest.mark.django_db
+def test_legacy_account_cannot_reach_the_dashboard_before_changing(api_client):
+    legacy = build_user("legacy-dash@shop.com")
+    sign_in(api_client, legacy.email)
+
+    response = api_client.get("/api/v1/reporting/dashboard/")
+
+    assert response.status_code == 403
+    assert response.data["code"] == "password_change_required"
