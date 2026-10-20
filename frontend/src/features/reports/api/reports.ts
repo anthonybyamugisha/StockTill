@@ -45,6 +45,13 @@ export interface LowStockItem {
   minimum_level: number;
 }
 
+export interface InventoryReport {
+  total_products: number;
+  total_value: string;
+  low_stock_count: number;
+  out_of_stock_count: number;
+}
+
 export async function getSalesSummary(dateFrom: string, dateTo: string): Promise<SalesSummary> {
   const res = await apiClient.get<SalesSummary>('/reporting/sales-summary/', {
     params: { date_from: dateFrom, date_to: dateTo },
@@ -82,6 +89,11 @@ export async function getProfitReport(dateFrom: string, dateTo: string): Promise
 
 export async function getLowStockItems(): Promise<LowStockItem[]> {
   const res = await apiClient.get<LowStockItem[]>('/reporting/low-stock/');
+  return res.data;
+}
+
+export async function getInventoryReport(): Promise<InventoryReport> {
+  const res = await apiClient.get<InventoryReport>('/reporting/inventory/');
   return res.data;
 }
 
