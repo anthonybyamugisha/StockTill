@@ -282,3 +282,16 @@ def test_password_change_appears_in_the_audit_log(api_client, admin_user, pendin
 
     assert response.status_code == 200
     assert any(entry["user_email"] == pending_user.email for entry in response.data)
+
+
+@pytest.mark.django_db
+def test_password_change_requires_both_fields(api_client, pending_user):
+    sign_in(api_client, pending_user.email)
+
+    response = api_client.post(
+        "/api/v1/accounts/change-password/",
+        {"current_password": TEMPORARY_PASSWORD},
+    )
+
+    assert response.status_code == 400
+    assert "new_password" in response.data
