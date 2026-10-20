@@ -6,12 +6,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.interfaces.api.permissions import IsManager
-from sales.application.use_cases import CompleteSaleUseCase, RefundSaleUseCase, VoidSaleUseCase
 from sales.domain.entities import SaleStatus
-from sales.infrastructure.adapters import CatalogAdapter, InventoryAdapter, ShiftAdapter
-from sales.infrastructure.idempotency import CacheIdempotencyPort
-from sales.infrastructure.receipt_number import DatabaseReceiptNumberPort
-from sales.infrastructure.repository import DjangoRefundRepository, DjangoSaleRepository
+from sales.infrastructure.adapters import ShiftAdapter
+from sales.infrastructure.repository import DjangoSaleRepository
+from sales.interfaces.api.container import (
+    build_complete_sale_use_case,
+    build_refund_sale_use_case,
+    build_void_sale_use_case,
+)
 from sales.interfaces.api.request_mapping import (
     to_complete_sale_command,
     to_refund_sale_command,
@@ -23,9 +25,7 @@ from sales.interfaces.api.serializers import (
     SaleSerializer,
     VoidSaleSerializer,
 )
-from shared.domain.clock import SystemClock
 from shared.domain.errors import DomainError
-from shared.infrastructure.audit import build_audit_recorder
 
 
 class SaleListCreateView(APIView):
@@ -62,17 +62,8 @@ class SaleListCreateView(APIView):
             cashier_id=request.user.id,
             shift_id=ShiftAdapter().open_shift_id(request.user.id),
         )
-        use_case = CompleteSaleUseCase(
-            DjangoSaleRepository(),
-            InventoryAdapter(),
-            CatalogAdapter(),
-            DatabaseReceiptNumberPort(),
-            CacheIdempotencyPort(),
-            SystemClock(),
-            build_audit_recorder(),
-        )
         try:
-            sale = use_case.execute(command)
+            sale = build_complete_sale_use_case().execute(command)
         except (ValueError, DomainError) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(SaleSerializer(sale).data, status=status.HTTP_201_CREATED)
@@ -95,15 +86,8 @@ class RefundSaleView(APIView):
     def post(self, request):
         serializer = RefundSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        use_case = RefundSaleUseCase(
-            DjangoSaleRepository(),
-            DjangoRefundRepository(),
-            InventoryAdapter(),
-            SystemClock(),
-            build_audit_recorder(),
-        )
         try:
-            refund = use_case.execute(
+            refund = build_refund_sale_use_case().execute(
                 to_refund_sale_command(serializer.validated_data, user_id=request.user.id)
             )
         except (ValueError, DomainError) as e:
@@ -119,11 +103,8 @@ class VoidSaleView(APIView):
     def post(self, request):
         serializer = VoidSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        use_case = VoidSaleUseCase(
-            DjangoSaleRepository(), InventoryAdapter(), SystemClock(), build_audit_recorder()
-        )
         try:
-            sale = use_case.execute(
+            sale = build_void_sale_use_case().execute(
                 to_void_sale_command(serializer.validated_data, user_id=request.user.id)
             )
         except (ValueError, DomainError) as e:
