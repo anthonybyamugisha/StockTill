@@ -7,6 +7,7 @@ from reporting.interfaces.api.views import (
     DailySalesView,
     DashboardView,
     InventoryReportView,
+    LowStockCSVView,
     LowStockReportView,
     ProfitReportCSVView,
     ProfitReportView,
@@ -36,4 +37,5 @@ urlpatterns = [
     path("sales-report/", SalesReportView.as_view(), name="sales-report"),
     path("sales-report/csv/", SalesReportCSVView.as_view(), name="sales-report-csv"),
     path("low-stock/", LowStockReportView.as_view(), name="low-stock-report"),
+    path('low-stock/csv/', LowStockCSVView.as_view(), name="low-stock-csv"),
 ]
