@@ -1,7 +1,7 @@
 from accounts.application.commands import ChangePasswordCommand
 from accounts.domain.entities import User
 from accounts.domain.errors import InvalidCurrentPasswordError
-from accounts.domain.password import PasswordHasher
+from accounts.domain.password import PasswordHasher, validate_password_strength
 from accounts.domain.repository import UserRepository
 
 
@@ -18,6 +18,7 @@ class ChangePasswordUseCase:
         if not user.check_password(command.current_password, self._hasher):
             raise InvalidCurrentPasswordError("Current password is incorrect")
 
+        validate_password_strength(command.new_password)
         user.change_password(command.new_password, self._hasher)
         self._repo.save(user)
         return user
