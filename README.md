@@ -81,7 +81,7 @@ StockTill/
 │
 ├─ frontend/                                       React + TypeScript SPA (Vite)
 │  ├─ src/
-│  │  ├─ app/                                      Router, providers, layout, PWA
+│  │  ├─ app/                                      Layout, PWA shell
 │  │  ├─ features/                                 One folder per capability
 │  │  │  ├─ pos/                                   api · components · hooks · pages
 │  │  │  ├─ catalog/  inventory/  sales/  shifts/
