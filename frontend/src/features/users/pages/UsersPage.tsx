@@ -28,7 +28,7 @@ export function UsersPage() {
     onSuccess: (user) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowModal(false);
-      toast.success(`User ${user.email} added successfully`);
+      toast.success(`${user.email} added. They must change the temporary password at first login.`);
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Could not add user')),
   });
