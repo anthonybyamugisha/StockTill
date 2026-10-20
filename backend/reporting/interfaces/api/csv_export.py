@@ -7,6 +7,7 @@ from reporting.application.queries import (
     InventoryReport,
     LowStockItem,
     ProfitReport,
+    SalesByPaymentMethod,
     SalesReportRow,
     SalesSummary,
     TopProduct,
@@ -124,4 +125,11 @@ def write_inventory_report_csv(report: InventoryReport) -> str:
                 str(report.out_of_stock_count),
             ]
         ],
+    )
+
+
+def write_payment_methods_csv(rows: list[SalesByPaymentMethod]) -> str:
+    return _write_rows(
+        ["Payment Method", "Transactions", "Total"],
+        [[row.method, str(row.count), _money(row.total)] for row in rows],
     )

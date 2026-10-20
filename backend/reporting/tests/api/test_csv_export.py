@@ -8,6 +8,7 @@ from reporting.application.queries import (
     CashierSales,
     DailySales,
     ProfitReport,
+    SalesByPaymentMethod,
     SalesReportRow,
     SalesSummary,
     TopProduct,
@@ -17,6 +18,7 @@ from reporting.interfaces.api.csv_export import (
     write_daily_sales_csv,
     write_inventory_report_csv,
     write_low_stock_csv,
+    write_payment_methods_csv,
     write_profit_report_csv,
     write_sales_report_csv,
     write_sales_summary_csv,
@@ -163,3 +165,16 @@ def test_writes_the_inventory_summary():
 
     assert lines[0] == "Total Products,Inventory Value,Low Stock,Out of Stock"
     assert lines[1] == "12,45000.00,2,1"
+
+
+def test_writes_sales_by_payment_method():
+    rows = [
+        SalesByPaymentMethod(method="cash", count=3, total=Decimal("4500.00")),
+        SalesByPaymentMethod(method="mobile_money", count=2, total=Decimal("3000.00")),
+    ]
+
+    lines = write_payment_methods_csv(rows).splitlines()
+
+    assert lines[0] == "Payment Method,Transactions,Total"
+    assert lines[1] == "cash,3,4500.00"
+    assert lines[2] == "mobile_money,2,3000.00"
