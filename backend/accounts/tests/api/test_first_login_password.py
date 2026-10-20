@@ -229,3 +229,21 @@ def test_pending_admin_cannot_reach_user_management(api_client):
 
     assert response.status_code == 403
     assert response.json()["code"] == "password_change_required"
+
+
+@pytest.mark.django_db
+def test_weak_temporary_password_is_rejected(api_client, admin_user):
+    api_client.force_authenticate(user=admin_user)
+
+    response = api_client.post(
+        "/api/v1/accounts/users/",
+        {
+            "email": "weak@shop.com",
+            "first_name": "Weak",
+            "last_name": "User",
+            "role": "cashier",
+            "password": "onlyletters",
+        },
+    )
+
+    assert response.status_code == 400
