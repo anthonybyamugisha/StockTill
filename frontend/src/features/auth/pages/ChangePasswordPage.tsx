@@ -2,8 +2,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { changePassword } from '../api/auth';
+import { changePassword, logout } from '../api/auth';
 import { confirmationIssue, passwordIssue } from '../lib/passwordPolicy';
+import { useAuth } from '../hooks/useAuth';
 import { Input } from '../../../shared/ui/Input';
 import { getApiErrorMessage } from '../../../shared/http/errors';
 import logo from '../../../logo_image.png';
@@ -33,6 +34,7 @@ const changePasswordSchema = z
 type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
 export function ChangePasswordPage() {
+  const { user } = useAuth();
   const {
     register,
     handleSubmit,
@@ -41,6 +43,14 @@ export function ChangePasswordPage() {
     resolver: zodResolver(changePasswordSchema),
     mode: 'onTouched',
   });
+
+  const signOut = async () => {
+    try {
+      await logout();
+    } finally {
+      window.location.href = '/login';
+    }
+  };
 
   const mutation = useMutation({
     mutationFn: (data: ChangePasswordFormData) =>
@@ -111,6 +121,13 @@ export function ChangePasswordPage() {
             {mutation.isPending ? 'Updating password...' : 'Update password'}
           </button>
         </form>
+
+        <div className="mt-4 text-center text-xs text-surface-400">
+          <span>{user?.email ? `Signed in as ${user.email}.` : 'Signed in.'}</span>{' '}
+          <button type="button" onClick={signOut} className="underline hover:text-surface-600">
+            Sign out
+          </button>
+        </div>
       </div>
     </div>
   );
