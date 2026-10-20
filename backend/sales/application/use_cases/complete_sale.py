@@ -1,9 +1,10 @@
 from sales.application.commands import CompleteSaleCommand
 from sales.application.ports import CatalogPort, IdempotencyPort, InventoryPort, ReceiptNumberPort
-from sales.domain.entities import Payment, PaymentMethod, Sale, SaleLine, SaleStatus
+from sales.application.sale_lines import build_sale_lines
+from sales.domain.entities import Payment, PaymentMethod, Sale, SaleStatus
 from sales.domain.errors import InvalidPaymentError
 from sales.domain.repository import SaleRepository
-from sales.domain.services import calculate_change, calculate_discount
+from sales.domain.services import calculate_change
 from shared.application.audit import AuditPort, NullAuditPort
 from shared.domain.clock import Clock
 
@@ -34,29 +35,7 @@ class CompleteSaleUseCase:
                 return existing
             raise ValueError("Idempotency key already used")
 
-        lines: list[SaleLine] = []
-        for item in command.lines:
-            discount = None
-            if item.discount_type and item.discount_value:
-                discount = calculate_discount(
-                    item.unit_price, item.quantity, item.discount_type, item.discount_value
-                )
-
-            product_name = item.product_name
-            if not product_name:
-                product = self._catalog.get_product(item.product_id)
-                if product is not None:
-                    product_name = str(product.get("name") or "")
-
-            line = SaleLine(
-                product_id=item.product_id,
-                product_name=product_name,
-                quantity=item.quantity,
-                unit_price=item.unit_price,
-                unit_cost=item.unit_cost,
-                discount=discount,
-            )
-            lines.append(line)
+        lines = build_sale_lines(command.lines, self._catalog)
 
         sale = Sale(
             receipt_number=self._receipt_port.generate(),
