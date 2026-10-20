@@ -87,6 +87,11 @@ export async function completeSale(data: CompleteSaleRequest): Promise<Sale> {
   return res.data;
 }
 
+export async function getSale(id: string): Promise<Sale> {
+  const res = await apiClient.get<Sale>(`/sales/${id}/`);
+  return res.data;
+}
+
 export async function listAvailableProducts(categoryId?: string): Promise<ProductLookup[]> {
   const res = await apiClient.get<ProductLookup[]>('/catalog/products/', {
     params: { active_only: true, category_id: categoryId },
