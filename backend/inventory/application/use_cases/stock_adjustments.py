@@ -1,10 +1,6 @@
 from uuid import UUID
 
-from inventory.application.commands import (
-    AdjustStockCommand,
-    ReleaseStockCommand,
-    ReserveStockCommand,
-)
+from inventory.application.commands import AdjustStockCommand
 from inventory.application.ports import ProductInfoPort
 from inventory.domain.entities import MovementType, StockItem, StockMovement
 from inventory.domain.errors import InsufficientStockError
@@ -12,6 +8,12 @@ from inventory.domain.repository import StockItemRepository, StockMovementReposi
 from shared.application.audit import AuditPort, NullAuditPort
 from shared.domain.clock import Clock
 from shared.domain.money import Money
+
+OUTGOING_MOVEMENTS = (
+    MovementType.SALE,
+    MovementType.ADJUSTMENT_OUT,
+    MovementType.WRITE_OFF,
+)
 
 
 class AdjustStockUseCase:
@@ -37,11 +39,7 @@ class AdjustStockUseCase:
 
         qty = abs(command.quantity)
 
-        if command.movement_type in (
-            MovementType.SALE,
-            MovementType.ADJUSTMENT_OUT,
-            MovementType.WRITE_OFF,
-        ):
+        if command.movement_type in OUTGOING_MOVEMENTS:
             if item.available_quantity < qty:
                 raise InsufficientStockError(
                     f"Insufficient stock for product {command.product_id}. "
@@ -85,40 +83,6 @@ class AdjustStockUseCase:
         return movement
 
 
-class ReserveStockUseCase:
-    def __init__(self, stock_item_repository: StockItemRepository):
-        self._item_repo = stock_item_repository
-
-    def execute(self, command: ReserveStockCommand) -> StockItem:
-        item = self._item_repo.get_by_product(command.product_id)
-        if item is None:
-            raise InsufficientStockError(f"Product {command.product_id} has no stock record")
-
-        if item.available_quantity < command.quantity:
-            raise InsufficientStockError(
-                f"Cannot reserve {command.quantity} of product {command.product_id}. "
-                f"Available: {item.available_quantity}"
-            )
-
-        item.reserved_quantity += command.quantity
-        self._item_repo.save(item)
-        return item
-
-
-class ReleaseStockUseCase:
-    def __init__(self, stock_item_repository: StockItemRepository):
-        self._item_repo = stock_item_repository
-
-    def execute(self, command: ReleaseStockCommand) -> StockItem:
-        item = self._item_repo.get_by_product(command.product_id)
-        if item is None:
-            return StockItem(product_id=command.product_id)
-
-        item.reserved_quantity = max(0, item.reserved_quantity - command.quantity)
-        self._item_repo.save(item)
-        return item
-
-
 class RebuildStockCacheUseCase:
     def __init__(
         self,
@@ -134,11 +98,7 @@ class RebuildStockCacheUseCase:
         for m in movements:
             if m.product_id not in items:
                 items[m.product_id] = StockItem(product_id=m.product_id)
-            if m.movement_type in (
-                MovementType.SALE,
-                MovementType.ADJUSTMENT_OUT,
-                MovementType.WRITE_OFF,
-            ):
+            if m.movement_type in OUTGOING_MOVEMENTS:
                 items[m.product_id].quantity_on_hand -= abs(m.quantity)
             else:
                 items[m.product_id].quantity_on_hand += abs(m.quantity)
