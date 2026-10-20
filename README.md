@@ -378,7 +378,7 @@ Every money- or security-relevant action writes an immutable entry: **who** (the
 (`action`, `entity_type`, `entity_id`), **when** (timestamp) and the **before/after** values, so a
 change can be reconstructed rather than merely noticed. Recorded activity covers:
 
-- **Authentication** --- successful and failed logins, blocked attempts (deactivated/locked), logout.
+- **Authentication** --- successful and failed logins, blocked attempts (deactivated/locked), logout,\n  and password changes made after a temporary password.
 - **Users** --- created, updated, **role changes**, deactivated.
 - **Catalog** --- product created/updated (price changes as before/after diffs) and deactivated;
   category created/deactivated.
