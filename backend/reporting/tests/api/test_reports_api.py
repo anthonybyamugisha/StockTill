@@ -305,3 +305,35 @@ def test_daily_sales_csv_export(api_client, manager_user, sale):
     body = response.content.decode()
     assert body.startswith("Date,Transactions,Total")
     assert "1,1500.00" in body
+
+
+@pytest.mark.django_db
+def test_profit_csv_export(api_client, manager_user, sale):
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get(
+        "/api/v1/reporting/profit/csv/",
+        {"date_from": "2000-01-01", "date_to": "2100-01-01"},
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Disposition"] == "attachment; filename=profit_report.csv"
+    body = response.content.decode()
+    assert body.startswith("Date,Revenue,Cost,Gross Profit")
+    assert "1500.00,1000.00,500.00" in body
+
+
+@pytest.mark.django_db
+def test_top_products_csv_export(api_client, manager_user, sale):
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get(
+        "/api/v1/reporting/top-products/csv/",
+        {"date_from": "2000-01-01", "date_to": "2100-01-01"},
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Disposition"] == "attachment; filename=top_products.csv"
+    body = response.content.decode()
+    assert body.startswith("Product,Qty Sold,Revenue")
+    assert "Sugar 1kg,1,1500.00" in body
