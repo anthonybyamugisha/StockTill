@@ -123,3 +123,21 @@ def test_first_login_requires_a_password_change():
 
     assert result.must_change_password is True
     assert result.last_login is not None
+
+
+def test_seeded_superuser_is_not_forced_to_change_their_password():
+    repo = FakeUserRepository()
+    hasher = FakePasswordHasher()
+    user = User(
+        email="admin@shop.com",
+        first_name="Seed",
+        last_name="Admin",
+        role=Role.ADMIN,
+        is_superuser=True,
+    )
+    user.set_password("password123", hasher)
+    repo.save(user)
+
+    result = AuthenticateUserUseCase(repo, hasher).execute("admin@shop.com", "password123")
+
+    assert result.must_change_password is False
