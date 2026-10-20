@@ -264,3 +264,21 @@ def test_settled_user_logs_in_without_the_pending_flag(api_client, admin_user):
 
     assert response.status_code == 200
     assert response.data["must_change_password"] is False
+
+
+@pytest.mark.django_db
+def test_password_change_appears_in_the_audit_log(api_client, admin_user, pending_user):
+    sign_in(api_client, pending_user.email)
+    api_client.post(
+        "/api/v1/accounts/change-password/",
+        {"current_password": TEMPORARY_PASSWORD, "new_password": PERMANENT_PASSWORD},
+    )
+
+    admin_client = APIClient()
+    sign_in(admin_client, admin_user.email)
+    response = admin_client.get(
+        "/api/v1/accounts/audit-log/", {"action": "auth.password_changed"}
+    )
+
+    assert response.status_code == 200
+    assert any(entry["user_email"] == pending_user.email for entry in response.data)
