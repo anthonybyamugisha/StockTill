@@ -91,3 +91,18 @@ def test_pending_user_can_read_their_profile(api_client, pending_user):
     assert response.status_code == 200
     assert response.data["email"] == pending_user.email
     assert response.data["must_change_password"] is True
+
+
+@pytest.mark.django_db
+def test_pending_user_can_change_the_password(api_client, pending_user):
+    sign_in(api_client, pending_user.email)
+
+    response = api_client.post(
+        "/api/v1/accounts/change-password/",
+        {"current_password": TEMPORARY_PASSWORD, "new_password": PERMANENT_PASSWORD},
+    )
+
+    assert response.status_code == 200
+    assert response.data["must_change_password"] is False
+    pending_user.refresh_from_db()
+    assert DjangoPasswordHasher().verify(PERMANENT_PASSWORD, pending_user.password)
