@@ -1,4 +1,7 @@
+import importlib
+
 import pytest
+from django.apps import apps
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -428,10 +431,38 @@ def test_seeded_superuser_logs_in_without_a_change(api_client):
 
 @pytest.mark.django_db
 def test_returning_user_is_not_flagged_again(api_client):
-    from django.utils import timezone
-
     user = build_user("returning@shop.com")
     UserModel.objects.filter(id=user.id).update(last_login=timezone.now())
+
+    response = sign_in(api_client, user.email)
+
+    assert response.status_code == 200
+    assert response.data["must_change_password"] is False
+
+
+@pytest.mark.django_db
+def test_migrated_legacy_account_is_forced_over_http(api_client):
+    legacy = build_user("legacy-migrated@shop.com")
+    migration = importlib.import_module("accounts.migrations.0003_backfill_first_login_passwords")
+    migration.mark_legacy_first_logins(apps, None)
+
+    response = sign_in(api_client, legacy.email)
+
+    assert response.status_code == 200
+    assert response.data["must_change_password"] is True
+
+    response = api_client.get("/api/v1/reporting/dashboard/")
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "password_change_required"
+
+
+@pytest.mark.django_db
+def test_migration_leaves_a_returning_account_unforced_over_http(api_client):
+    user = build_user("legacy-returned@shop.com")
+    UserModel.objects.filter(id=user.id).update(last_login=timezone.now())
+    migration = importlib.import_module("accounts.migrations.0003_backfill_first_login_passwords")
+    migration.mark_legacy_first_logins(apps, None)
 
     response = sign_in(api_client, user.email)
 
