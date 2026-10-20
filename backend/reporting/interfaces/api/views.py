@@ -27,6 +27,7 @@ from reporting.infrastructure.queries.sales_report import DjangoSalesReportQuery
 from reporting.infrastructure.queries.sales_summary import DjangoSalesSummaryQuery
 from reporting.infrastructure.queries.top_products import DjangoTopProductsQuery
 from reporting.interfaces.api.csv_export import (
+    write_cashier_sales_csv,
     write_daily_sales_csv,
     write_profit_report_csv,
     write_sales_report_csv,
@@ -143,6 +144,17 @@ class CashierSalesView(APIView):
             dates.date_from, dates.date_to
         )
         return Response(CashierSalesSerializer(data, many=True).data)
+
+
+class CashierSalesCSVView(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request):
+        dates = DateRange.from_params(request.query_params)
+        data = GetCashierSalesUseCase(DjangoCashierSalesQuery()).execute(
+            dates.date_from, dates.date_to
+        )
+        return _csv_response(write_cashier_sales_csv(data), "cashier_sales.csv")
 
 
 class DashboardView(APIView):

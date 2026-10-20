@@ -1,6 +1,7 @@
 from django.urls import path
 
 from reporting.interfaces.api.views import (
+    CashierSalesCSVView,
     CashierSalesView,
     DailySalesCSVView,
     DailySalesView,
@@ -28,6 +29,7 @@ urlpatterns = [
     path("daily-sales/", DailySalesView.as_view(), name="daily-sales"),
     path('daily-sales/csv/', DailySalesCSVView.as_view(), name="daily-sales-csv"),
     path("cashier-sales/", CashierSalesView.as_view(), name="cashier-sales"),
+    path('cashier-sales/csv/', CashierSalesCSVView.as_view(), name="cashier-sales-csv"),
     path("profit/", ProfitReportView.as_view(), name="profit-report"),
     path('profit/csv/', ProfitReportCSVView.as_view(), name="profit-report-csv"),
     path("inventory/", InventoryReportView.as_view(), name="inventory-report"),
