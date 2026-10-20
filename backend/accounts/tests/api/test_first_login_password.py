@@ -1,0 +1,64 @@
+import pytest
+from rest_framework.test import APIClient
+
+from accounts.domain.entities import Role, User
+from accounts.infrastructure.models import UserModel
+from accounts.infrastructure.password_hasher import DjangoPasswordHasher
+
+TEMPORARY_PASSWORD = "temporary1"
+PERMANENT_PASSWORD = "permanent12"
+
+
+def build_user(email: str, role: Role = Role.CASHIER, pending: bool = False) -> UserModel:
+    user = User(email=email, first_name="Test", last_name="User", role=role)
+    user.set_password(TEMPORARY_PASSWORD, DjangoPasswordHasher())
+    if pending:
+        user.require_password_change()
+    return UserModel.objects.create(
+        id=user.id,
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        role=user.role.value,
+        password=user.password_hash,
+        is_active=True,
+        must_change_password=user.must_change_password,
+    )
+
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+
+@pytest.fixture
+def admin_user(db):
+    return build_user("admin@shop.com", Role.ADMIN)
+
+
+@pytest.fixture
+def pending_user(db):
+    return build_user("pending@shop.com", Role.CASHIER, pending=True)
+
+
+def sign_in(client: APIClient, email: str, password: str = TEMPORARY_PASSWORD):
+    return client.post("/api/v1/accounts/login/", {"email": email, "password": password})
+
+
+@pytest.mark.django_db
+def test_created_user_starts_with_a_pending_password(api_client, admin_user):
+    api_client.force_authenticate(user=admin_user)
+    response = api_client.post(
+        "/api/v1/accounts/users/",
+        {
+            "email": "new@shop.com",
+            "first_name": "New",
+            "last_name": "User",
+            "role": "cashier",
+            "password": "welcome123",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.data["must_change_password"] is True
+    assert UserModel.objects.get(email="new@shop.com").must_change_password is True
