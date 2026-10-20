@@ -11,6 +11,7 @@ import { formatShortDate, daysAgoISO, todayISO } from '../../../shared/utils/dat
 import { formatMoney } from '../../../shared/utils/money';
 import { toast } from '../../../shared/ui/toast';
 import { getApiErrorMessage } from '../../../shared/http/errors';
+import { reportExport } from '../lib/export';
 
 export function ReportsPage() {
   const [activeReport, setActiveReport] = useState('sales');
@@ -27,6 +28,7 @@ export function ReportsPage() {
   ];
 
   const activeLabel = reports.find((r) => r.id === activeReport)?.label ?? 'Report';
+  const activeExport = reportExport(activeReport);
 
   const exportMutation = useMutation({
     mutationFn: () => downloadReportCsv(activeReport, dateFrom, dateTo),
@@ -54,8 +56,12 @@ export function ReportsPage() {
 
       <Card>
         <div className="flex items-end gap-4">
-          <Input label="From" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <Input label="To" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          {activeExport?.dated && (
+            <>
+              <Input label="From" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <Input label="To" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </>
+          )}
           <Button
             variant="secondary"
             onClick={() => exportMutation.mutate()}
