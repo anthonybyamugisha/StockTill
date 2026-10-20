@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
 from accounts.domain.entities import Role, User
+from accounts.domain.errors import WeakPasswordError
+from accounts.domain.password import validate_password_strength
 
 
 class UserSerializer(serializers.Serializer):
@@ -24,6 +26,13 @@ class CreateUserSerializer(serializers.Serializer):
     last_name = serializers.CharField(max_length=100)
     role = serializers.ChoiceField(choices=[r.value for r in Role])
     password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_password(self, value: str) -> str:
+        try:
+            validate_password_strength(value)
+        except WeakPasswordError as e:
+            raise serializers.ValidationError(str(e)) from e
+        return value
 
 
 class LoginSerializer(serializers.Serializer):
