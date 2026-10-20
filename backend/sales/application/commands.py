@@ -34,6 +34,7 @@ class CompleteSaleCommand:
     idempotency_key: str
     notes: str = ""
     shift_id: UUID | None = None
+    expected_total: Money | None = None
 
 
 @dataclass(frozen=True)

@@ -51,6 +51,11 @@ class CompleteSaleUseCase:
 
         sale.payments.extend(build_payments(command.payments))
 
+        if command.expected_total is not None and sale.total != command.expected_total:
+            raise InvalidPaymentError(
+                f"The payment does not match the sale total of {sale.total.amount}"
+            )
+
         if sale.amount_paid < sale.total:
             raise InvalidPaymentError("Payments do not cover the sale total")
 
