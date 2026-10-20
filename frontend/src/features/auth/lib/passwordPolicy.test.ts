@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { passwordIssue } from './passwordPolicy';
+import { confirmationIssue, passwordIssue } from './passwordPolicy';
 
 describe('passwordIssue', () => {
   it('rejects a password shorter than eight characters', () => {
@@ -17,5 +17,15 @@ describe('passwordIssue', () => {
 
   it('rejects numbers without a letter', () => {
     expect(passwordIssue('12345678')).toBe('Include at least one letter and one number');
+  });
+});
+
+describe('confirmationIssue', () => {
+  it('rejects a mismatched confirmation', () => {
+    expect(confirmationIssue('permanent12', 'permanent13')).toBe('Passwords do not match');
+  });
+
+  it('accepts a matching confirmation', () => {
+    expect(confirmationIssue('permanent12', 'permanent12')).toBeNull();
   });
 });
