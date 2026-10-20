@@ -224,7 +224,7 @@ function UserModal({ user, onClose, onSubmit, isLoading }: {
           <div className="space-y-1">
             <Input label="Temporary password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
             <p className="text-xs text-surface-400">
-              The new user must change this password the first time they sign in.
+              At least 8 characters, with a letter and a number. The new user must replace it at\n              first sign-in.
             </p>
           </div>
         )}
