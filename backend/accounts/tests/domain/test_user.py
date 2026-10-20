@@ -21,3 +21,14 @@ def test_deactivate_user():
     user = User(email="cashier@shop.com", first_name="Jane", last_name="Doe", role=Role.CASHIER)
     user.is_active = False
     assert user.is_active is False
+
+
+def test_new_user_does_not_need_a_password_change():
+    user = User(email="new@shop.com", first_name="New", last_name="User", role=Role.CASHIER)
+    assert user.must_change_password is False
+
+
+def test_requiring_a_password_change_sets_the_flag():
+    user = User(email="new@shop.com", first_name="New", last_name="User", role=Role.CASHIER)
+    user.require_password_change()
+    assert user.must_change_password is True
