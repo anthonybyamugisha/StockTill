@@ -59,3 +59,7 @@ def test_password_strength_rejects_letters_only():
 def test_password_strength_rejects_numbers_only():
     with pytest.raises(WeakPasswordError, match="letter and one number"):
         validate_password_strength("12345678")
+
+
+def test_password_strength_accepts_a_mixed_password():
+    validate_password_strength("GoodPass123")
