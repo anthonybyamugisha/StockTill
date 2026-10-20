@@ -427,7 +427,7 @@ and CSV export buckets sales by the **shop's calendar day** (`Africa/Kampala`), 
 # Security highlights
 
 Session authentication served over HTTPS with HSTS; role-based permission classes (least
-privilege); account lockout after repeated failed logins; PBKDF2 password hashing; CSRF protection
+privilege); account lockout after repeated failed logins; PBKDF2 password hashing; temporary\nadministrator-issued passwords that must be replaced at first sign-in (enforced by API middleware,\nnot just the UI); CSRF protection
 with trusted origins; idempotency keys with a unique constraint to prevent duplicate charges; an
 append-only **audit log** that records the acting user, the action and the before/after values for
 logins, user and role changes, price and stock changes, sales, voids, refunds, shifts, purchasing and
