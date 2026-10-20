@@ -62,3 +62,11 @@ def test_created_user_starts_with_a_pending_password(api_client, admin_user):
     assert response.status_code == 201
     assert response.data["must_change_password"] is True
     assert UserModel.objects.get(email="new@shop.com").must_change_password is True
+
+
+@pytest.mark.django_db
+def test_login_reports_the_pending_flag(api_client, pending_user):
+    response = sign_in(api_client, pending_user.email)
+
+    assert response.status_code == 200
+    assert response.data["must_change_password"] is True
