@@ -120,3 +120,18 @@ def test_old_password_stops_working_after_a_change(api_client, pending_user):
     response = sign_in(fresh_client, pending_user.email, TEMPORARY_PASSWORD)
 
     assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_new_password_works_after_a_change(api_client, pending_user):
+    sign_in(api_client, pending_user.email)
+    api_client.post(
+        "/api/v1/accounts/change-password/",
+        {"current_password": TEMPORARY_PASSWORD, "new_password": PERMANENT_PASSWORD},
+    )
+
+    fresh_client = APIClient()
+    response = sign_in(fresh_client, pending_user.email, PERMANENT_PASSWORD)
+
+    assert response.status_code == 200
+    assert response.data["must_change_password"] is False
