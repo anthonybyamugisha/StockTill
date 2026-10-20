@@ -52,7 +52,15 @@ function AppRoutes() {
         <Route path="/login" element={user ? <Navigate to={homePathFor(user)} replace /> : <LoginPage />} />
         <Route
           path="/change-password"
-          element={!user ? <Navigate to="/login" replace /> : <ChangePasswordPage />}
+          element={
+            !user ? (
+              <Navigate to="/login" replace />
+            ) : user.must_change_password ? (
+              <ChangePasswordPage />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
         />
         <Route
           element={
