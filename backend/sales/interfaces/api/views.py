@@ -25,7 +25,7 @@ from sales.interfaces.api.serializers import (
     SaleSerializer,
     VoidSaleSerializer,
 )
-from shared.domain.errors import DomainError
+from shared.interfaces.api.errors import domain_errors_to_bad_request
 
 
 class SaleListCreateView(APIView):
@@ -53,6 +53,7 @@ class SaleListCreateView(APIView):
         )
         return Response(SaleSerializer(sales, many=True).data)
 
+    @domain_errors_to_bad_request
     def post(self, request):
         serializer = CompleteSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -62,10 +63,7 @@ class SaleListCreateView(APIView):
             cashier_id=request.user.id,
             shift_id=ShiftAdapter().open_shift_id(request.user.id),
         )
-        try:
-            sale = build_complete_sale_use_case().execute(command)
-        except (ValueError, DomainError) as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        sale = build_complete_sale_use_case().execute(command)
         return Response(SaleSerializer(sale).data, status=status.HTTP_201_CREATED)
 
 
@@ -83,15 +81,13 @@ class SaleDetailView(APIView):
 class RefundSaleView(APIView):
     permission_classes = [IsManager]
 
+    @domain_errors_to_bad_request
     def post(self, request):
         serializer = RefundSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            refund = build_refund_sale_use_case().execute(
-                to_refund_sale_command(serializer.validated_data, user_id=request.user.id)
-            )
-        except (ValueError, DomainError) as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        refund = build_refund_sale_use_case().execute(
+            to_refund_sale_command(serializer.validated_data, user_id=request.user.id)
+        )
         return Response(
             {"id": str(refund.id), "status": "refunded"}, status=status.HTTP_201_CREATED
         )
@@ -100,13 +96,11 @@ class RefundSaleView(APIView):
 class VoidSaleView(APIView):
     permission_classes = [IsManager]
 
+    @domain_errors_to_bad_request
     def post(self, request):
         serializer = VoidSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            sale = build_void_sale_use_case().execute(
-                to_void_sale_command(serializer.validated_data, user_id=request.user.id)
-            )
-        except (ValueError, DomainError) as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        sale = build_void_sale_use_case().execute(
+            to_void_sale_command(serializer.validated_data, user_id=request.user.id)
+        )
         return Response(SaleSerializer(sale).data)
