@@ -218,3 +218,14 @@ def test_pending_user_can_log_out(api_client, pending_user):
     response = api_client.post("/api/v1/accounts/logout/")
 
     assert response.status_code == 204
+
+
+@pytest.mark.django_db
+def test_pending_admin_cannot_reach_user_management(api_client):
+    pending_admin = build_user("pending-admin@shop.com", Role.ADMIN, pending=True)
+    sign_in(api_client, pending_admin.email)
+
+    response = api_client.get("/api/v1/accounts/users/")
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "password_change_required"
