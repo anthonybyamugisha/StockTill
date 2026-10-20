@@ -85,7 +85,10 @@ export function UsersPage() {
                 <Badge variant={roleColors[u.role] || 'neutral'}>{u.role}</Badge>
               )},
               { key: 'status', header: 'Status', render: (u: User) => (
-                <Badge variant={u.is_active ? 'success' : 'neutral'}>{u.is_active ? 'Active' : 'Inactive'}</Badge>
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant={u.is_active ? 'success' : 'neutral'}>{u.is_active ? 'Active' : 'Inactive'}</Badge>
+                  {u.must_change_password && <Badge variant="warning">First login pending</Badge>}
+                </div>
               )},
               { key: 'last_login', header: 'Last Login', render: (u: User) => u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never' },
               { key: 'actions', header: '', render: (u: User) => (
