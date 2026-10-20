@@ -5,34 +5,31 @@ Browser-based Point of Sale and inventory management system for retail shops. St
 single-page app, built with **Domain-Driven Design**, **Clean Architecture** and **Test-Driven
 Development** as first-class engineering disciplines --- not as decoration around a framework.
 
-> This README doubles as the project's engineering documentation: how it is structured, why it is
-> structured that way, and how to run, test and deploy it.
-
 ## Features
 
-- **POS** --- Fast cashier interface with an on-screen catalogue grid (every available product as a
+- **POS**. Fast cashier interface with an on-screen catalogue grid (every available product as a
   tappable tile, category-filtered, showing remaining stock and disabling sold-out items) so nothing
   has to be memorised, plus product search, cart, per-line discounts, split payments, cash
   tendered/change, and a printable receipt (store details, each line's name, quantity and unit price,
   totals, discount, payment, tendered and change) that can also be reprinted from Sales
-- **Barcode Scanning** --- USB/Bluetooth keyboard-wedge scanners, camera scanning, and manual entry
+- **Barcode Scanning**. USB/Bluetooth keyboard-wedge scanners, camera scanning, and manual entry
   on the cashier screen (no scanner required to run the system)
-- **Inventory** --- Append-only stock ledger, opening stock captured when a product is created,
+- **Inventory**. Append-only stock ledger, opening stock captured when a product is created,
   low-stock alerts, valuation, adjustments, write-offs
-- **Purchasing** --- Suppliers and purchase orders; receiving an order adds stock to the ledger
-- **Sales Management** --- Search by receipt number, filter by status, payment method, cashier and
+- **Purchasing**. Suppliers and purchase orders; receiving an order adds stock to the ledger
+- **Sales Management**. Search by receipt number, filter by status, payment method, cashier and
   date range, refund, void, reprint receipts
-- **Shifts & Cash** --- Open/close shifts, record payouts and float top-ups, reconcile the drawer
+- **Shifts & Cash**. Open/close shifts, record payouts and float top-ups, reconcile the drawer
   with an X/Z report
-- **Offline-first PWA** --- Installable app that keeps selling when the network drops
-- **Dashboard** --- Real-time KPIs, the sales trend, and this month's best sellers
-- **Reports** --- Sales, profit, inventory, cashier and low-stock reports, grouped by the shop's
+- **Offline-first PWA**. Installable app that keeps selling when the network drops
+- **Dashboard**. Real-time KPIs, the sales trend, and this month's best sellers
+- **Reports**. Sales, profit, inventory, cashier and low-stock reports, grouped by the shop's
   calendar day, with CSV export that reports its own failures instead of silently downloading an
   error page
-- **Users & Roles** --- Admin, Manager, Cashier with role-based permissions
-- **Clear feedback** --- every action confirms itself with a toast (or explains its failure), and
+- **Users & Roles**. Admin, Manager, Cashier with role-based permissions
+- **Clear feedback**. Every action confirms itself with a toast (or explains its failure), and
   destructive ones (deactivate, cancel an order, void) ask for confirmation first
-- **Audit Log** --- An immutable record of who did what and when, with before/after values for
+- **Audit Log**. An immutable record of who did what and when, with before/after values for
   money- and security-relevant actions (admin-only)
 
 ## Tech Stack
