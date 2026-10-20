@@ -295,3 +295,22 @@ def test_password_change_requires_both_fields(api_client, pending_user):
 
     assert response.status_code == 400
     assert "new_password" in response.data
+
+
+@pytest.mark.django_db
+def test_short_temporary_password_is_rejected(api_client, admin_user):
+    api_client.force_authenticate(user=admin_user)
+
+    response = api_client.post(
+        "/api/v1/accounts/users/",
+        {
+            "email": "short@shop.com",
+            "first_name": "Short",
+            "last_name": "User",
+            "role": "cashier",
+            "password": "short1",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "password" in response.data
