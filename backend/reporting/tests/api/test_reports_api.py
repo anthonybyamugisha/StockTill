@@ -366,3 +366,35 @@ def test_low_stock_csv_export(api_client, manager_user, product, stock_item):
     body = response.content.decode()
     assert body.startswith("Product,SKU,Qty On Hand,Minimum Level")
     assert "Sugar 1kg,SUG-001,5,10" in body
+
+
+@pytest.mark.django_db
+def test_inventory_csv_export(api_client, manager_user, product, stock_item):
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get("/api/v1/reporting/inventory/csv/")
+
+    assert response.status_code == 200
+    assert response["Content-Disposition"] == "attachment; filename=inventory_report.csv"
+    body = response.content.decode()
+    assert body.startswith("Total Products,Inventory Value,Low Stock,Out of Stock")
+    assert "1,5000.00,1,0" in body
+
+
+@pytest.mark.django_db
+def test_payment_method_csv_export(api_client, manager_user, sale):
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get(
+        "/api/v1/reporting/by-payment-method/csv/",
+        {"date_from": "2000-01-01", "date_to": "2100-01-01"},
+    )
+
+    assert response.status_code == 200
+    assert (
+        response["Content-Disposition"]
+        == "attachment; filename=sales_by_payment_method.csv"
+    )
+    body = response.content.decode()
+    assert body.startswith("Payment Method,Transactions,Total")
+    assert "cash,1,1500.00" in body
