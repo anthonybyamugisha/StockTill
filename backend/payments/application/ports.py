@@ -82,7 +82,7 @@ class SaleCompletionPort(ABC):
         reference: str | None,
         provider: str | None,
         idempotency_key: str,
-        cashier_id: UUID | None,
+        cashier_id: UUID,
         shift_id: UUID | None,
     ) -> UUID:
         pass
