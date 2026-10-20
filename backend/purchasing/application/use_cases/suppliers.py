@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from purchasing.application.commands import CreateSupplierCommand, UpdateSupplierCommand
+from purchasing.application.snapshots import supplier_contact_snapshot
 from purchasing.domain.entities import Supplier
 from purchasing.domain.errors import SupplierNotFoundError
 from purchasing.domain.repository import SupplierRepository
@@ -45,13 +46,7 @@ class UpdateSupplierUseCase:
         supplier = self._supplier_repo.get_by_id(command.supplier_id)
         if supplier is None:
             raise SupplierNotFoundError("Supplier not found")
-        before = {
-            "name": supplier.name,
-            "contact_name": supplier.contact_name,
-            "email": supplier.email,
-            "phone": supplier.phone,
-            "address": supplier.address,
-        }
+        before = supplier_contact_snapshot(supplier)
         supplier.update_contact(
             name=command.name,
             contact_name=command.contact_name,
@@ -60,13 +55,7 @@ class UpdateSupplierUseCase:
             address=command.address,
         )
         self._supplier_repo.save(supplier)
-        after = {
-            "name": supplier.name,
-            "contact_name": supplier.contact_name,
-            "email": supplier.email,
-            "phone": supplier.phone,
-            "address": supplier.address,
-        }
+        after = supplier_contact_snapshot(supplier)
         changed = {key: value for key, value in after.items() if value != before[key]}
         if changed:
             self._audit.record(
