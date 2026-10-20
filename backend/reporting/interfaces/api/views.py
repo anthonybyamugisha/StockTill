@@ -7,8 +7,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.interfaces.api.permissions import IsManager
-from reporting.application.use_cases import GetSalesSummaryUseCase
+from reporting.application.use_cases import GetSalesSummaryUseCase, GetTopProductsUseCase
 from reporting.infrastructure.queries.sales_summary import DjangoSalesSummaryQuery
+from reporting.infrastructure.queries.top_products import DjangoTopProductsQuery
 from reporting.infrastructure.query_builders import SalesQueryBuilder
 from reporting.interfaces.api.date_range import DateRange
 from reporting.interfaces.api.serializers import (
@@ -42,7 +43,9 @@ class TopProductsView(APIView):
     def get(self, request):
         dates = DateRange.from_params(request.query_params)
         limit = int(request.query_params.get("limit", 10))
-        products = SalesQueryBuilder().get_top_products(dates.date_from, dates.date_to, limit)
+        products = GetTopProductsUseCase(DjangoTopProductsQuery()).execute(
+            dates.date_from, dates.date_to, limit
+        )
         return Response(TopProductSerializer(products, many=True).data)
 
 
