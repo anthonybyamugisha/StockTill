@@ -299,6 +299,21 @@ def test_password_change_appears_in_the_audit_log(api_client, admin_user, pendin
 
 
 @pytest.mark.django_db
+def test_legacy_first_login_appears_in_the_audit_log(api_client, admin_user):
+    legacy = build_user("legacy-audit@shop.com")
+    sign_in(api_client, legacy.email)
+
+    admin_client = APIClient()
+    admin_user.last_login = timezone.now()
+    admin_user.save(update_fields=["last_login"])
+    sign_in(admin_client, admin_user.email)
+    response = admin_client.get("/api/v1/accounts/audit-log/", {"action": "auth.first_login"})
+
+    assert response.status_code == 200
+    assert any(entry["user_email"] == legacy.email for entry in response.data)
+
+
+@pytest.mark.django_db
 def test_password_change_requires_both_fields(api_client, pending_user):
     sign_in(api_client, pending_user.email)
 
