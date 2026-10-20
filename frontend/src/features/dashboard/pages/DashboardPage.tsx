@@ -82,6 +82,7 @@ export function DashboardPage() {
               stroke="#0078d4"
               strokeWidth={2}
               dot={{ r: 3, fill: '#0078d4', strokeWidth: 0 }}
+              activeDot={{ r: 5, strokeWidth: 0 }}
             />
           </LineChart>
         </ResponsiveContainer>
