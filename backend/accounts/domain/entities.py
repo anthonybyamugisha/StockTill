@@ -26,6 +26,7 @@ class User(Entity):
     last_login: datetime | None = None
     failed_login_attempts: int = 0
     locked_until: datetime | None = None
+    must_change_password: bool = False
     password_hash: str = field(default="", repr=False)
 
     def set_password(self, raw_password: str, hasher: PasswordHasher) -> None:
