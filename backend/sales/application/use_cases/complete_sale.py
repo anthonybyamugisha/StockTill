@@ -1,10 +1,10 @@
 from sales.application.commands import CompleteSaleCommand
+from sales.application.payments import build_payments
 from sales.application.ports import CatalogPort, IdempotencyPort, InventoryPort, ReceiptNumberPort
 from sales.application.sale_lines import build_sale_lines
-from sales.domain.entities import Payment, PaymentMethod, Sale, SaleStatus
+from sales.domain.entities import Sale, SaleStatus
 from sales.domain.errors import InvalidPaymentError
 from sales.domain.repository import SaleRepository
-from sales.domain.services import calculate_change
 from shared.application.audit import AuditPort, NullAuditPort
 from shared.domain.clock import Clock
 
@@ -48,24 +48,7 @@ class CompleteSaleUseCase:
             idempotency_key=command.idempotency_key,
         )
 
-        for payment_input in command.payments:
-            change = calculate_change(
-                Payment(
-                    method=payment_input.method,
-                    amount=payment_input.amount,
-                    tendered=payment_input.tendered,
-                )
-            )
-            sale.payments.append(
-                Payment(
-                    method=payment_input.method,
-                    amount=payment_input.amount,
-                    tendered=payment_input.tendered,
-                    change=change if payment_input.method == PaymentMethod.CASH else None,
-                    reference=payment_input.reference,
-                    provider=payment_input.provider,
-                )
-            )
+        sale.payments.extend(build_payments(command.payments))
 
         if sale.amount_paid < sale.total:
             raise InvalidPaymentError("Payments do not cover the sale total")
