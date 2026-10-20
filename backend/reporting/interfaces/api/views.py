@@ -26,7 +26,7 @@ from reporting.infrastructure.queries.profit import DjangoProfitReportQuery
 from reporting.infrastructure.queries.sales_report import DjangoSalesReportQuery
 from reporting.infrastructure.queries.sales_summary import DjangoSalesSummaryQuery
 from reporting.infrastructure.queries.top_products import DjangoTopProductsQuery
-from reporting.interfaces.api.csv_export import write_sales_report_csv
+from reporting.interfaces.api.csv_export import write_sales_report_csv, write_sales_summary_csv
 from reporting.interfaces.api.date_range import DateRange
 from reporting.interfaces.api.serializers import (
     CashierSalesSerializer,
@@ -60,6 +60,17 @@ class SalesSummaryView(APIView):
             dates.date_from, dates.date_to
         )
         return Response(SalesSummarySerializer(summary).data)
+
+
+class SalesSummaryCSVView(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request):
+        dates = DateRange.from_params(request.query_params)
+        summary = GetSalesSummaryUseCase(DjangoSalesSummaryQuery()).execute(
+            dates.date_from, dates.date_to
+        )
+        return _csv_response(write_sales_summary_csv(summary), "sales_summary.csv")
 
 
 class TopProductsView(APIView):

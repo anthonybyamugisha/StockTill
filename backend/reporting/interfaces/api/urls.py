@@ -10,6 +10,7 @@ from reporting.interfaces.api.views import (
     SalesByPaymentMethodView,
     SalesReportCSVView,
     SalesReportView,
+    SalesSummaryCSVView,
     SalesSummaryView,
     TopProductsView,
 )
@@ -17,6 +18,7 @@ from reporting.interfaces.api.views import (
 urlpatterns = [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("sales-summary/", SalesSummaryView.as_view(), name="sales-summary"),
+    path('sales-summary/csv/', SalesSummaryCSVView.as_view(), name="sales-summary-csv"),
     path("top-products/", TopProductsView.as_view(), name="top-products"),
     path("by-payment-method/", SalesByPaymentMethodView.as_view(), name="by-payment-method"),
     path("daily-sales/", DailySalesView.as_view(), name="daily-sales"),
