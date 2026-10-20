@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from reporting.application.queries import (
+    InventoryReport,
     LowStockItem,
     CashierSales,
     DailySales,
@@ -14,6 +15,7 @@ from reporting.application.queries import (
 from reporting.interfaces.api.csv_export import (
     write_cashier_sales_csv,
     write_daily_sales_csv,
+    write_inventory_report_csv,
     write_low_stock_csv,
     write_profit_report_csv,
     write_sales_report_csv,
@@ -147,3 +149,17 @@ def test_writes_low_stock_items():
 
     assert lines[0] == "Product,SKU,Qty On Hand,Minimum Level"
     assert lines[1] == "Sugar 1kg,SUG-001,5,10"
+
+
+def test_writes_the_inventory_summary():
+    report = InventoryReport(
+        total_products=12,
+        total_value=Decimal("45000.00"),
+        low_stock_count=2,
+        out_of_stock_count=1,
+    )
+
+    lines = write_inventory_report_csv(report).splitlines()
+
+    assert lines[0] == "Total Products,Inventory Value,Low Stock,Out of Stock"
+    assert lines[1] == "12,45000.00,2,1"
