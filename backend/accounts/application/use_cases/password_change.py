@@ -30,4 +30,11 @@ class ChangePasswordUseCase:
             raise WeakPasswordError("New password must be different from the current password")
         user.change_password(command.new_password, self._hasher)
         self._repo.save(user)
+        self._audit.record(
+            user_id=user.id,
+            action="auth.password_changed",
+            entity_type="user",
+            entity_id=str(user.id),
+            after={"email": user.email},
+        )
         return user
