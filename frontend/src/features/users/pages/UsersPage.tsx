@@ -60,10 +60,15 @@ export function UsersPage() {
     cashier: 'neutral',
   };
 
+  const pendingCount = users?.filter((user) => user.must_change_password).length ?? 0;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-surface-400">{users?.length ?? 0} users</p>
+        <p className="text-sm text-surface-400">
+          {users?.length ?? 0} users
+          {pendingCount > 0 && ` · ${pendingCount} awaiting first login`}
+        </p>
         <Button onClick={() => { setEditingUser(null); setShowModal(true); }}>
           Add User
         </Button>
