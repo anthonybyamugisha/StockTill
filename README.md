@@ -26,7 +26,7 @@ Development** as first-class engineering disciplines --- not as decoration aroun
 - **Reports**. Sales, profit, inventory, cashier and low-stock reports, grouped by the shop's
   calendar day, with CSV export that reports its own failures instead of silently downloading an
   error page
-- **Users & Roles**. Admin, Manager, Cashier with role-based permissions
+- **Users & Roles**. Admin, Manager, Cashier with role-based permissions; an administrator-issued\ntemporary password that the user must replace at first sign-in
 - **Clear feedback**. Every action confirms itself with a toast (or explains its failure), and
   destructive ones (deactivate, cancel an order, void) ask for confirmation first
 - **Audit Log**. An immutable record of who did what and when, with before/after values for
