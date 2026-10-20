@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems, downloadSalesReportCsv, CashierSales } from '../api/reports';
+import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems, getInventoryReport, downloadSalesReportCsv, CashierSales } from '../api/reports';
 import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Input } from '../../../shared/ui/Input';
@@ -168,24 +168,36 @@ function ProfitReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }
 }
 
 function InventoryReport() {
-  const { data: summary } = useQuery({
-    queryKey: ['salesSummary', daysAgoISO(30), todayISO()],
-    queryFn: () => getSalesSummary(daysAgoISO(30), todayISO()),
+  const { data: inventory } = useQuery({
+    queryKey: ['inventoryReport'],
+    queryFn: getInventoryReport,
   });
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-4 gap-4">
       <div className="card">
         <p className="text-sm text-surface-400">Total Products</p>
-        <p className="mt-1 text-2xl font-semibold text-surface-600">{summary?.total_sales ?? 0}</p>
+        <p className="mt-1 text-2xl font-semibold text-surface-600">
+          {inventory?.total_products ?? 0}
+        </p>
       </div>
       <div className="card">
         <p className="text-sm text-surface-400">Inventory Value</p>
-        <p className="mt-1 text-2xl font-semibold text-surface-600">UGX {summary?.total_cost ?? 0}</p>
+        <p className="mt-1 text-2xl font-semibold text-surface-600">
+          UGX {inventory?.total_value ?? '0.00'}
+        </p>
       </div>
       <div className="card">
-        <p className="text-sm text-surface-400">Low Stock Items</p>
-        <p className="mt-1 text-2xl font-semibold text-warning">0</p>
+        <p className="text-sm text-surface-400">Low Stock</p>
+        <p className="mt-1 text-2xl font-semibold text-warning">
+          {inventory?.low_stock_count ?? 0}
+        </p>
+      </div>
+      <div className="card">
+        <p className="text-sm text-surface-400">Out of Stock</p>
+        <p className="mt-1 text-2xl font-semibold text-error">
+          {inventory?.out_of_stock_count ?? 0}
+        </p>
       </div>
     </div>
   );
