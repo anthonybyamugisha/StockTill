@@ -63,3 +63,7 @@ def test_password_strength_rejects_numbers_only():
 
 def test_password_strength_accepts_a_mixed_password():
     validate_password_strength("GoodPass123")
+
+
+def test_password_strength_accepts_exactly_eight_characters():
+    validate_password_strength("abcdefg1")
