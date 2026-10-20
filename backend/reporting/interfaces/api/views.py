@@ -10,6 +10,7 @@ from accounts.interfaces.api.permissions import IsManager
 from reporting.application.use_cases import (
     GetCashierSalesUseCase,
     GetDailySalesUseCase,
+    GetProfitReportUseCase,
     GetSalesByPaymentMethodUseCase,
     GetSalesReportUseCase,
     GetSalesSummaryUseCase,
@@ -18,6 +19,7 @@ from reporting.application.use_cases import (
 from reporting.infrastructure.queries.cashier_sales import DjangoCashierSalesQuery
 from reporting.infrastructure.queries.daily_sales import DjangoDailySalesQuery
 from reporting.infrastructure.queries.payment_methods import DjangoPaymentMethodSalesQuery
+from reporting.infrastructure.queries.profit import DjangoProfitReportQuery
 from reporting.infrastructure.queries.sales_report import DjangoSalesReportQuery
 from reporting.infrastructure.queries.sales_summary import DjangoSalesSummaryQuery
 from reporting.infrastructure.queries.top_products import DjangoTopProductsQuery
@@ -104,7 +106,9 @@ class ProfitReportView(APIView):
 
     def get(self, request):
         dates = DateRange.from_params(request.query_params)
-        data = SalesQueryBuilder().get_profit_report(dates.date_from, dates.date_to)
+        data = GetProfitReportUseCase(DjangoProfitReportQuery()).execute(
+            dates.date_from, dates.date_to
+        )
         return Response(ProfitReportSerializer(data, many=True).data)
 
 

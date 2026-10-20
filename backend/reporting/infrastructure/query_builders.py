@@ -1,4 +1,3 @@
-from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -9,7 +8,6 @@ from reporting.application.queries import (
     DashboardStats,
     InventoryReport,
     LowStockItem,
-    ProfitReport,
 )
 from reporting.infrastructure.directories import CashierDirectory, CatalogDirectory
 from reporting.infrastructure.stock_levels import StockLevels
@@ -33,28 +31,6 @@ class SalesQueryBuilder:
     def _stock_counts(self) -> tuple[int, int]:
         levels = StockLevels.load()
         return levels.low, levels.out
-
-    def get_profit_report(self, date_from: date, date_to: date) -> list[ProfitReport]:
-        sales = SaleModel.objects.filter(
-            created_at__date__range=(date_from, date_to)
-        ).prefetch_related("lines")
-        revenue: dict = defaultdict(Decimal)
-        cost: dict = defaultdict(Decimal)
-        for sale in sales:
-            day = sale.created_at.date()
-            revenue[day] += sale.total
-            for line in sale.lines.all():
-                cost[day] += Decimal(line.unit_cost) * line.quantity
-        days = sorted(set(revenue) | set(cost))
-        return [
-            ProfitReport(
-                date=day,
-                total_revenue=revenue[day],
-                total_cost=cost[day],
-                gross_profit=revenue[day] - cost[day],
-            )
-            for day in days
-        ]
 
     def get_dashboard_stats(self) -> DashboardStats:
         today = timezone.localdate()
