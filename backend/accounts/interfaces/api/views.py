@@ -2,6 +2,7 @@ from uuid import UUID
 
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
+from django.contrib.auth import update_session_auth_hash
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -191,6 +192,7 @@ class ChangePasswordView(APIView):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         model = UserModel.objects.get(id=request.user.id)
+        update_session_auth_hash(request, model)
         return Response(UserSerializer(model).data)
 
 
