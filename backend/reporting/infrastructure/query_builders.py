@@ -16,7 +16,6 @@ from reporting.application.queries import (
     ProfitReport,
     SalesByPaymentMethod,
     SalesReportRow,
-    SalesSummary,
     TopProduct,
 )
 from reporting.infrastructure.directories import CashierDirectory, CatalogDirectory
@@ -41,26 +40,6 @@ class SalesQueryBuilder:
     def _stock_counts(self) -> tuple[int, int]:
         levels = StockLevels.load()
         return levels.low, levels.out
-
-    def get_sales_summary(self, date_from: date, date_to: date) -> SalesSummary:
-        sales = SaleModel.objects.filter(created_at__date__range=(date_from, date_to))
-        total_sales = sales.count()
-        total_revenue = sum((Money(s.total) for s in sales), Money.zero())
-        total_cost = Money.zero()
-        for sale in sales:
-            for line in sale.lines.all():
-                total_cost = total_cost.add(Money(line.unit_cost).multiply(Decimal(line.quantity)))
-        gross_profit = total_revenue.subtract(total_cost)
-        avg = total_revenue.amount / total_sales if total_sales > 0 else Decimal(0)
-        return SalesSummary(
-            total_sales=total_sales,
-            total_revenue=total_revenue.amount,
-            total_cost=total_cost.amount,
-            gross_profit=gross_profit.amount,
-            average_sale_value=avg,
-            date_from=date_from,
-            date_to=date_to,
-        )
 
     def get_top_products(self, date_from: date, date_to: date, limit: int = 10) -> list[TopProduct]:
         rows = list(
