@@ -160,13 +160,16 @@ framework.
 | **Infrastructure** | Django models, migrations, repository implementations, adapters | Application + Domain |
 | **Interfaces** | DRF views, serializers, permissions, URLs | Application |
 
-The rule --- *source code dependencies only point inward* --- is not a convention people must
-remember; it is **verified automatically by `import-linter`** (see `backend/pyproject.toml`). Two
-contracts run on every quality-gate pass:
+The rule --- *source code dependencies only point inward* --- is declared as two contracts in
+`backend/pyproject.toml`:
 
 1. `*.domain` must not import `django` or `rest_framework`.
 2. A context's `application`/`infrastructure` must not import another context, except through
    explicitly whitelisted adapters.
+
+The first contract is also enforced by a test (`backend/config/tests/test_domain_purity.py`), so a
+stray framework import in a domain module fails the normal test run. The cross-context whitelist is
+kept by hand as each adapter is added.
 
 **What this buys us.**
 
@@ -222,7 +225,7 @@ business rules end up validated only through the slowest, most fragile tests.
   tests intentionally ignore.
 
 This split mirrors Clean Architecture: the domain is proven in isolation, the wiring is proven at the
-edges. The current suite is **212 backend tests** and **70 frontend unit tests**, plus Playwright
+edges. The current suite is **250 backend tests** and **70 frontend unit tests**, plus Playwright
 end-to-end scenarios; deepening each context's domain suite is the top item on the roadmap.
 
 ## 4. Why this is more than "just Django"
