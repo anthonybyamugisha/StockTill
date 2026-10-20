@@ -32,6 +32,13 @@ class User(Entity):
     def set_password(self, raw_password: str, hasher: PasswordHasher) -> None:
         self.password_hash = hasher.hash(raw_password)
 
+    def require_password_change(self) -> None:
+        self.must_change_password = True
+
+    def change_password(self, raw_password: str, hasher: PasswordHasher) -> None:
+        self.set_password(raw_password, hasher)
+        self.must_change_password = False
+
     def check_password(self, raw_password: str, hasher: PasswordHasher) -> bool:
         return hasher.verify(raw_password, self.password_hash)
 
