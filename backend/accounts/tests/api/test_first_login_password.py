@@ -95,6 +95,16 @@ def test_pending_user_can_read_their_profile(api_client, pending_user):
 
 
 @pytest.mark.django_db
+def test_pending_user_is_blocked_from_a_lookalike_path(api_client, pending_user):
+    sign_in(api_client, pending_user.email)
+
+    response = api_client.get("/api/v1/accounts/me/extra/")
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "password_change_required"
+
+
+@pytest.mark.django_db
 def test_pending_user_can_change_the_password(api_client, pending_user):
     sign_in(api_client, pending_user.email)
 
