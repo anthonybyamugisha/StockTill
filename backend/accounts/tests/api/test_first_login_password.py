@@ -344,3 +344,17 @@ def test_legacy_account_cannot_reach_the_dashboard_before_changing(api_client):
 
     assert response.status_code == 403
     assert response.data["code"] == "password_change_required"
+
+
+@pytest.mark.django_db
+def test_legacy_account_reaches_the_dashboard_after_changing(api_client):
+    legacy = build_user("legacy-change@shop.com")
+    sign_in(api_client, legacy.email)
+    api_client.post(
+        "/api/v1/accounts/change-password/",
+        {"current_password": TEMPORARY_PASSWORD, "new_password": PERMANENT_PASSWORD},
+    )
+
+    response = api_client.get("/api/v1/reporting/dashboard/")
+
+    assert response.status_code == 200
