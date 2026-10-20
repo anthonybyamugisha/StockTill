@@ -54,8 +54,20 @@ class AuthenticateUserUseCase:
             )
             raise InvalidCredentialsError(f"Account locked. Try again after {detail}")
 
+        first_login = user.is_first_login
+        if first_login and not user.is_superuser:
+            user.require_password_change()
+
         user.register_successful_login()
         self._repo.save(user)
+        if first_login and user.must_change_password:
+            self._audit.record(
+                user_id=user.id,
+                action="auth.first_login",
+                entity_type="user",
+                entity_id=str(user.id),
+                after={"email": user.email, "password_change_required": True},
+            )
         self._audit.record(
             user_id=user.id,
             action="auth.login",

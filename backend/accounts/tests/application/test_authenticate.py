@@ -110,3 +110,16 @@ def test_authenticate_with_locked_account():
 
     with pytest.raises(InvalidCredentialsError, match="Account locked"):
         use_case.execute("locked@shop.com", "password123")
+
+
+def test_first_login_requires_a_password_change():
+    repo = FakeUserRepository()
+    hasher = FakePasswordHasher()
+    user = User(email="new@shop.com", first_name="New", last_name="User", role=Role.CASHIER)
+    user.set_password("password123", hasher)
+    repo.save(user)
+
+    result = AuthenticateUserUseCase(repo, hasher).execute("new@shop.com", "password123")
+
+    assert result.must_change_password is True
+    assert result.last_login is not None
