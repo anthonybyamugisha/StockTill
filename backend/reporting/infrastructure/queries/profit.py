@@ -2,6 +2,8 @@ from collections import defaultdict
 from datetime import date
 from decimal import Decimal
 
+from django.utils import timezone
+
 from reporting.application.queries import ProfitReport
 from sales.infrastructure.models import SaleModel
 
@@ -14,7 +16,7 @@ class DjangoProfitReportQuery:
         revenue: dict[date, Decimal] = defaultdict(Decimal)
         cost: dict[date, Decimal] = defaultdict(Decimal)
         for sale in sales:
-            day = sale.created_at.date()
+            day = timezone.localtime(sale.created_at).date()
             revenue[day] += sale.total
             for line in sale.lines.all():
                 cost[day] += Decimal(line.unit_cost) * line.quantity

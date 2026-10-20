@@ -256,3 +256,19 @@ def test_daily_sales_includes_days_without_sales(api_client, manager_user, sale)
         "transaction_count": 0,
         "total": "0.00",
     }
+
+
+@pytest.mark.django_db
+def test_profit_report_groups_sales_on_the_shop_day(api_client, manager_user, sale):
+    SaleModel.objects.filter(id=sale.id).update(
+        created_at=datetime(2026, 10, 17, 21, 30, tzinfo=UTC)
+    )
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get(
+        "/api/v1/reporting/profit/",
+        {"date_from": "2000-01-01", "date_to": "2100-01-01"},
+    )
+
+    assert response.status_code == 200
+    assert [row["date"] for row in response.data] == ["2026-10-18"]
