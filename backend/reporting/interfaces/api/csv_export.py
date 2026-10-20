@@ -1,7 +1,7 @@
 import csv
 from io import StringIO
 
-from reporting.application.queries import SalesReportRow, SalesSummary
+from reporting.application.queries import DailySales, SalesReportRow, SalesSummary
 
 SALES_REPORT_HEADER = ["Receipt", "Date", "Cashier", "Total", "Payment Method", "Status"]
 
@@ -48,5 +48,14 @@ def write_sales_summary_csv(summary: SalesSummary) -> str:
                 _money(summary.gross_profit),
                 _money(summary.average_sale_value),
             ]
+        ],
+    )
+
+def write_daily_sales_csv(rows: list[DailySales]) -> str:
+    return _write_rows(
+        ["Date", "Transactions", "Total"],
+        [
+            [row.date.isoformat(), str(row.transaction_count), _money(row.total)]
+            for row in rows
         ],
     )

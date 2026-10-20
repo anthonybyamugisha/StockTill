@@ -1,8 +1,8 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from reporting.application.queries import SalesReportRow, SalesSummary
-from reporting.interfaces.api.csv_export import write_sales_report_csv, write_sales_summary_csv
+from reporting.application.queries import DailySales, SalesReportRow, SalesSummary
+from reporting.interfaces.api.csv_export import write_daily_sales_csv, write_sales_report_csv, write_sales_summary_csv
 
 
 def _row(cashier_name: str = "Grace Nakato") -> SalesReportRow:
@@ -52,3 +52,16 @@ def test_writes_the_sales_summary_as_a_single_row():
 
     assert lines[0] == "From,To,Total Sales,Revenue,Cost,Gross Profit,Average Sale"
     assert lines[1] == "2026-10-01,2026-10-18,3,4500.00,3000.00,1500.00,1500.00"
+
+
+def test_writes_daily_sales_with_one_line_per_day():
+    rows = [
+        DailySales(date=date(2026, 10, 17), transaction_count=2, total=Decimal("3000.00")),
+        DailySales(date=date(2026, 10, 18), transaction_count=0, total=Decimal("0.00")),
+    ]
+
+    lines = write_daily_sales_csv(rows).splitlines()
+
+    assert lines[0] == "Date,Transactions,Total"
+    assert lines[1] == "2026-10-17,2,3000.00"
+    assert lines[2] == "2026-10-18,0,0.00"
