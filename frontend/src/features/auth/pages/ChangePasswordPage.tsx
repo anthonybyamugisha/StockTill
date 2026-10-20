@@ -76,6 +76,7 @@ export function ChangePasswordPage() {
             label="Current password"
             type="password"
             autoComplete="current-password"
+            autoFocus
             error={errors.current_password?.message}
             {...register('current_password')}
           />
