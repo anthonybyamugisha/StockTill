@@ -112,7 +112,9 @@ def test_change_password_rejects_a_short_new_password():
 
     with pytest.raises(WeakPasswordError, match="at least 8"):
         ChangePasswordUseCase(repo, hasher).execute(
-            ChangePasswordCommand(user_id=user.id, current_password="temporary1", new_password="short1")
+            ChangePasswordCommand(
+                user_id=user.id, current_password="temporary1", new_password="short1"
+            )
         )
 
 

@@ -276,9 +276,7 @@ def test_password_change_appears_in_the_audit_log(api_client, admin_user, pendin
 
     admin_client = APIClient()
     sign_in(admin_client, admin_user.email)
-    response = admin_client.get(
-        "/api/v1/accounts/audit-log/", {"action": "auth.password_changed"}
-    )
+    response = admin_client.get("/api/v1/accounts/audit-log/", {"action": "auth.password_changed"})
 
     assert response.status_code == 200
     assert any(entry["user_email"] == pending_user.email for entry in response.data)

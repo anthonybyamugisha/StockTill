@@ -148,6 +148,7 @@ def test_persists_lockout_fields():
     assert fetched.failed_login_attempts == 3
     assert fetched.locked_until is not None
 
+
 @pytest.mark.django_db
 def test_persists_first_login_flag():
     repo = DjangoUserRepository()
