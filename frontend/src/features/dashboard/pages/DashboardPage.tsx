@@ -95,7 +95,9 @@ export function DashboardPage() {
             <XAxis type="number" tick={{ fontSize: 12 }} />
             <YAxis type="category" dataKey="product_name" tick={{ fontSize: 12 }} width={170} interval={0} />
             <Tooltip formatter={(value: number) => [value, 'Units sold']} />
-            <Bar dataKey="quantity_sold" fill="#0078d4" />
+            <Bar dataKey="quantity_sold" fill="#0078d4">
+              <LabelList dataKey="quantity_sold" position="right" fontSize={12} fill="#4b5563" />
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </Card>
