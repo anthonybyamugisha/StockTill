@@ -53,7 +53,7 @@ class UpdateCategoryUseCase:
 
         before = category_snapshot(category)
 
-        if command.parent_id is not None:
+        if command.parent_set:
             if command.parent_id == category.id:
                 raise ValueError("A category cannot be its own parent")
             parent_id = command.parent_id

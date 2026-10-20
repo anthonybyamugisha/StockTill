@@ -55,6 +55,7 @@ class UpdateCategoryCommand:
     name: str | None = None
     description: str | None = None
     parent_id: UUID | None = None
+    parent_set: bool = False
     is_active: bool | None = None
     user_id: UUID | None = None
 

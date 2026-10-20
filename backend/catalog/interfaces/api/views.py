@@ -215,6 +215,7 @@ class CategoryDetailView(APIView):
                     name=data.get("name"),
                     description=data.get("description"),
                     parent_id=data.get("parent_id"),
+                    parent_set="parent_id" in data,
                     is_active=data.get("is_active"),
                     user_id=request.user.id if request.user.is_authenticated else None,
                 )

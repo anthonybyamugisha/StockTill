@@ -82,6 +82,21 @@ def test_a_category_cannot_become_its_own_parent(api_client, manager_user):
 
 
 @pytest.mark.django_db
+def test_manager_can_remove_a_parent_category(api_client, manager_user):
+    parent = CategoryModel.objects.create(name="Food")
+    child = CategoryModel.objects.create(name="Rice", parent_id=parent.id)
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.patch(
+        f"/api/v1/catalog/categories/{child.id}/", {"parent_id": None}, format="json"
+    )
+
+    assert response.status_code == 200
+    assert response.data["parent_id"] is None
+    assert CategoryModel.objects.get(id=child.id).parent_id is None
+
+
+@pytest.mark.django_db
 def test_cashier_cannot_update_a_category(api_client, cashier_user):
     category = CategoryModel.objects.create(name="Drinks")
     api_client.force_authenticate(user=cashier_user)
