@@ -256,3 +256,11 @@ def test_pending_user_can_reach_the_health_check(api_client, pending_user):
     response = api_client.get("/api/v1/health/")
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_settled_user_logs_in_without_the_pending_flag(api_client, admin_user):
+    response = sign_in(api_client, admin_user.email)
+
+    assert response.status_code == 200
+    assert response.data["must_change_password"] is False
