@@ -35,6 +35,10 @@ class User(Entity):
     def require_password_change(self) -> None:
         self.must_change_password = True
 
+    @property
+    def is_first_login(self) -> bool:
+        return self.last_login is None
+
     def change_password(self, raw_password: str, hasher: PasswordHasher) -> None:
         self.set_password(raw_password, hasher)
         self.must_change_password = False

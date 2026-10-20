@@ -32,3 +32,23 @@ def test_requiring_a_password_change_sets_the_flag():
     user = User(email="new@shop.com", first_name="New", last_name="User", role=Role.CASHIER)
     user.require_password_change()
     assert user.must_change_password is True
+
+
+def test_a_user_who_has_never_signed_in_is_on_their_first_login():
+    user = User(email="new@shop.com", first_name="New", last_name="User", role=Role.CASHIER)
+
+    assert user.is_first_login is True
+
+
+def test_a_user_with_a_login_timestamp_has_signed_in_before():
+    from datetime import UTC, datetime
+
+    user = User(
+        email="known@shop.com",
+        first_name="Known",
+        last_name="User",
+        role=Role.CASHIER,
+        last_login=datetime(2026, 10, 18, 9, 0, tzinfo=UTC),
+    )
+
+    assert user.is_first_login is False
