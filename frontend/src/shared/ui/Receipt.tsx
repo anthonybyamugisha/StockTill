@@ -3,6 +3,7 @@ import {
   lineTotal,
   methodLabel,
   money,
+  providerLabel,
   ReceiptBusiness,
   ReceiptSale,
 } from '../utils/receipt';
@@ -104,6 +105,18 @@ export function Receipt({ sale, business = {}, cashierName }: ReceiptProps) {
               <span>{methodLabel(payment.method)}</span>
               <span>{money(payment.amount, currency)}</span>
             </div>
+            {payment.provider && (
+              <div className="flex justify-between">
+                <span>Provider</span>
+                <span>{providerLabel(payment.provider)}</span>
+              </div>
+            )}
+            {payment.reference && (
+              <div className="flex justify-between">
+                <span>Reference</span>
+                <span>{payment.reference}</span>
+              </div>
+            )}
             {payment.tendered && parseFloat(payment.tendered) > 0 && (
               <div className="flex justify-between">
                 <span>Tendered</span>

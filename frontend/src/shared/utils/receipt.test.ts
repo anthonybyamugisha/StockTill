@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildReceiptText, lineTotal, methodLabel, money, ReceiptSale, round2 } from './receipt';
+import {
+  buildReceiptText,
+  lineTotal,
+  methodLabel,
+  money,
+  providerLabel,
+  ReceiptSale,
+  round2,
+} from './receipt';
 
 const sale: ReceiptSale = {
   receipt_number: 'ST-2026-000001',
@@ -38,6 +46,18 @@ describe('methodLabel', () => {
 
   it('title-cases unknown methods', () => {
     expect(methodLabel('store_credit')).toBe('Store Credit');
+  });
+});
+
+describe('providerLabel', () => {
+  it('maps the mobile money networks', () => {
+    expect(providerLabel('mtn')).toBe('MTN MoMo');
+    expect(providerLabel('airtel')).toBe('Airtel Money');
+  });
+
+  it('labels a manual payment and title-cases unknown providers', () => {
+    expect(providerLabel('manual')).toBe('Manual');
+    expect(providerLabel('card_terminal')).toBe('Card Terminal');
   });
 });
 
@@ -111,5 +131,37 @@ describe('buildReceiptText', () => {
   it('flags a non-completed sale', () => {
     const text = buildReceiptText({ ...sale, status: 'voided' });
     expect(text).toContain('Status: voided');
+  });
+
+  it('shows the network and reference for a mobile money payment', () => {
+    const text = buildReceiptText(
+      {
+        ...sale,
+        payments: [
+          {
+            method: 'mobile_money',
+            amount: '54500.00',
+            provider: 'mtn',
+            reference: 'MP240101.1234.A56789',
+          },
+        ],
+      },
+      business,
+    );
+    expect(text).toContain('Mobile Money');
+    expect(text).toContain('Provider');
+    expect(text).toContain('MTN MoMo');
+    expect(text).toContain('Reference');
+    expect(text).toContain('MP240101.1234.A56789');
+  });
+
+  it('shows a manual reference for a card payment', () => {
+    const text = buildReceiptText({
+      ...sale,
+      payments: [{ method: 'card', amount: '54500.00', provider: 'manual', reference: 'SLIP-42' }],
+    });
+    expect(text).toContain('Card');
+    expect(text).toContain('Manual');
+    expect(text).toContain('SLIP-42');
   });
 });

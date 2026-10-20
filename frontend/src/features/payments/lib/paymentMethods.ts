@@ -1,6 +1,8 @@
-export type PaymentMethod = 'cash' | 'mobile_money' | 'card' | 'bank_transfer';
+import type { MobileNetwork } from '../api/payments';
 
-export type MobileNetwork = 'mtn' | 'airtel';
+export type { MobileNetwork };
+
+export type PaymentMethod = 'cash' | 'mobile_money' | 'card' | 'bank_transfer';
 
 export interface PaymentMethodOption {
   value: PaymentMethod;

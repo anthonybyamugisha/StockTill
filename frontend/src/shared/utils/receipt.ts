@@ -13,6 +13,8 @@ export interface ReceiptPayment {
   amount: string;
   tendered?: string | null;
   change?: string | null;
+  reference?: string | null;
+  provider?: string | null;
 }
 
 export interface ReceiptSale {
@@ -44,6 +46,12 @@ const METHOD_LABELS: Record<string, string> = {
   bank_transfer: 'Bank Transfer',
 };
 
+const PROVIDER_LABELS: Record<string, string> = {
+  mtn: 'MTN MoMo',
+  airtel: 'Airtel Money',
+  manual: 'Manual',
+};
+
 const WIDTH = 40;
 
 export function round2(value: number): number {
@@ -56,6 +64,13 @@ export function methodLabel(method: string): string {
     method
       .replace(/_/g, ' ')
       .replace(/\b\w/g, (character) => character.toUpperCase())
+  );
+}
+
+export function providerLabel(provider: string): string {
+  return (
+    PROVIDER_LABELS[provider.toLowerCase()] ??
+    provider.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase())
   );
 }
 
@@ -118,6 +133,8 @@ export function buildReceiptText(
 
   for (const payment of sale.payments) {
     out.push(padLine(methodLabel(payment.method), money(payment.amount, currency)));
+    if (payment.provider) out.push(padLine('  Provider', providerLabel(payment.provider)));
+    if (payment.reference) out.push(padLine('  Reference', payment.reference));
     const tendered = payment.tendered ? parseFloat(payment.tendered) : 0;
     if (tendered > 0) out.push(padLine('  Tendered', money(tendered, currency)));
     const change = payment.change ? parseFloat(payment.change) : 0;
