@@ -379,3 +379,16 @@ def test_seeded_superuser_logs_in_without_a_change(api_client):
 
     assert response.status_code == 200
     assert response.data["must_change_password"] is False
+
+
+@pytest.mark.django_db
+def test_returning_user_is_not_flagged_again(api_client):
+    from django.utils import timezone
+
+    user = build_user("returning@shop.com")
+    UserModel.objects.filter(id=user.id).update(last_login=timezone.now())
+
+    response = sign_in(api_client, user.email)
+
+    assert response.status_code == 200
+    assert response.data["must_change_password"] is False
