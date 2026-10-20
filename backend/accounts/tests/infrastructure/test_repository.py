@@ -147,3 +147,19 @@ def test_persists_lockout_fields():
     fetched = repo.get_by_id(user.id)
     assert fetched.failed_login_attempts == 3
     assert fetched.locked_until is not None
+
+@pytest.mark.django_db
+def test_persists_first_login_flag():
+    repo = DjangoUserRepository()
+    user = User(
+        email="pending@shop.com",
+        first_name="Pending",
+        last_name="User",
+        role=Role.CASHIER,
+        password_hash="x",
+    )
+    user.require_password_change()
+    repo.save(user)
+
+    fetched = repo.get_by_id(user.id)
+    assert fetched.must_change_password is True
