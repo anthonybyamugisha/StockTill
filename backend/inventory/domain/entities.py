@@ -16,6 +16,14 @@ class MovementType(StrEnum):
     ADJUSTMENT_OUT = "adjustment_out"
     WRITE_OFF = "write_off"
 
+    @property
+    def reduces_stock(self) -> bool:
+        return self in (
+            MovementType.SALE,
+            MovementType.ADJUSTMENT_OUT,
+            MovementType.WRITE_OFF,
+        )
+
 
 @dataclass(eq=False)
 class StockMovement(Entity):

@@ -9,12 +9,6 @@ from shared.application.audit import AuditPort, NullAuditPort
 from shared.domain.clock import Clock
 from shared.domain.money import Money
 
-OUTGOING_MOVEMENTS = (
-    MovementType.SALE,
-    MovementType.ADJUSTMENT_OUT,
-    MovementType.WRITE_OFF,
-)
-
 
 class AdjustStockUseCase:
     def __init__(
@@ -39,7 +33,7 @@ class AdjustStockUseCase:
 
         qty = abs(command.quantity)
 
-        if command.movement_type in OUTGOING_MOVEMENTS:
+        if command.movement_type.reduces_stock:
             if item.available_quantity < qty:
                 raise InsufficientStockError(
                     f"Insufficient stock for product {command.product_id}. "
@@ -98,7 +92,7 @@ class RebuildStockCacheUseCase:
         for m in movements:
             if m.product_id not in items:
                 items[m.product_id] = StockItem(product_id=m.product_id)
-            if m.movement_type in OUTGOING_MOVEMENTS:
+            if m.movement_type.reduces_stock:
                 items[m.product_id].quantity_on_hand -= abs(m.quantity)
             else:
                 items[m.product_id].quantity_on_hand += abs(m.quantity)
