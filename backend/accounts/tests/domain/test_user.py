@@ -52,3 +52,9 @@ def test_a_user_with_a_login_timestamp_has_signed_in_before():
     )
 
     assert user.is_first_login is False
+
+
+def test_a_user_is_not_a_superuser_by_default():
+    user = User(email="person@shop.com", first_name="Person", last_name="User", role=Role.ADMIN)
+
+    assert user.is_superuser is False
