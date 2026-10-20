@@ -173,3 +173,29 @@ def test_short_password_is_rejected_over_the_api(api_client, pending_user):
     )
 
     assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_reusing_the_temporary_password_is_rejected(api_client, pending_user):
+    sign_in(api_client, pending_user.email)
+
+    response = api_client.post(
+        "/api/v1/accounts/change-password/",
+        {"current_password": TEMPORARY_PASSWORD, "new_password": TEMPORARY_PASSWORD},
+    )
+
+    assert response.status_code == 400
+    assert "must be different" in response.data["detail"]
+
+
+@pytest.mark.django_db
+def test_wrong_current_password_is_rejected(api_client, pending_user):
+    sign_in(api_client, pending_user.email)
+
+    response = api_client.post(
+        "/api/v1/accounts/change-password/",
+        {"current_password": "not-the-password", "new_password": PERMANENT_PASSWORD},
+    )
+
+    assert response.status_code == 400
+    assert "Current password is incorrect" in response.data["detail"]
