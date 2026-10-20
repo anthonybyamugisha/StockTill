@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from sales.application.audit_events import sale_refunded
 from sales.application.commands import RefundSaleCommand
 from sales.application.ports import InventoryPort
 from sales.domain.entities import Refund, SaleStatus
@@ -78,18 +79,6 @@ class RefundSaleUseCase:
 
         self._refund_repo.save(refund)
         self._sale_repo.save(sale)
-        self._audit.record(
-            user_id=command.user_id,
-            action="sale.refunded",
-            entity_type="sale",
-            entity_id=str(sale.id),
-            before={"status": original_status, "refundable_amount": str(original_refundable)},
-            after={
-                "status": sale.status.value,
-                "amount": str(refund.amount.amount),
-                "quantity": refund.quantity,
-                "restock": refund.restock,
-                "reason": refund.reason,
-            },
-        )
+        entry = sale_refunded(sale, refund, original_status, str(original_refundable))
+        self._audit.record(**entry.as_record_kwargs())
         return refund

@@ -1,3 +1,4 @@
+from sales.application.audit_events import sale_completed
 from sales.application.commands import CompleteSaleCommand
 from sales.application.payments import build_payments
 from sales.application.ports import CatalogPort, IdempotencyPort, InventoryPort, ReceiptNumberPort
@@ -58,16 +59,5 @@ class CompleteSaleUseCase:
 
         self._sale_repo.save(sale)
         self._idempotency.store(command.idempotency_key, sale.id)
-        self._audit.record(
-            user_id=command.cashier_id,
-            action="sale.completed",
-            entity_type="sale",
-            entity_id=str(sale.id),
-            after={
-                "receipt_number": sale.receipt_number,
-                "total": str(sale.total.amount),
-                "line_count": len(sale.lines),
-                "payment_methods": sorted({payment.method.value for payment in sale.payments}),
-            },
-        )
+        self._audit.record(**sale_completed(sale).as_record_kwargs())
         return sale

@@ -1,3 +1,4 @@
+from sales.application.audit_events import sale_voided
 from sales.application.commands import VoidSaleCommand
 from sales.application.ports import InventoryPort
 from sales.domain.entities import Sale, SaleStatus
@@ -34,12 +35,6 @@ class VoidSaleUseCase:
 
         sale.status = SaleStatus.VOIDED
         self._sale_repo.save(sale)
-        self._audit.record(
-            user_id=command.user_id,
-            action="sale.voided",
-            entity_type="sale",
-            entity_id=str(sale.id),
-            before={"status": original_status, "total": str(sale.total.amount)},
-            after={"status": sale.status.value, "reason": command.reason},
-        )
+        entry = sale_voided(sale, command.user_id, original_status, command.reason)
+        self._audit.record(**entry.as_record_kwargs())
         return sale
