@@ -135,3 +135,16 @@ def test_new_password_works_after_a_change(api_client, pending_user):
 
     assert response.status_code == 200
     assert response.data["must_change_password"] is False
+
+
+@pytest.mark.django_db
+def test_business_endpoints_reopen_after_a_change(api_client, pending_user):
+    sign_in(api_client, pending_user.email)
+    api_client.post(
+        "/api/v1/accounts/change-password/",
+        {"current_password": TEMPORARY_PASSWORD, "new_password": PERMANENT_PASSWORD},
+    )
+
+    response = api_client.get("/api/v1/catalog/products/")
+
+    assert response.status_code == 200
