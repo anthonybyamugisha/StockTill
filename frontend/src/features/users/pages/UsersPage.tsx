@@ -216,7 +216,12 @@ function UserModal({ user, onClose, onSubmit, isLoading }: {
           ]}
         />
         {!user && (
-          <Input label="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+          <div className="space-y-1">
+            <Input label="Temporary password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+            <p className="text-xs text-surface-400">
+              The new user must change this password the first time they sign in.
+            </p>
+          </div>
         )}
       </form>
     </Modal>
