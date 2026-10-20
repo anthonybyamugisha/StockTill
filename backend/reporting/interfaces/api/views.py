@@ -42,6 +42,15 @@ from reporting.interfaces.api.serializers import (
 )
 
 
+CSV_CONTENT_TYPE = "text/csv"
+
+
+def _csv_response(content: str, filename: str) -> HttpResponse:
+    response = HttpResponse(content, content_type=CSV_CONTENT_TYPE)
+    response["Content-Disposition"] = f"attachment; filename={filename}"
+    return response
+
+
 class SalesSummaryView(APIView):
     permission_classes = [IsManager]
 
