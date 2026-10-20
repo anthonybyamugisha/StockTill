@@ -39,6 +39,7 @@ export function ChangePasswordPage() {
     formState: { errors },
   } = useForm<ChangePasswordFormData>({
     resolver: zodResolver(changePasswordSchema),
+    mode: 'onTouched',
   });
 
   const mutation = useMutation({
