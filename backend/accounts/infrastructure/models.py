@@ -43,6 +43,7 @@ class UserModel(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     failed_login_attempts = models.PositiveIntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
+    must_change_password = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
