@@ -156,6 +156,50 @@ def test_second_login_does_not_reopen_the_first_login_rule():
     assert result.must_change_password is False
 
 
+def test_failed_login_does_not_open_the_first_login_rule():
+    repo = FakeUserRepository()
+    hasher = FakePasswordHasher()
+    user = User(email="typo@shop.com", first_name="Typo", last_name="User", role=Role.CASHIER)
+    user.set_password("password123", hasher)
+    repo.save(user)
+
+    with pytest.raises(InvalidCredentialsError):
+        AuthenticateUserUseCase(repo, hasher).execute("typo@shop.com", "wrong_password")
+
+    assert user.must_change_password is False
+    assert user.last_login is None
+
+
+def test_inactive_first_login_is_not_forced_to_change_a_password():
+    repo = FakeUserRepository()
+    hasher = FakePasswordHasher()
+    user = User(email="gone@shop.com", first_name="Gone", last_name="User", role=Role.CASHIER)
+    user.set_password("password123", hasher)
+    user.is_active = False
+    repo.save(user)
+
+    with pytest.raises(InvalidCredentialsError):
+        AuthenticateUserUseCase(repo, hasher).execute("gone@shop.com", "password123")
+
+    assert user.must_change_password is False
+    assert user.last_login is None
+
+
+def test_locked_first_login_is_not_forced_to_change_a_password():
+    repo = FakeUserRepository()
+    hasher = FakePasswordHasher()
+    user = User(email="held@shop.com", first_name="Held", last_name="User", role=Role.CASHIER)
+    user.set_password("password123", hasher)
+    user.locked_until = datetime.now(UTC) + timedelta(minutes=30)
+    repo.save(user)
+
+    with pytest.raises(InvalidCredentialsError):
+        AuthenticateUserUseCase(repo, hasher).execute("held@shop.com", "password123")
+
+    assert user.must_change_password is False
+    assert user.last_login is None
+
+
 class RecordingAudit:
     def __init__(self):
         self.entries = []
