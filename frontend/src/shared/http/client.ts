@@ -1,4 +1,5 @@
 import axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { shouldOpenPasswordChange } from '../../features/auth/lib/passwordChange';
 
 const baseURL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -30,6 +31,13 @@ apiClient.interceptors.response.use(
       if (!isAuthCheck && window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
+    }
+    if (
+      axios.isAxiosError(error) &&
+      error.response?.status === 403 &&
+      shouldOpenPasswordChange(window.location.pathname, error.response.data)
+    ) {
+      window.location.href = '/change-password';
     }
     return Promise.reject(error);
   },
