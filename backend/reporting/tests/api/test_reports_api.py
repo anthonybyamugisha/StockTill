@@ -391,10 +391,7 @@ def test_payment_method_csv_export(api_client, manager_user, sale):
     )
 
     assert response.status_code == 200
-    assert (
-        response["Content-Disposition"]
-        == "attachment; filename=sales_by_payment_method.csv"
-    )
+    assert response["Content-Disposition"] == "attachment; filename=sales_by_payment_method.csv"
     body = response.content.decode()
     assert body.startswith("Payment Method,Transactions,Total")
     assert "cash,1,1500.00" in body

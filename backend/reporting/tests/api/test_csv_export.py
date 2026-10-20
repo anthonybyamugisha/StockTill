@@ -3,10 +3,10 @@ from decimal import Decimal
 from uuid import UUID
 
 from reporting.application.queries import (
-    InventoryReport,
-    LowStockItem,
     CashierSales,
     DailySales,
+    InventoryReport,
+    LowStockItem,
     ProfitReport,
     SalesByPaymentMethod,
     SalesReportRow,

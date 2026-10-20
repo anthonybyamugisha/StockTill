@@ -30,8 +30,8 @@ from reporting.interfaces.api.csv_export import (
     write_cashier_sales_csv,
     write_daily_sales_csv,
     write_inventory_report_csv,
-    write_payment_methods_csv,
     write_low_stock_csv,
+    write_payment_methods_csv,
     write_profit_report_csv,
     write_sales_report_csv,
     write_sales_summary_csv,
@@ -50,7 +50,6 @@ from reporting.interfaces.api.serializers import (
     SalesSummarySerializer,
     TopProductSerializer,
 )
-
 
 CSV_CONTENT_TYPE = "text/csv"
 
@@ -143,9 +142,7 @@ class DailySalesCSVView(APIView):
 
     def get(self, request):
         dates = DateRange.from_params(request.query_params)
-        data = GetDailySalesUseCase(DjangoDailySalesQuery()).execute(
-            dates.date_from, dates.date_to
-        )
+        data = GetDailySalesUseCase(DjangoDailySalesQuery()).execute(dates.date_from, dates.date_to)
         return _csv_response(write_daily_sales_csv(data), "daily_sales.csv")
 
 

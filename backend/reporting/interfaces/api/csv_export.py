@@ -61,14 +61,13 @@ def write_sales_summary_csv(summary: SalesSummary) -> str:
         ],
     )
 
+
 def write_daily_sales_csv(rows: list[DailySales]) -> str:
     return _write_rows(
         ["Date", "Transactions", "Total"],
-        [
-            [row.date.isoformat(), str(row.transaction_count), _money(row.total)]
-            for row in rows
-        ],
+        [[row.date.isoformat(), str(row.transaction_count), _money(row.total)] for row in rows],
     )
+
 
 def write_profit_report_csv(rows: list[ProfitReport]) -> str:
     return _write_rows(
@@ -84,20 +83,20 @@ def write_profit_report_csv(rows: list[ProfitReport]) -> str:
         ],
     )
 
+
 def write_top_products_csv(rows: list[TopProduct]) -> str:
     return _write_rows(
         ["Product", "Qty Sold", "Revenue"],
         [[row.product_name, str(row.quantity_sold), _money(row.revenue)] for row in rows],
     )
 
+
 def write_cashier_sales_csv(rows: list[CashierSales]) -> str:
     return _write_rows(
         ["Cashier", "Transactions", "Total"],
-        [
-            [row.cashier_name, str(row.transaction_count), _money(row.total)]
-            for row in rows
-        ],
+        [[row.cashier_name, str(row.transaction_count), _money(row.total)] for row in rows],
     )
+
 
 def write_low_stock_csv(rows: list[LowStockItem]) -> str:
     return _write_rows(
