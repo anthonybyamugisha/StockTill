@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.domain.entities import Role
 from accounts.interfaces.api.permissions import IsManager
 from sales.infrastructure.adapters import ShiftAdapter
 from sales.infrastructure.repository import DjangoSaleRepository
@@ -36,11 +37,23 @@ class SaleListCreateView(APIView):
             status_filter = parse_status_filter(request.query_params.get("status"))
         except ValueError as error:
             return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+
+        cashier_id = request.user.id
+        if request.user.role != Role.CASHIER.value:
+            raw_cashier_id = request.query_params.get("cashier_id")
+            if raw_cashier_id:
+                try:
+                    cashier_id = UUID(raw_cashier_id)
+                except (TypeError, ValueError):
+                    return Response(
+                        {"detail": "Invalid cashier id"}, status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                cashier_id = None
+
         repo = DjangoSaleRepository()
         sales = repo.list_sales(
-            cashier_id=UUID(request.query_params["cashier_id"])
-            if request.query_params.get("cashier_id")
-            else None,
+            cashier_id=cashier_id,
             status=status_filter,
             payment_method=request.query_params.get("payment_method"),
             date_from=request.query_params.get("date_from"),
@@ -69,7 +82,9 @@ class SaleDetailView(APIView):
     def get(self, request, sale_id):
         repo = DjangoSaleRepository()
         sale = repo.get_by_id(sale_id)
-        if sale is None:
+        if sale is None or (
+            request.user.role == Role.CASHIER.value and sale.cashier_id != request.user.id
+        ):
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
         return Response(SaleSerializer(sale).data)
 

@@ -27,9 +27,10 @@ from accounts.infrastructure.audit_repository import DjangoAuditRepository
 from accounts.infrastructure.models import UserModel
 from accounts.infrastructure.password_hasher import DjangoPasswordHasher
 from accounts.infrastructure.repository import DjangoUserRepository
-from accounts.interfaces.api.permissions import IsAdmin
+from accounts.interfaces.api.permissions import IsAdmin, IsManager
 from accounts.interfaces.api.serializers import (
     AuditLogSerializer,
+    CashierSerializer,
     ChangePasswordSerializer,
     CreateUserSerializer,
     LoginSerializer,
@@ -75,6 +76,16 @@ class UserListCreateView(APIView):
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class CashierListView(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request):
+        users = UserModel.objects.filter(role=Role.CASHIER.value, is_active=True).order_by(
+            "first_name", "last_name"
+        )
+        return Response(CashierSerializer(users, many=True).data)
 
 
 class UserDetailView(APIView):

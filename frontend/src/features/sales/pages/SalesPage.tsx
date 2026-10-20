@@ -13,21 +13,36 @@ import { Receipt } from '../../../shared/ui/Receipt';
 import { getSettings } from '../../settings/api/settings';
 import { toast } from '../../../shared/ui/toast';
 import { getApiErrorMessage } from '../../../shared/http/errors';
+import { useAuth } from '../../auth/hooks/useAuth';
+import { listCashiers } from '../../users/api/users';
+import { PAYMENT_METHOD_OPTIONS } from '../../payments/lib/paymentMethods';
 
 export function SalesPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canViewAllCashiers = user?.role !== 'cashier';
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [cashierFilter, setCashierFilter] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('');
   const [receiptSearch, setReceiptSearch] = useState('');
   const [showDetail, setShowDetail] = useState<any>(null);
 
+  const { data: cashiers } = useQuery({
+    queryKey: ['cashiers'],
+    queryFn: listCashiers,
+    enabled: canViewAllCashiers,
+  });
+
   const { data: sales, isLoading, isError, error } = useQuery({
-    queryKey: ['sales', dateFrom, dateTo, statusFilter, receiptSearch],
+    queryKey: ['sales', dateFrom, dateTo, statusFilter, cashierFilter, paymentFilter, receiptSearch],
     queryFn: () => listSales({
       date_from: dateFrom || undefined,
       date_to: dateTo || undefined,
       status: statusFilter || undefined,
+      cashier_id: canViewAllCashiers ? cashierFilter || undefined : undefined,
+      payment_method: paymentFilter || undefined,
       receipt_number: receiptSearch || undefined,
     }),
   });
@@ -67,10 +82,26 @@ export function SalesPage() {
     { value: 'voided', label: 'Voided' },
   ];
 
+  const paymentOptions = [
+    { value: '', label: 'All payment methods' },
+    ...PAYMENT_METHOD_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
+  ];
+
+  const cashierOptions = [
+    { value: '', label: 'All cashiers' },
+    ...(cashiers ?? []).map((cashier) => ({
+      value: cashier.id,
+      label: `${cashier.first_name} ${cashier.last_name}`.trim(),
+    })),
+  ];
+
+  const hasFilters =
+    dateFrom || dateTo || statusFilter || cashierFilter || paymentFilter || receiptSearch;
+
   return (
     <div className="space-y-4">
       <Card>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
           <Input label="From Date" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           <Input label="To Date" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           <Select
@@ -79,17 +110,46 @@ export function SalesPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             options={statusOptions}
           />
+          <Select
+            label="Payment"
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value)}
+            options={paymentOptions}
+          />
+          {canViewAllCashiers && (
+            <Select
+              label="Cashier"
+              value={cashierFilter}
+              onChange={(e) => setCashierFilter(e.target.value)}
+              options={cashierOptions}
+            />
+          )}
           <Input
             label="Receipt"
             value={receiptSearch}
             onChange={(e) => setReceiptSearch(e.target.value)}
             placeholder="e.g. 000012"
           />
-          <div className="flex items-end">
-            <Button variant="secondary" onClick={() => { setDateFrom(''); setDateTo(''); setStatusFilter(''); setReceiptSearch(''); }}>
-              Clear Filters
-            </Button>
-          </div>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <p className="text-xs text-surface-400">
+            {user?.role === 'cashier'
+              ? 'Showing sales completed by you.'
+              : 'Showing sales from all cashiers.'}
+          </p>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setDateFrom('');
+              setDateTo('');
+              setStatusFilter('');
+              setCashierFilter('');
+              setPaymentFilter('');
+              setReceiptSearch('');
+            }}
+          >
+            Clear Filters
+          </Button>
         </div>
       </Card>
 
@@ -117,9 +177,7 @@ export function SalesPage() {
             keyExtractor={(s) => s.id}
             onRowClick={(s) => setShowDetail(s)}
             emptyMessage={
-              dateFrom || dateTo || statusFilter || receiptSearch
-                ? 'No sales match these filters'
-                : 'No sales found'
+              hasFilters ? 'No sales match these filters' : 'No sales found'
             }
           />
         )}

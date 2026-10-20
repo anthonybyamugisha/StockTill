@@ -27,6 +27,7 @@ export interface Sale {
 export async function listSales(params?: {
   cashier_id?: string;
   status?: string;
+  payment_method?: string;
   date_from?: string;
   date_to?: string;
   receipt_number?: string;

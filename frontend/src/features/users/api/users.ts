@@ -11,6 +11,17 @@ export interface User {
   last_login: string | null;
 }
 
+export interface Cashier {
+  id: string;
+  first_name: string;
+  last_name: string;
+}
+
+export async function listCashiers(): Promise<Cashier[]> {
+  const res = await apiClient.get<Cashier[]>('/accounts/cashiers/');
+  return res.data;
+}
+
 export async function listUsers(): Promise<User[]> {
   const res = await apiClient.get<User[]>('/accounts/users/');
   return res.data;

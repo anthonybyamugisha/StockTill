@@ -20,6 +20,12 @@ class UserSerializer(serializers.Serializer):
         return User(**validated_data)
 
 
+class CashierSerializer(serializers.Serializer):
+    id = serializers.UUIDField(read_only=True)
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+
+
 class CreateUserSerializer(serializers.Serializer):
     email = serializers.EmailField()
     first_name = serializers.CharField(max_length=100)

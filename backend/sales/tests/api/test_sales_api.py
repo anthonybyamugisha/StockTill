@@ -154,3 +154,40 @@ def test_sale_list_rejects_an_unknown_status(api_client, cashier_user):
 
     assert response.status_code == 400
     assert "banana" in response.data["detail"]
+
+
+@pytest.mark.django_db
+def test_cashier_only_sees_their_own_sales(api_client, cashier_user, stocked_product):
+    api_client.force_authenticate(user=cashier_user)
+    sale = api_client.post("/api/v1/sales/", _payload(stocked_product.id), format="json")
+    other_cashier = _make_user("other@shop.com", Role.CASHIER)
+
+    api_client.force_authenticate(user=other_cashier)
+    response = api_client.get(f"/api/v1/sales/?cashier_id={cashier_user.id}")
+
+    assert response.status_code == 200
+    assert response.data == []
+    assert api_client.get(f"/api/v1/sales/{sale.data['id']}/").status_code == 404
+
+
+@pytest.mark.django_db
+def test_manager_can_filter_sales_by_cashier(api_client, cashier_user, stocked_product):
+    api_client.force_authenticate(user=cashier_user)
+    sale = api_client.post("/api/v1/sales/", _payload(stocked_product.id), format="json")
+    manager = _make_user("manager@shop.com", Role.MANAGER)
+
+    api_client.force_authenticate(user=manager)
+    response = api_client.get(f"/api/v1/sales/?cashier_id={cashier_user.id}")
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.data] == [sale.data["id"]]
+
+
+@pytest.mark.django_db
+def test_sale_list_rejects_an_invalid_cashier_id(api_client, cashier_user):
+    manager = _make_user("manager@shop.com", Role.MANAGER)
+    api_client.force_authenticate(user=manager)
+
+    response = api_client.get("/api/v1/sales/?cashier_id=not-a-uuid")
+
+    assert response.status_code == 400
