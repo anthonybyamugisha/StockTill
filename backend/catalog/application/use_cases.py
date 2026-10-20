@@ -1,5 +1,3 @@
-from typing import Any
-
 from catalog.application.commands import (
     CreateCategoryCommand,
     CreateProductCommand,
@@ -8,23 +6,11 @@ from catalog.application.commands import (
     UpdateProductCommand,
 )
 from catalog.application.ports import OpeningStockPort
+from catalog.application.snapshots import product_snapshot
 from catalog.domain.entities import Category, Product
 from catalog.domain.repository import CategoryRepository, ProductRepository
 from shared.application.audit import AuditPort, NullAuditPort
 from shared.domain.clock import Clock
-
-
-def _product_snapshot(product: Product) -> dict[str, Any]:
-    return {
-        "name": product.name,
-        "sku": product.sku,
-        "barcode": product.barcode,
-        "category_id": str(product.category_id) if product.category_id else None,
-        "buying_cost": str(product.buying_cost.amount),
-        "selling_price": str(product.selling_price.amount),
-        "minimum_stock_level": product.minimum_stock_level,
-        "is_active": product.is_active,
-    }
 
 
 class CreateProductUseCase:
@@ -67,7 +53,7 @@ class CreateProductUseCase:
                 user_id=command.user_id,
             )
 
-        after = _product_snapshot(product)
+        after = product_snapshot(product)
         after["opening_stock"] = command.opening_stock
         self._audit.record(
             user_id=command.user_id,
@@ -95,7 +81,7 @@ class UpdateProductUseCase:
         if product is None:
             raise ValueError("Product not found")
 
-        before = _product_snapshot(product)
+        before = product_snapshot(product)
 
         if command.sku is not None and command.sku != product.sku:
             if self._repo.sku_exists(command.sku, exclude_id=product.id):
@@ -127,7 +113,7 @@ class UpdateProductUseCase:
 
         self._repo.save(product)
 
-        after = _product_snapshot(product)
+        after = product_snapshot(product)
         changed = {key: value for key, value in after.items() if value != before[key]}
         if changed:
             self._audit.record(
