@@ -21,6 +21,19 @@ export interface StockMovement {
   timestamp: string;
 }
 
+export interface StockValuationRow {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_cost: string;
+  value: string;
+}
+
+export interface StockValuation {
+  total: string;
+  by_product: StockValuationRow[];
+}
+
 export interface AdjustStockRequest {
   product_id: string;
   quantity: number;
@@ -42,6 +55,16 @@ export async function getStockItem(productId: string): Promise<StockItem> {
 
 export async function listStockItems(): Promise<StockItem[]> {
   const res = await apiClient.get<StockItem[]>('/inventory/items/');
+  return res.data;
+}
+
+export async function getStockHistory(productId: string): Promise<StockMovement[]> {
+  const res = await apiClient.get<StockMovement[]>(`/inventory/history/${productId}/`);
+  return res.data;
+}
+
+export async function getValuation(): Promise<StockValuation> {
+  const res = await apiClient.get<StockValuation>('/inventory/valuation/');
   return res.data;
 }
 
