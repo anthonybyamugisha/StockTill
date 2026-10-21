@@ -47,8 +47,8 @@ export function requiresReference(method: PaymentMethod): boolean {
   return isManualMethod(method);
 }
 
-export function paymentMethodLabel(method: PaymentMethod): string {
-  return PAYMENT_METHOD_LABELS[method] ?? method;
+export function paymentMethodLabel(method: PaymentMethod | string): string {
+  return PAYMENT_METHOD_LABELS[method as PaymentMethod] ?? method;
 }
 
 export function mobileNetworkLabel(network: MobileNetwork): string {

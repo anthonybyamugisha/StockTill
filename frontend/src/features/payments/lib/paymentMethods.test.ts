@@ -21,6 +21,7 @@ describe('payment methods', () => {
     expect(paymentMethodLabel('mobile_money')).toBe('Mobile Money');
     expect(paymentMethodLabel('card')).toBe('Card');
     expect(paymentMethodLabel('bank_transfer')).toBe('Bank Transfer');
+    expect(paymentMethodLabel('cheque')).toBe('cheque');
   });
 
   it('knows which methods use the gateway', () => {

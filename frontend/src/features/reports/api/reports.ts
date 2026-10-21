@@ -31,6 +31,12 @@ export interface CashierSales {
   total: string;
 }
 
+export interface PaymentMethodSales {
+  method: string;
+  count: number;
+  total: string;
+}
+
 export interface ProfitReport {
   date: string;
   total_revenue: string;
@@ -76,6 +82,16 @@ export async function getDailySales(dateFrom: string, dateTo: string): Promise<D
 
 export async function getCashierSales(dateFrom: string, dateTo: string): Promise<CashierSales[]> {
   const res = await apiClient.get<CashierSales[]>('/reporting/cashier-sales/', {
+    params: { date_from: dateFrom, date_to: dateTo },
+  });
+  return res.data;
+}
+
+export async function getSalesByPaymentMethod(
+  dateFrom: string,
+  dateTo: string,
+): Promise<PaymentMethodSales[]> {
+  const res = await apiClient.get<PaymentMethodSales[]>('/reporting/by-payment-method/', {
     params: { date_from: dateFrom, date_to: dateTo },
   });
   return res.data;

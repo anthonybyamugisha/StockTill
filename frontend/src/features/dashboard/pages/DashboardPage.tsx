@@ -1,14 +1,16 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart, Bar, LabelList, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Cell, LabelList, LineChart, Line, Pie, PieChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getDashboardStats } from '../api/dashboard';
-import { getTopProducts, getDailySales } from '../../reports/api/reports';
+import { getTopProducts, getDailySales, getSalesByPaymentMethod } from '../../reports/api/reports';
+import { paymentMethodLabel } from '../../payments/lib/paymentMethods';
 import { Card } from '../../../shared/ui/Card';
 import { Spinner } from '../../../shared/ui/Spinner';
 import { daysAgoISO, formatShortDate, monthStartISO, todayISO } from '../../../shared/utils/date';
 import { formatMoney } from '../../../shared/utils/money';
 
 const REFRESH_MS = 60_000;
+const PAYMENT_COLORS = ['#0078d4', '#16a34a', '#9333ea', '#f59e0b'];
 
 export function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -35,6 +37,28 @@ export function DashboardPage() {
     queryFn: () => getDailySales(thirtyDaysAgo, today),
     refetchInterval: REFRESH_MS,
   });
+
+  const { data: paymentMethods } = useQuery({
+    queryKey: ['paymentMethods', thirtyDaysAgo, today],
+    queryFn: () => getSalesByPaymentMethod(thirtyDaysAgo, today),
+    refetchInterval: REFRESH_MS,
+  });
+
+  const paymentMix = useMemo(
+    () =>
+      (paymentMethods ?? []).map((entry) => ({
+        method: entry.method,
+        label: paymentMethodLabel(entry.method),
+        count: entry.count,
+        value: Number(entry.total),
+      })),
+    [paymentMethods],
+  );
+
+  const paymentTotal = useMemo(
+    () => paymentMix.reduce((total, entry) => total + entry.value, 0),
+    [paymentMix],
+  );
 
   const salesTrend = useMemo(
     () =>
@@ -88,6 +112,65 @@ export function DashboardPage() {
         </ResponsiveContainer>
       </Card>
 
+      <Card title="Payment Mix" subtitle="Last 30 days">
+        {paymentMix.length === 0 ? (
+          <p className="py-10 text-center text-sm text-surface-400">
+            No paid sales in this period.
+          </p>
+        ) : (
+          <div className="flex items-center gap-8">
+            <div className="h-[220px] w-1/2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={paymentMix}
+                    dataKey="value"
+                    nameKey="label"
+                    innerRadius={55}
+                    outerRadius={85}
+                    paddingAngle={2}
+                  >
+                    {paymentMix.map((entry, index) => (
+                      <Cell
+                        key={entry.method}
+                        fill={PAYMENT_COLORS[index % PAYMENT_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => [formatMoney(value), 'Sales']} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex-1 space-y-3">
+              {paymentMix.map((entry, index) => (
+                <div key={entry.method} className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{
+                        backgroundColor: PAYMENT_COLORS[index % PAYMENT_COLORS.length],
+                      }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-surface-600">{entry.label}</p>
+                      <p className="text-xs text-surface-400">{entry.count} sales</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-surface-600">
+                      {formatMoney(entry.value)}
+                    </p>
+                    <p className="text-xs text-surface-400">
+                      {paymentTotal > 0 ? ((entry.value / paymentTotal) * 100).toFixed(1) : '0.0'}%
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Card>
+
       <Card title="Top Products" subtitle={`Best sellers in ${monthName}`}>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={(topProducts || []).slice(0, 5)} layout="vertical">
@@ -116,3 +199,4 @@ function StatCard({ title, value, subtitle, warning, error }: { title: string; v
     </div>
   );
 }
+
