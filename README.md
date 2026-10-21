@@ -14,20 +14,25 @@ Development** as first-class engineering disciplines --- not as decoration aroun
   totals, discount, payment, tendered and change) that can also be reprinted from Sales
 - **Barcode Scanning**. USB/Bluetooth keyboard-wedge scanners, camera scanning, and manual entry
   on the cashier screen (no scanner required to run the system)
+- **Catalog**. Products with images and optional category assignment; managers can add, rename,
+  parent, deactivate and reactivate categories
 - **Inventory**. Append-only stock ledger, opening stock captured when a product is created,
-  low-stock alerts, valuation, adjustments, write-offs
-- **Purchasing**. Suppliers and purchase orders; receiving an order adds stock to the ledger
+  low-stock and out-of-stock alerts (including products never stocked), valuation, adjustments,
+  write-offs and per-product movement history
+- **Purchasing**. Suppliers, purchase orders and supplier invoices; receiving an order adds stock
+  to the ledger, and invoices track partial and full payments
 - **Sales Management**. Search by receipt number, filter by status, payment method, cashier and
   date range, refund, void, reprint receipts
 - **Shifts & Cash**. Open/close shifts, record payouts and float top-ups, reconcile the drawer
   with an X/Z report
 - **Offline-first PWA**. Installable app that keeps selling when the network drops
-- **Dashboard**. Real-time KPIs, the sales trend, and this month's best sellers
-- **Reports**. Sales, profit, inventory, best-seller, cashier and low-stock reports, grouped by the
-  shop's calendar day. Every report tab downloads its own CSV, and an export reports its own
-  failures instead of silently downloading an error page
+- **Dashboard**. Real-time KPIs, the sales trend, this month's best sellers and a 30-day payment mix
+- **Reports**. Sales, profit, inventory, best-seller, cashier, payment-method and low-stock reports,
+  grouped by the shop's calendar day. Every report tab downloads its own CSV, and an export reports
+  its own failures instead of silently downloading an error page
 - **Users & Roles**. Admin, Manager, Cashier with role-based permissions; an administrator-issued
-temporary password that the user must replace at first sign-in
+  temporary password that the user must replace at first sign-in, and a voluntary password change
+  from the header
 - **Clear feedback**. Every action confirms itself with a toast (or explains its failure), and
   destructive ones (deactivate, cancel an order, void) ask for confirmation first
 - **Audit Log**. An immutable record of who did what and when, with before/after values for
@@ -194,7 +199,7 @@ kept by hand as each adapter is added.
 | `inventory` | Append-only stock ledger, on-hand cache, valuation, low/out-of-stock |
 | `sales` | Sales aggregate, lines, payments, refunds, voids, receipt numbering |
 | `shifts` | Cashier shifts, opening float, cash movements, drawer reconciliation |
-| `purchasing` | Suppliers, purchase orders, goods receiving into inventory |
+| `purchasing` | Suppliers, purchase orders, goods receiving, supplier invoices and payments |
 | `reporting` | Read-only projections: dashboards, reports, CSV export |
 | `settings` | Business configuration (name, currency, receipt header/footer, discount limit, tax) |
 
@@ -251,7 +256,7 @@ business rules end up validated only through the slowest, most fragile tests.
   tests intentionally ignore.
 
 This split mirrors Clean Architecture: the domain is proven in isolation, the wiring is proven at the
-edges. The current suite is **355 backend tests** and **84 frontend unit tests**, plus Playwright
+edges. The current suite is **476 backend tests** and **126 frontend unit tests**, plus Playwright
 end-to-end scenarios; deepening each context's domain suite is the top item on the roadmap.
 
 ## 4. Why this is more than "just Django"
@@ -348,8 +353,14 @@ inventory ledger through a `StockIntakePort`, so procurement and stock levels st
 received order cannot be cancelled; an order can only be received once. Product names are captured
 on the line at order time so a PO keeps its history even if the catalog entry changes later.
 
-API: `/api/v1/purchasing/suppliers/`, `/suppliers/{id}/`, `/orders/`, `/orders/{id}/`, and the
-`/orders/{id}/order/`, `/receive/`, `/cancel/` transitions.
+Supplier invoices are recorded separately from stock receiving. Each invoice belongs to a supplier,
+can optionally reference a purchase order, and carries line items and a due date. A payment updates
+the invoice from **unpaid → partial → paid**; overpayment is rejected, and only an unpaid invoice can
+be voided. Invoice create, payment and void actions are written to the audit log.
+
+API: `/api/v1/purchasing/suppliers/`, `/suppliers/{id}/`, `/orders/`, `/orders/{id}/`, the
+`/orders/{id}/order/`, `/receive/`, `/cancel/` transitions, `/invoices/`, `/invoices/{id}/`, and
+`/invoices/{id}/payments/`, `/void/`.
 
 ### Temporary passwords and first login
 
@@ -398,16 +409,17 @@ Every money- or security-relevant action writes an immutable entry: **who** (the
 change can be reconstructed rather than merely noticed. Recorded activity covers:
 
 - **Authentication** --- successful and failed logins, first sign-ins that trigger a password change,
-  blocked attempts (deactivated/locked), logout, and password changes made after a temporary password.
+  blocked attempts (deactivated/locked), logout, and both forced and voluntary password changes.
 - **Users** --- created, updated, **role changes**, deactivated.
 - **Catalog** --- product created/updated (price changes as before/after diffs) and deactivated;
-  category created/deactivated.
+  category created/updated/deactivated.
 - **Inventory** --- opening stock and manual adjustments, each with the on-hand quantity before and
   after. Automatic movements generated by a sale are *not* double-logged; they are captured by the
   `sale.completed` entry, keeping one entry per business action.
 - **Sales** --- completed (receipt, total, payment methods), **voided** (with reason), refunded.
 - **Shifts** --- opened, closed (with expected cash and variance), and cash movements.
-- **Purchasing** --- supplier created/updated; purchase order created/ordered/received/cancelled.
+- **Purchasing** --- supplier created/updated; purchase order created/ordered/received/cancelled;
+  supplier invoice created/paid/voided.
 - **Settings** --- business configuration changes, recorded as a diff.
 
 The port (`AuditPort`) is declared in `shared/application/audit.py` and injected into the use cases
