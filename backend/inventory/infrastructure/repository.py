@@ -30,7 +30,8 @@ class DjangoStockMovementRepository(StockMovementRepository):
 
     def list_by_product(self, product_id: UUID) -> list[StockMovement]:
         return [
-            self._to_domain(m) for m in StockMovementModel.objects.filter(product_id=product_id)
+            self._to_domain(m)
+            for m in StockMovementModel.objects.filter(product_id=product_id).order_by("-timestamp")
         ]
 
     def list_all(
@@ -103,32 +104,39 @@ class DjangoStockItemRepository(StockItemRepository):
     def list_low_stock(self) -> list[StockItem]:
         from catalog.infrastructure.models import ProductModel
 
-        minimums = dict(
-            ProductModel.objects.filter(minimum_stock_level__gt=0).values_list(
-                "id", "minimum_stock_level"
-            )
-        )
-        return [
-            StockItem(
-                id=m.id,
-                product_id=m.product_id,
-                quantity_on_hand=m.quantity_on_hand,
-                reserved_quantity=m.reserved_quantity,
-            )
-            for m in StockItemModel.objects.all()
-            if m.product_id in minimums and m.quantity_on_hand <= minimums[m.product_id]
-        ]
+        items = {m.product_id: m for m in StockItemModel.objects.all()}
+        result = []
+        for product in ProductModel.objects.filter(is_active=True, minimum_stock_level__gt=0):
+            item = items.get(product.id)
+            quantity = item.quantity_on_hand if item else 0
+            if quantity <= product.minimum_stock_level:
+                result.append(
+                    StockItem(
+                        id=item.id if item else UUID(int=0),
+                        product_id=product.id,
+                        quantity_on_hand=quantity,
+                        reserved_quantity=item.reserved_quantity if item else 0,
+                    )
+                )
+        return result
 
     def list_out_of_stock(self) -> list[StockItem]:
-        return [
-            StockItem(
-                id=m.id,
-                product_id=m.product_id,
-                quantity_on_hand=m.quantity_on_hand,
-                reserved_quantity=m.reserved_quantity,
-            )
-            for m in StockItemModel.objects.filter(quantity_on_hand=0)
-        ]
+        from catalog.infrastructure.models import ProductModel
+
+        items = {m.product_id: m for m in StockItemModel.objects.all()}
+        result = []
+        for product in ProductModel.objects.filter(is_active=True):
+            item = items.get(product.id)
+            if item is None or item.quantity_on_hand == 0:
+                result.append(
+                    StockItem(
+                        id=item.id if item else UUID(int=0),
+                        product_id=product.id,
+                        quantity_on_hand=0,
+                        reserved_quantity=item.reserved_quantity if item else 0,
+                    )
+                )
+        return result
 
     def get_valuation(self) -> dict[str, object]:
         from catalog.infrastructure.models import ProductModel

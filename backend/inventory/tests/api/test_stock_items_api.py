@@ -110,6 +110,38 @@ def test_out_of_stock_items_include_product_name(api_client, manager_user, produ
 
 
 @pytest.mark.django_db
+def test_never_stocked_product_is_out_of_stock(api_client, manager_user, product):
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get("/api/v1/inventory/out-of-stock/")
+
+    assert response.status_code == 200
+    assert [item["product_id"] for item in response.data] == [str(product.id)]
+
+
+@pytest.mark.django_db
+def test_never_stocked_product_below_minimum_is_low_stock(api_client, manager_user, db):
+    product = ProductModel.objects.create(name="Salt 1kg", sku="SAL-001", minimum_stock_level=5)
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get("/api/v1/inventory/low-stock/")
+
+    assert response.status_code == 200
+    assert [item["product_id"] for item in response.data] == [str(product.id)]
+
+
+@pytest.mark.django_db
+def test_inactive_products_are_not_out_of_stock(api_client, manager_user, db):
+    ProductModel.objects.create(name="Old item", sku="OLD-001", is_active=False)
+    api_client.force_authenticate(user=manager_user)
+
+    response = api_client.get("/api/v1/inventory/out-of-stock/")
+
+    assert response.status_code == 200
+    assert response.data == []
+
+
+@pytest.mark.django_db
 def test_unauthenticated_cannot_list_stock_items(api_client):
     response = api_client.get("/api/v1/inventory/items/")
     assert response.status_code == 403
