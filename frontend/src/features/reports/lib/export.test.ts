@@ -16,6 +16,14 @@ describe('reportExport', () => {
     expect(reportExport('lowstock')?.dated).toBe(false);
   });
 
+  it('exports payment method sales', () => {
+    expect(reportExport('payments')).toEqual({
+      path: '/reporting/by-payment-method/csv/',
+      filename: 'sales_by_payment_method.csv',
+      dated: true,
+    });
+  });
+
   it('returns nothing for an unknown report', () => {
     expect(reportExport('unknown')).toBeUndefined();
   });

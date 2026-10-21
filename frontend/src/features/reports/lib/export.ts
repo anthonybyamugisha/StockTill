@@ -35,6 +35,11 @@ const EXPORTS: Record<string, ReportExport> = {
     filename: 'cashier_sales.csv',
     dated: true,
   },
+  payments: {
+    path: '/reporting/by-payment-method/csv/',
+    filename: 'sales_by_payment_method.csv',
+    dated: true,
+  },
 };
 
 export function reportExport(reportId: string): ReportExport | undefined {

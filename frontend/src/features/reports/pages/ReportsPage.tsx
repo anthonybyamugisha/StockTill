@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems, getInventoryReport, downloadReportCsv, CashierSales } from '../api/reports';
+import { getSalesSummary, getTopProducts, getDailySales, getCashierSales, getProfitReport, getLowStockItems, getInventoryReport, getSalesByPaymentMethod, downloadReportCsv, CashierSales, PaymentMethodSales } from '../api/reports';
+import { paymentMethodLabel } from '../../payments/lib/paymentMethods';
 import { Card } from '../../../shared/ui/Card';
 import { Button } from '../../../shared/ui/Button';
 import { Input } from '../../../shared/ui/Input';
@@ -25,6 +26,7 @@ export function ReportsPage() {
     { id: 'products', label: 'Best Sellers' },
     { id: 'lowstock', label: 'Low Stock' },
     { id: 'cashier', label: 'Sales by Cashier' },
+    { id: 'payments', label: 'Payment Methods' },
   ];
 
   const activeLabel = reports.find((r) => r.id === activeReport)?.label ?? 'Report';
@@ -78,6 +80,7 @@ export function ReportsPage() {
       {activeReport === 'products' && <BestSellers dateFrom={dateFrom} dateTo={dateTo} />}
       {activeReport === 'lowstock' && <LowStockReport />}
       {activeReport === 'cashier' && <CashierReport dateFrom={dateFrom} dateTo={dateTo} />}
+      {activeReport === 'payments' && <PaymentMethodsReport dateFrom={dateFrom} dateTo={dateTo} />}
     </div>
   );
 }
@@ -279,5 +282,85 @@ function CashierReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
         emptyMessage="No cashier data"
       />
     </Card>
+  );
+}
+
+
+function PaymentMethodsReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { data: paymentMethods } = useQuery({
+    queryKey: ['paymentMethods', dateFrom, dateTo],
+    queryFn: () => getSalesByPaymentMethod(dateFrom, dateTo),
+  });
+
+  const rows = useMemo(
+    () =>
+      (paymentMethods ?? []).map((entry) => ({
+        method: entry.method,
+        label: paymentMethodLabel(entry.method),
+        count: entry.count,
+        total: Number(entry.total),
+      })),
+    [paymentMethods],
+  );
+
+  const total = rows.reduce((sum, row) => sum + row.total, 0);
+  const totalSales = rows.reduce((sum, row) => sum + row.count, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="card">
+          <p className="text-sm text-surface-400">Paid Sales</p>
+          <p className="mt-1 text-2xl font-semibold text-surface-600">{totalSales}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-surface-400">Collected</p>
+          <p className="mt-1 text-2xl font-semibold text-surface-600">{formatMoney(total)}</p>
+        </div>
+      </div>
+
+      <Card title="Payment Methods" subtitle={`${formatShortDate(dateFrom)} to ${formatShortDate(dateTo)}`}>
+        <ResponsiveContainer width="100%" height={Math.max(180, rows.length * 60)}>
+          <BarChart data={rows} layout="vertical">
+            <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
+            <XAxis type="number" tick={{ fontSize: 12 }} />
+            <YAxis type="category" dataKey="label" tick={{ fontSize: 12 }} width={140} />
+            <Tooltip formatter={(value: number) => formatMoney(value)} />
+            <Bar dataKey="total" fill="#0078d4" name="Sales" />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <Card>
+        <Table
+          columns={[
+            {
+              key: 'method',
+              header: 'Method',
+              render: (row: PaymentMethodSales) => paymentMethodLabel(row.method),
+            },
+            {
+              key: 'count',
+              header: 'Transactions',
+              render: (row: PaymentMethodSales) => row.count,
+            },
+            {
+              key: 'total',
+              header: 'Total',
+              render: (row: PaymentMethodSales) => formatMoney(row.total),
+            },
+            {
+              key: 'share',
+              header: 'Share',
+              render: (row: PaymentMethodSales) =>
+                total > 0 ? `${((Number(row.total) / total) * 100).toFixed(1)}%` : '0.0%',
+            },
+          ]}
+          data={paymentMethods || []}
+          keyExtractor={(row) => row.method}
+          emptyMessage="No payment data for this period"
+        />
+      </Card>
+    </div>
   );
 }
