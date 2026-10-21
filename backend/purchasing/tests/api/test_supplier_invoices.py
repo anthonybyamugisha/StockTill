@@ -73,9 +73,7 @@ def test_manager_can_create_an_invoice(api_client, manager_user, supplier):
 
 
 @pytest.mark.django_db
-def test_duplicate_invoice_number_for_same_supplier_is_rejected(
-    api_client, manager_user, supplier
-):
+def test_duplicate_invoice_number_for_same_supplier_is_rejected(api_client, manager_user, supplier):
     api_client.force_authenticate(user=manager_user)
     first = api_client.post(
         "/api/v1/purchasing/invoices/", _invoice_payload(supplier["id"]), format="json"
@@ -150,9 +148,7 @@ def test_payment_cannot_exceed_the_balance(api_client, manager_user, supplier):
 
 
 @pytest.mark.django_db
-def test_unpaid_invoice_can_be_voided_but_paid_invoice_cannot(
-    api_client, manager_user, supplier
-):
+def test_unpaid_invoice_can_be_voided_but_paid_invoice_cannot(api_client, manager_user, supplier):
     api_client.force_authenticate(user=manager_user)
     first = api_client.post(
         "/api/v1/purchasing/invoices/", _invoice_payload(supplier["id"]), format="json"
@@ -187,9 +183,7 @@ def test_unpaid_invoice_can_be_voided_but_paid_invoice_cannot(
 @pytest.mark.django_db
 def test_invoices_can_be_filtered_by_status(api_client, manager_user, supplier):
     api_client.force_authenticate(user=manager_user)
-    api_client.post(
-        "/api/v1/purchasing/invoices/", _invoice_payload(supplier["id"]), format="json"
-    )
+    api_client.post("/api/v1/purchasing/invoices/", _invoice_payload(supplier["id"]), format="json")
 
     response = api_client.get("/api/v1/purchasing/invoices/?status=paid")
 
