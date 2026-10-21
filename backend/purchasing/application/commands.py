@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import date
 from uuid import UUID
 
 from shared.domain.money import Money
@@ -51,5 +52,40 @@ class ReceivePurchaseOrderCommand:
 @dataclass(frozen=True)
 class CancelPurchaseOrderCommand:
     purchase_order_id: UUID
+    reason: str = ""
+    actor_id: UUID | None = None
+
+
+@dataclass(frozen=True)
+class SupplierInvoiceLineInput:
+    quantity: int
+    unit_cost: Money
+    product_id: UUID | None = None
+    product_name: str = ""
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class CreateSupplierInvoiceCommand:
+    supplier_id: UUID
+    invoice_number: str
+    lines: list[SupplierInvoiceLineInput] = field(default_factory=list)
+    invoice_date: date | None = None
+    due_date: date | None = None
+    purchase_order_id: UUID | None = None
+    notes: str = ""
+    actor_id: UUID | None = None
+
+
+@dataclass(frozen=True)
+class RecordSupplierInvoicePaymentCommand:
+    invoice_id: UUID
+    amount: Money
+    actor_id: UUID | None = None
+
+
+@dataclass(frozen=True)
+class VoidSupplierInvoiceCommand:
+    invoice_id: UUID
     reason: str = ""
     actor_id: UUID | None = None

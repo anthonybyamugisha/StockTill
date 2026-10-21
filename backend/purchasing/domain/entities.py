@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
 
 from purchasing.domain.errors import (
     EmptyPurchaseOrderError,
+    InvalidInvoiceStateError,
     InvalidPurchaseOrderStateError,
     InvalidSupplierError,
 )
@@ -18,6 +19,13 @@ class PurchaseOrderStatus(StrEnum):
     ORDERED = "ordered"
     RECEIVED = "received"
     CANCELLED = "cancelled"
+
+
+class SupplierInvoiceStatus(StrEnum):
+    UNPAID = "unpaid"
+    PARTIAL = "partial"
+    PAID = "paid"
+    VOID = "void"
 
 
 @dataclass(eq=False)
@@ -113,3 +121,76 @@ class PurchaseOrder(AggregateRoot):
         if reason:
             self.notes = f"{self.notes}\nCancelled: {reason}".strip()
         self.status = PurchaseOrderStatus.CANCELLED
+
+
+@dataclass(eq=False)
+class SupplierInvoiceLine(Entity):
+    product_id: UUID | None = None
+    product_name: str = ""
+    description: str = ""
+    quantity: int = 1
+    unit_cost: Money = field(default_factory=Money.zero)
+
+    def __post_init__(self) -> None:
+        if self.quantity <= 0:
+            raise InvalidInvoiceStateError("Invoice line quantity must be greater than zero")
+        if self.unit_cost.is_negative():
+            raise InvalidInvoiceStateError("Invoice line cost cannot be negative")
+
+    @property
+    def line_total(self) -> Money:
+        return self.unit_cost.multiply(Decimal(self.quantity))
+
+
+@dataclass(eq=False)
+class SupplierInvoice(AggregateRoot):
+    supplier_id: UUID | None = None
+    supplier_name: str = ""
+    invoice_number: str = ""
+    invoice_date: date | None = None
+    due_date: date | None = None
+    purchase_order_id: UUID | None = None
+    status: SupplierInvoiceStatus = SupplierInvoiceStatus.UNPAID
+    notes: str = ""
+    lines: list[SupplierInvoiceLine] = field(default_factory=list)
+    amount_paid: Money = field(default_factory=Money.zero)
+    created_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        if not self.invoice_number.strip():
+            raise InvalidInvoiceStateError("Invoice number is required")
+        if not self.lines:
+            raise InvalidInvoiceStateError("Invoice must have at least one line")
+
+    @property
+    def total(self) -> Money:
+        return sum((line.line_total for line in self.lines), Money.zero())
+
+    @property
+    def balance(self) -> Money:
+        return self.total.subtract(self.amount_paid)
+
+    def record_payment(self, amount: Money) -> None:
+        if self.status == SupplierInvoiceStatus.VOID:
+            raise InvalidInvoiceStateError("Cannot pay a void invoice")
+        if self.status == SupplierInvoiceStatus.PAID:
+            raise InvalidInvoiceStateError("Invoice is already paid")
+        if amount.amount <= 0:
+            raise InvalidInvoiceStateError("Payment amount must be greater than zero")
+        if amount > self.balance:
+            raise InvalidInvoiceStateError("Payment cannot exceed the outstanding balance")
+        self.amount_paid = self.amount_paid.add(amount)
+        self.status = (
+            SupplierInvoiceStatus.PAID
+            if self.amount_paid >= self.total
+            else SupplierInvoiceStatus.PARTIAL
+        )
+
+    def void(self, reason: str = "") -> None:
+        if self.status == SupplierInvoiceStatus.VOID:
+            raise InvalidInvoiceStateError("Invoice is already void")
+        if self.status == SupplierInvoiceStatus.PAID or not self.amount_paid.is_zero():
+            raise InvalidInvoiceStateError("Only unpaid invoices can be voided")
+        if reason:
+            self.notes = f"{self.notes}\nVoided: {reason}".strip()
+        self.status = SupplierInvoiceStatus.VOID

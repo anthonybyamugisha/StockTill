@@ -7,12 +7,32 @@ from purchasing.interfaces.api.views import (
     PurchaseOrderOrderView,
     PurchaseOrderReceiveView,
     SupplierDetailView,
+    SupplierInvoiceDetailView,
+    SupplierInvoiceListCreateView,
+    SupplierInvoicePaymentView,
+    SupplierInvoiceVoidView,
     SupplierListCreateView,
 )
 
 urlpatterns = [
     path("suppliers/", SupplierListCreateView.as_view(), name="supplier-list-create"),
     path("suppliers/<uuid:supplier_id>/", SupplierDetailView.as_view(), name="supplier-detail"),
+    path("invoices/", SupplierInvoiceListCreateView.as_view(), name="supplier-invoice-list-create"),
+    path(
+        "invoices/<uuid:invoice_id>/",
+        SupplierInvoiceDetailView.as_view(),
+        name="supplier-invoice-detail",
+    ),
+    path(
+        "invoices/<uuid:invoice_id>/payments/",
+        SupplierInvoicePaymentView.as_view(),
+        name="supplier-invoice-payment",
+    ),
+    path(
+        "invoices/<uuid:invoice_id>/void/",
+        SupplierInvoiceVoidView.as_view(),
+        name="supplier-invoice-void",
+    ),
     path("orders/", PurchaseOrderListCreateView.as_view(), name="purchase-order-list-create"),
     path(
         "orders/<uuid:purchase_order_id>/",

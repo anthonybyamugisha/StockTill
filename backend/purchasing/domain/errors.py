@@ -23,3 +23,15 @@ class EmptyPurchaseOrderError(PurchasingError):
 
 class InvalidSupplierError(PurchasingError):
     pass
+
+
+class SupplierInvoiceNotFoundError(PurchasingError):
+    pass
+
+
+class InvalidInvoiceStateError(PurchasingError):
+    pass
+
+
+class DuplicateInvoiceNumberError(PurchasingError):
+    pass
