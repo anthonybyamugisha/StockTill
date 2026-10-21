@@ -95,3 +95,83 @@ export async function cancelPurchaseOrder(id: string, reason = ''): Promise<Purc
   const res = await apiClient.post<PurchaseOrder>(`/purchasing/orders/${id}/cancel/`, { reason });
   return res.data;
 }
+
+export interface SupplierInvoiceLine {
+  id: string;
+  product_id: string | null;
+  product_name: string;
+  description: string;
+  quantity: number;
+  unit_cost: string;
+  line_total: string;
+}
+
+export interface SupplierInvoice {
+  id: string;
+  supplier_id: string | null;
+  supplier_name: string;
+  invoice_number: string;
+  invoice_date: string | null;
+  due_date: string | null;
+  purchase_order_id: string | null;
+  status: string;
+  notes: string;
+  amount_paid: string;
+  total: string;
+  balance: string;
+  created_at: string;
+  lines: SupplierInvoiceLine[];
+}
+
+export interface SupplierInvoiceLineInput {
+  product_id?: string | null;
+  product_name?: string;
+  description?: string;
+  quantity: number;
+  unit_cost: string;
+}
+
+export interface SupplierInvoiceInput {
+  supplier_id: string;
+  invoice_number: string;
+  invoice_date?: string | null;
+  due_date?: string | null;
+  purchase_order_id?: string | null;
+  notes?: string;
+  lines: SupplierInvoiceLineInput[];
+}
+
+export async function listSupplierInvoices(filters: {
+  status?: string;
+  supplierId?: string;
+} = {}): Promise<SupplierInvoice[]> {
+  const res = await apiClient.get<SupplierInvoice[]>('/purchasing/invoices/', {
+    params: {
+      status: filters.status || undefined,
+      supplier_id: filters.supplierId || undefined,
+    },
+  });
+  return res.data;
+}
+
+export async function createSupplierInvoice(data: SupplierInvoiceInput): Promise<SupplierInvoice> {
+  const res = await apiClient.post<SupplierInvoice>('/purchasing/invoices/', data);
+  return res.data;
+}
+
+export async function recordSupplierInvoicePayment(
+  id: string,
+  amount: string,
+): Promise<SupplierInvoice> {
+  const res = await apiClient.post<SupplierInvoice>(`/purchasing/invoices/${id}/payments/`, {
+    amount,
+  });
+  return res.data;
+}
+
+export async function voidSupplierInvoice(id: string, reason = ''): Promise<SupplierInvoice> {
+  const res = await apiClient.post<SupplierInvoice>(`/purchasing/invoices/${id}/void/`, {
+    reason,
+  });
+  return res.data;
+}
