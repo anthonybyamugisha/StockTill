@@ -155,6 +155,23 @@ def test_the_callback_completes_the_sale_and_reduces_stock(api_client, cashier, 
 
 
 @pytest.mark.django_db
+def test_mtn_can_deliver_the_callback_with_put(api_client, cashier, stocked_product):
+    api_client.force_authenticate(user=cashier)
+    intent = _create_intent(api_client, stocked_product.id).data
+
+    callback = api_client.put(
+        "/api/v1/payments/callbacks/mtn/",
+        {"tx_ref": intent["tx_ref"], "status": "successful"},
+        format="json",
+    )
+
+    assert callback.status_code == 200, callback.data
+    assert callback.data["status"] == "paid"
+    stock = StockItemModel.objects.get(product_id=stocked_product.id)
+    assert stock.quantity_on_hand == 8
+
+
+@pytest.mark.django_db
 def test_a_replayed_callback_does_not_complete_a_second_sale(api_client, cashier, stocked_product):
     api_client.force_authenticate(user=cashier)
     intent = _create_intent(api_client, stocked_product.id).data

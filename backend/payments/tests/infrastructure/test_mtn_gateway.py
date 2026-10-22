@@ -124,6 +124,27 @@ def test_verify_reports_a_failed_payment_with_the_reason():
     assert result.message == "Insufficient funds"
 
 
+def test_verify_reads_the_message_from_the_mtn_reason_object():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/collection/token/":
+            return httpx.Response(200, json={"access_token": "token-1", "expires_in": 3600})
+        return httpx.Response(
+            200,
+            json={
+                "status": "FAILED",
+                "reason": {
+                    "code": "PAYMENT_NOT_APPROVED",
+                    "message": "The payer did not approve the payment",
+                },
+            },
+        )
+
+    result = _gateway(handler).verify(_intent(gateway_reference="ref-1"))
+
+    assert result.status == GatewayOutcome.FAILED
+    assert result.message == "The payer did not approve the payment"
+
+
 def test_verify_treats_a_missing_request_as_failed():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/collection/token/":
@@ -152,6 +173,36 @@ def test_callback_reads_the_external_id_and_status():
     assert event.reference == "ref-1"
     assert event.status == GatewayOutcome.SUCCESSFUL
     assert event.amount == Decimal("50000")
+
+
+def test_callback_reads_the_message_from_the_mtn_reason_object():
+    event = _gateway(lambda request: httpx.Response(200)).parse_callback(
+        payload={
+            "externalId": "PAY-MTN-1",
+            "referenceId": "ref-1",
+            "status": "FAILED",
+            "reason": {"code": "PAYER_NOT_FOUND", "message": "The payer was not found"},
+        },
+        query={},
+    )
+
+    assert event.status == GatewayOutcome.FAILED
+    assert event.message == "The payer was not found"
+
+
+def test_the_base_url_can_include_the_collection_segment():
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        if request.url.path == "/collection/token/":
+            return httpx.Response(200, json={"access_token": "token-1", "expires_in": 3600})
+        return httpx.Response(202)
+
+    result = _gateway(handler, base_url="https://mtn.test/collection").request_payment(_intent())
+
+    assert result.status == GatewayOutcome.PENDING
+    assert paths == ["/collection/token/", "/collection/v1_0/requesttopay"]
 
 
 def test_a_rejected_token_raises_a_gateway_error():

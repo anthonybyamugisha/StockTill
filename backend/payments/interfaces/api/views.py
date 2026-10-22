@@ -134,6 +134,12 @@ class MobileMoneyCallbackView(APIView):
     authentication_classes: list[Any] = []
 
     def post(self, request, network):
+        return self._handle_callback(request, network)
+
+    def put(self, request, network):
+        return self._handle_callback(request, network)
+
+    def _handle_callback(self, request, network):
         secret = getattr(settings, "PAYMENTS_CALLBACK_SECRET", "")
         if secret and request.query_params.get("token") != secret:
             return Response({"detail": "Invalid callback token"}, status=status.HTTP_403_FORBIDDEN)

@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -28,14 +29,21 @@ class AirtelMoneyGateway(PaymentGatewayPort):
         country: str = "UG",
         currency: str = "UGX",
         callback_url: str = "",
+        simulate: bool = False,
+        sign_requests: bool = True,
         client: httpx.Client | None = None,
     ):
-        self._base_url = base_url.rstrip("/")
+        base_url = base_url.rstrip("/")
+        if base_url.endswith("/simulate"):
+            base_url = base_url[: -len("/simulate")]
+        self._base_url = base_url
         self._client_id = client_id
         self._client_secret = client_secret
         self._country = country
         self._currency = currency
         self._callback_url = callback_url
+        self._simulate = simulate
+        self._sign_requests = sign_requests
         self._client = client or httpx.Client(timeout=15)
         self._token: str | None = None
         self._token_expires_at: datetime | None = None
@@ -63,20 +71,24 @@ class AirtelMoneyGateway(PaymentGatewayPort):
                 "msisdn": intent.phone,
             },
             "transaction": {
-                "amount": float(intent.amount.amount),
+                "amount": f"{intent.amount.amount:.2f}",
                 "country": self._country,
                 "currency": self._currency,
                 "id": reference,
             },
         }
 
-        try:
-            signed = sign_payload(self._encryption_key(), payload)
-        except (TypeError, ValueError) as error:
-            raise GatewayError("Could not sign the Airtel Money request") from error
-        headers.update(signed.headers)
+        if self._sign_requests:
+            try:
+                signed = sign_payload(self._encryption_key(), payload)
+            except (TypeError, ValueError) as error:
+                raise GatewayError("Could not sign the Airtel Money request") from error
+            headers.update(signed.headers)
+            body = signed.body
+        else:
+            body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
 
-        response = self._post("/merchant/v2/payments/", headers=headers, content=signed.body)
+        response = self._post(self._path("/merchant/v2/payments/"), headers=headers, content=body)
         if response.status_code not in {200, 201, 202}:
             raise GatewayError(self._error_message(response, "Airtel Money rejected the request"))
 
@@ -98,7 +110,7 @@ class AirtelMoneyGateway(PaymentGatewayPort):
             raise GatewayError("The Airtel Money request has no reference to check")
 
         response = self._get(
-            f"/standard/v1/payments/{intent.gateway_reference}",
+            self._path(f"/standard/v1/payments/{intent.gateway_reference}"),
             headers={
                 **self._auth_headers(),
                 "X-Country": self._country,
@@ -159,6 +171,9 @@ class AirtelMoneyGateway(PaymentGatewayPort):
             currency=transaction.get("currency") or payload.get("currency"),
             message=str(transaction.get("message") or payload.get("message") or ""),
         )
+
+    def _path(self, path: str) -> str:
+        return f"/simulate{path}" if self._simulate else path
 
     def _auth_headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._access_token()}"}

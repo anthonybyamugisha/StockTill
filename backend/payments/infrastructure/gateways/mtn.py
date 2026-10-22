@@ -30,7 +30,10 @@ class MTNMoMoGateway(PaymentGatewayPort):
         callback_url: str = "",
         client: httpx.Client | None = None,
     ):
-        self._base_url = base_url.rstrip("/")
+        base_url = base_url.rstrip("/")
+        if base_url.endswith("/collection"):
+            base_url = base_url[: -len("/collection")]
+        self._base_url = base_url
         self._subscription_key = subscription_key
         self._api_user = api_user
         self._api_key = api_key
@@ -110,7 +113,7 @@ class MTNMoMoGateway(PaymentGatewayPort):
             provider="mtn",
             reference=intent.gateway_reference,
             status=self._outcome(str(data.get("status", ""))),
-            message=str(data.get("reason") or ""),
+            message=self._reason_message(data.get("reason")),
             amount=self._decimal(data.get("amount")),
             currency=data.get("currency"),
         )
@@ -128,7 +131,7 @@ class MTNMoMoGateway(PaymentGatewayPort):
             status=self._outcome(str(payload.get("status", ""))),
             amount=self._decimal(payload.get("amount")),
             currency=payload.get("currency"),
-            message=str(payload.get("reason") or payload.get("message") or ""),
+            message=self._reason_message(payload.get("reason") or payload.get("message")),
         )
 
     def _auth_headers(self) -> dict[str, str]:
@@ -200,6 +203,12 @@ class MTNMoMoGateway(PaymentGatewayPort):
             return Decimal(str(value))
         except (ArithmeticError, ValueError):
             return None
+
+    @staticmethod
+    def _reason_message(value: Any) -> str:
+        if isinstance(value, dict):
+            return str(value.get("message") or value.get("code") or "")
+        return str(value or "")
 
     @staticmethod
     def _error_message(response: httpx.Response, fallback: str) -> str:

@@ -133,9 +133,92 @@ def test_request_payment_asks_airtel_to_charge_the_customer():
         "currency": "UGX",
         "msisdn": "256752123456",
     }
-    assert body["transaction"]["amount"] == 50000
+    assert body["transaction"]["amount"] == "50000.00"
     assert body["transaction"]["currency"] == "UGX"
     assert body["transaction"]["id"]
+
+
+def test_sandbox_payments_use_the_simulate_endpoints_without_signing():
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/auth/oauth2/token":
+            return httpx.Response(200, json={"access_token": "token-1", "expires_in": 3600})
+        if request.url.path == "/simulate/merchant/v2/payments/":
+            return httpx.Response(
+                200,
+                json={
+                    "data": {"transaction": {"id": "airtel-ref-1", "status": "TIP"}},
+                    "status": {"code": "200", "message": "Success"},
+                },
+            )
+        return httpx.Response(404)
+
+    gateway = _gateway(handler, simulate=True, sign_requests=False)
+    result = gateway.request_payment(_intent())
+
+    assert result.reference == "airtel-ref-1"
+    assert [request.url.path for request in requests] == [
+        "/auth/oauth2/token",
+        "/simulate/merchant/v2/payments/",
+    ]
+    charge = requests[1]
+    assert "x-signature" not in charge.headers
+    body = json.loads(charge.content)
+    assert body["reference"] == "PAY-AIRTEL-1"
+    assert body["transaction"]["amount"] == "50000.00"
+
+
+def test_sandbox_verification_uses_the_simulate_endpoint():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/auth/oauth2/token":
+            return httpx.Response(200, json={"access_token": "token-1", "expires_in": 3600})
+        assert request.url.path == "/simulate/standard/v1/payments/airtel-ref-1"
+        return httpx.Response(
+            200,
+            json={
+                "data": {
+                    "transaction": {
+                        "id": "airtel-ref-1",
+                        "status": "TS",
+                        "amount": "50000",
+                        "currency": "UGX",
+                    }
+                },
+                "status": {"code": "200", "message": "Success"},
+            },
+        )
+
+    result = _gateway(handler, simulate=True).verify(_intent(gateway_reference="airtel-ref-1"))
+
+    assert result.status == GatewayOutcome.SUCCESSFUL
+
+
+def test_the_base_url_can_include_the_simulate_segment():
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        if request.url.path == "/auth/oauth2/token":
+            return httpx.Response(200, json={"access_token": "token-1", "expires_in": 3600})
+        return httpx.Response(
+            200,
+            json={
+                "data": {"transaction": {"id": "airtel-ref-1", "status": "TIP"}},
+                "status": {"code": "200", "message": "Success"},
+            },
+        )
+
+    gateway = _gateway(
+        handler,
+        base_url="https://openapi.airtel.ug/simulate",
+        simulate=True,
+        sign_requests=False,
+    )
+    gateway.request_payment(_intent())
+
+    assert paths == ["/auth/oauth2/token", "/simulate/merchant/v2/payments/"]
 
 
 def test_verify_reports_a_successful_payment():

@@ -32,6 +32,8 @@ def build_provider_gateways() -> dict[MobileNetwork, PaymentGatewayPort]:
             country=settings.AIRTEL_MONEY_COUNTRY,
             currency=settings.AIRTEL_MONEY_CURRENCY,
             callback_url=settings.AIRTEL_MONEY_CALLBACK_URL,
+            simulate=settings.AIRTEL_MONEY_SIMULATE,
+            sign_requests=settings.AIRTEL_MONEY_SIGN_REQUESTS,
         )
 
     return gateways
