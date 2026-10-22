@@ -3,7 +3,7 @@
 Browser-based Point of Sale and inventory management system for retail shops. StockTill is a
 **modular-monolith** backend (Python 3.12, Django, Django REST Framework) and a **React/TypeScript**
 single-page app, built with **Domain-Driven Design**, **Clean Architecture** and **Test-Driven
-Development** as first-class engineering disciplines --- not as decoration around a framework.
+Development** as first-class engineering disciplines. They are not decoration around a framework.
 
 ## Features
 
@@ -139,14 +139,14 @@ serializers and views, duplicated, and only testable by standing up a database.
 
 **What we did.** We modelled the business explicitly, in plain Python with no framework imports:
 
-- **Entities & aggregates** --- `Sale`, `Shift`, `PurchaseOrder`, `Supplier`. Each aggregate is the
+- **Entities & aggregates**. `Sale`, `Shift`, `PurchaseOrder`, `Supplier`. Each aggregate is the
   only thing allowed to enforce its own invariants.
-- **Value objects** --- `Money` is a decimal value object (never `float`), so currency rounding is
+- **Value objects**. `Money` is a decimal value object (never `float`), so currency rounding is
   defined in exactly one place.
-- **Ubiquitous language** --- the words in the code (*sale line*, *payment*, *refund*, *void*,
+- **Ubiquitous language**. The words in the code (*sale line*, *payment*, *refund*, *void*,
   *stock movement*, *shift*, *variance*, *purchase order*) are the words used in the UI, the tests
   and this document.
-- **Repository interfaces and ports** --- declared in the inner layers and satisfied
+- **Repository interfaces and ports**. These are declared in the inner layers and satisfied
   outside.
 
 A good example is `Shift.expected_cash()` and `Shift.variance()`: the drawer formula lives on the
@@ -163,12 +163,12 @@ framework.
 
 | Layer | Contains | Depends on |
 |-------|----------|-----------|
-| **Domain** | Entities, aggregates, value objects, domain errors, repository **interfaces** | Pure Python only --- no Django, no DRF |
+| **Domain** | Entities, aggregates, value objects, domain errors, repository **interfaces** | Pure Python only. No Django, no DRF |
 | **Application** | Use cases (command/query handlers), **ports** for cross-context work, clocks | Domain |
 | **Infrastructure** | Django models, migrations, repository implementations, adapters | Application + Domain |
 | **Interfaces** | DRF views, serializers, permissions, URLs | Application |
 
-The rule --- *source code dependencies only point inward* --- is declared as two contracts in
+The rule. *Source code dependencies only point inward*. It is declared as two contracts in
 `backend/pyproject.toml`:
 
 1. `*.domain` must not import `django` or `rest_framework`.
@@ -233,9 +233,9 @@ than editing a class that every feature shares.
 
 Design decisions are recorded in the repository history and summarised here:
 
-- **ADR-0001 --- Modular monolith.** Clean boundaries without microservice operational cost; clear
+- **ADR-0001. Modular monolith.** Clean boundaries without microservice operational cost; clear
   contexts; single deploy; no distributed-transaction overhead.
-- **ADR-0002 --- Append-only stock ledger.** Every stock change is an immutable `StockMovement`; the
+- **ADR-0002. Append-only stock ledger.** Every stock change is an immutable `StockMovement`; the
   on-hand quantity is derived and cached in `StockItem`. This gives a full audit trail, a cache that
   can be rebuilt from the ledger at any time, and a database constraint that makes negative stock
   impossible.
@@ -243,7 +243,7 @@ Design decisions are recorded in the repository history and summarised here:
 ## 3. Why Test-Driven Development
 
 **The problem with testing after the fact.** When tests are bolted on, they tend to assert whatever
-the code happens to do --- including bugs --- and they usually need the whole stack running. The
+the code happens to do. That includes bugs. They usually need the whole stack running. The
 business rules end up validated only through the slowest, most fragile tests.
 
 **What we did.** TDD at two levels:
@@ -252,8 +252,8 @@ business rules end up validated only through the slowest, most fragile tests.
   sale totals and discounts, refundable quantities, `Money` rounding, shift expected-cash/variance,
   and purchase-order state transitions. These are fast, deterministic and framework-free.
 - **API/contract tests.** DRF tests confirm the HTTP surface, permissions, idempotent replay,
-  barcode lookup, shift closing and purchase-order receiving --- the integration points that unit
-  tests intentionally ignore.
+  barcode lookup, shift closing and purchase-order receiving. These are the integration points that
+  unit tests intentionally ignore.
 
 This split mirrors Clean Architecture: the domain is proven in isolation, the wiring is proven at the
 edges. The current suite is **476 backend tests** and **126 frontend unit tests**, plus Playwright
@@ -261,7 +261,7 @@ end-to-end scenarios; deepening each context's domain suite is the top item on t
 
 ## 4. Why this is more than "just Django"
 
-Using the framework is not the point --- using it *at the edges* is. A summary:
+Using the framework is not the point. Using it *at the edges* is. A summary:
 
 | Concern | Framework-first | StockTill |
 |---------|-----------------|-----------|
@@ -271,7 +271,7 @@ Using the framework is not the point --- using it *at the edges* is. A summary:
 | What changing the DB costs | Rewriting business rules | Swapping infrastructure only |
 | What the invariants are | Implicit, scattered | Explicit on the aggregate, one source of truth |
 
-Django, DRF and React still do the heavy lifting --- CRUD, auth plumbing, HTTP, rendering --- but they
+Django, DRF and React still do the heavy lifting. That means CRUD, auth plumbing, HTTP and rendering. But they
 are kept *outside* the domain so that the part of the system that earns the shop money is the part we
 can reason about, test and change with confidence.
 
@@ -303,12 +303,12 @@ can reason about, test and change with confidence.
 The POS adds products by barcode in three ways, and **no scanner is required to run or evaluate the
 system**:
 
-1. **USB / Bluetooth scanner** --- a keyboard-wedge ("HID") scanner behaves like a second keyboard.
+1. **USB / Bluetooth scanner**. A keyboard-wedge ("HID") scanner behaves like a second keyboard.
    The POS listens for a fast burst of characters ending in Enter anywhere on the page, so the
    cashier can scan without focusing a field. Any standard 1D or 2D model works out of the box.
-2. **Camera** --- "Scan with camera" decodes via the browser's native `BarcodeDetector` API (Chrome
+2. **Camera**. "Scan with camera" decodes via the browser's native `BarcodeDetector` API (Chrome
    and Edge; other browsers show a helpful message). No extra dependency is installed.
-3. **Manual entry** --- type six or more characters into the search box and press Enter.
+3. **Manual entry**. Type six or more characters into the search box and press Enter.
 
 `frontend/src/features/pos/lib/barcodeBuffer.ts` is a small, framework-free buffer that tells a
 scanner burst apart from human typing using minimum length, average key interval and an idle reset.
@@ -387,7 +387,7 @@ login whenever the account has never recorded one (`last_login` is `null`), so a
 before the flag existed is pulled into the flow the first time it signs in. The sign-in is audited as
 `auth.first_login`, and the data migration `accounts/0003_backfill_first_login_passwords` sets the flag
 on every existing account that has never signed in. Accounts that have already signed in, and the
-seeded superuser, are left alone --- the superuser stays exempt so the deployment's break-glass account
+seeded superuser, are left alone. The superuser stays exempt so the deployment's break-glass account
 remains usable even if its flag is ever set. The temporary password is never stored in plain text or
 written to the audit log.
 
@@ -408,19 +408,19 @@ Every money- or security-relevant action writes an immutable entry: **who** (the
 (`action`, `entity_type`, `entity_id`), **when** (timestamp) and the **before/after** values, so a
 change can be reconstructed rather than merely noticed. Recorded activity covers:
 
-- **Authentication** --- successful and failed logins, first sign-ins that trigger a password change,
+- **Authentication**. Successful and failed logins, first sign-ins that trigger a password change,
   blocked attempts (deactivated/locked), logout, and both forced and voluntary password changes.
-- **Users** --- created, updated, **role changes**, deactivated.
-- **Catalog** --- product created/updated (price changes as before/after diffs) and deactivated;
+- **Users**. Created, updated, **role changes**, deactivated.
+- **Catalog**. Product created/updated (price changes as before/after diffs) and deactivated;
   category created/updated/deactivated.
-- **Inventory** --- opening stock and manual adjustments, each with the on-hand quantity before and
+- **Inventory**. Opening stock and manual adjustments, each with the on-hand quantity before and
   after. Automatic movements generated by a sale are *not* double-logged; they are captured by the
   `sale.completed` entry, keeping one entry per business action.
-- **Sales** --- completed (receipt, total, payment methods), **voided** (with reason), refunded.
-- **Shifts** --- opened, closed (with expected cash and variance), and cash movements.
-- **Purchasing** --- supplier created/updated; purchase order created/ordered/received/cancelled;
+- **Sales**. Completed (receipt, total, payment methods), **voided** (with reason), refunded.
+- **Shifts**. Opened, closed (with expected cash and variance), and cash movements.
+- **Purchasing**. Supplier created/updated; purchase order created/ordered/received/cancelled;
   supplier invoice created/paid/voided.
-- **Settings** --- business configuration changes, recorded as a diff.
+- **Settings**. Business configuration changes, recorded as a diff.
 
 The port (`AuditPort`) is declared in `shared/application/audit.py` and injected into the use cases
 that emit events; the Django implementation (`DjangoAuditRepository`) writes to the `accounts` audit
