@@ -41,6 +41,7 @@ PRODUCT_PAYLOAD = {
     "selling_price": "25000.00",
     "buying_cost": "20000.00",
 }
+IMAGE_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
 
 
 @pytest.mark.django_db
@@ -78,6 +79,43 @@ def test_manager_can_create_product_with_blank_optional_fields(api_client, manag
     response = api_client.post("/api/v1/catalog/products/", payload)
     assert response.status_code == 201
     assert response.data["barcode"] is None
+
+
+@pytest.mark.django_db
+def test_manager_can_create_product_with_an_image_from_a_device(api_client, manager_user):
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.post(
+        "/api/v1/catalog/products/",
+        {**PRODUCT_PAYLOAD, "image_url": IMAGE_DATA_URL},
+    )
+
+    assert response.status_code == 201
+    assert response.data["image_url"] == IMAGE_DATA_URL
+
+
+@pytest.mark.django_db
+def test_product_image_accepts_an_https_url(api_client, manager_user):
+    api_client.force_authenticate(user=manager_user)
+    image_url = "https://example.com/rice.jpg"
+    response = api_client.post(
+        "/api/v1/catalog/products/",
+        {**PRODUCT_PAYLOAD, "image_url": image_url},
+    )
+
+    assert response.status_code == 201
+    assert response.data["image_url"] == image_url
+
+
+@pytest.mark.django_db
+def test_product_image_rejects_an_unknown_source(api_client, manager_user):
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.post(
+        "/api/v1/catalog/products/",
+        {**PRODUCT_PAYLOAD, "image_url": "rice.jpg"},
+    )
+
+    assert response.status_code == 400
+    assert "image_url" in response.data
 
 
 @pytest.mark.django_db

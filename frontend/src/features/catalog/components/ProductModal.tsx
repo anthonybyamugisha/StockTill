@@ -4,6 +4,7 @@ import { Button } from '../../../shared/ui/Button';
 import { Input } from '../../../shared/ui/Input';
 import { Modal } from '../../../shared/ui/Modal';
 import { Select } from '../../../shared/ui/Select';
+import { imageFileToDataUrl } from '../../../shared/utils/image';
 
 type ProductPayload = Partial<Product> & { opening_stock?: number };
 
@@ -34,6 +35,25 @@ export function ProductModal({
     image_url: product?.image_url || '',
     opening_stock: 0,
   });
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [isPreparingImage, setIsPreparingImage] = useState(false);
+  const imageFromDevice = form.image_url.startsWith('data:image/');
+
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImageError(null);
+    setIsPreparingImage(true);
+    try {
+      const dataUrl = await imageFileToDataUrl(file);
+      setForm((current) => ({ ...current, image_url: dataUrl }));
+    } catch (error) {
+      setImageError(error instanceof Error ? error.message : 'Could not read that image.');
+    } finally {
+      setIsPreparingImage(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,14 +163,54 @@ export function ProductModal({
             onChange={(e) => setForm({ ...form, opening_stock: parseInt(e.target.value) || 0 })}
           />
         )}
-        <div className="col-span-2">
+        <div className="col-span-2 space-y-3">
           <Input
             label="Image URL"
             type="url"
             placeholder="https://example.com/product.jpg"
-            value={form.image_url}
-            onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+            value={imageFromDevice ? '' : form.image_url}
+            onChange={(e) => {
+              setImageError(null);
+              setForm({ ...form, image_url: e.target.value });
+            }}
           />
+          <div className="flex flex-wrap items-center gap-3">
+            <label
+              className={`btn-secondary inline-flex cursor-pointer items-center px-4 py-2 text-sm ${
+                isPreparingImage ? 'pointer-events-none opacity-60' : ''
+              }`}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={handleImageFile}
+                disabled={isPreparingImage}
+              />
+              {isPreparingImage ? 'Preparing image...' : 'Choose from device'}
+            </label>
+            {form.image_url && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setImageError(null);
+                  setForm({ ...form, image_url: '' });
+                }}
+              >
+                Remove image
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-surface-400">
+            Choose an image from your device; it is resized before saving.
+          </p>
+          {imageError && (
+            <p role="alert" className="text-xs text-error">
+              {imageError}
+            </p>
+          )}
         </div>
         {form.image_url.trim() && (
           <div className="col-span-2 flex items-center gap-3 rounded-md border border-surface-100 p-3">
@@ -159,7 +219,9 @@ export function ProductModal({
               alt="Product preview"
               className="h-16 w-16 rounded object-cover"
             />
-            <p className="text-xs text-surface-400">Image preview</p>
+            <p className="text-xs text-surface-400">
+              {imageFromDevice ? 'Selected from device' : 'Image preview'}
+            </p>
           </div>
         )}
         <div className="col-span-2">

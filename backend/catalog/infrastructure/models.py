@@ -30,7 +30,7 @@ class ProductModel(models.Model):
     buying_cost = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     selling_price = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     minimum_stock_level = models.PositiveIntegerField(default=0)
-    image_url = models.URLField(null=True, blank=True)
+    image_url = models.TextField(null=True, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
