@@ -1,16 +1,19 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { OfflineBanner } from './OfflineBanner';
 
 export function AppLayout() {
+  const [navOpen, setNavOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-surface-50">
-      <Sidebar />
-      <div className="ml-60">
-        <Header />
+      <Sidebar isOpen={navOpen} onClose={() => setNavOpen(false)} />
+      <div className="lg:ml-60">
+        <Header onOpenNav={() => setNavOpen(true)} />
         <OfflineBanner />
-        <main className="p-6">
+        <main className="p-4 sm:p-6">
           <Outlet />
         </main>
       </div>

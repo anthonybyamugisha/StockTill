@@ -67,32 +67,66 @@ function getIcon(icon: string) {
   return icons[icon] || null;
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user } = useAuth();
 
   if (!user) return null;
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-60 border-r border-surface-100 bg-white shadow-nav">
-      <div className="flex h-16 items-center gap-2 border-b border-surface-100 px-6">
-        <img src={logo} alt="StockTill logo" className="h-8 w-8 object-contain" />
-        <span className="text-lg font-semibold text-surface-600">StockTill</span>
-      </div>
-      <nav className="mt-4 px-3 space-y-1">
-        {navigation
-          .filter((item) => item.roles.includes(user.role))
-          .map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `nav-item ${isActive ? 'nav-item-active' : ''}`}
-              end={item.path === '/'}
-            >
-              {getIcon(item.icon)}
-              {item.name}
-            </NavLink>
-          ))}
-      </nav>
-    </aside>
+    <>
+      {isOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={onClose}
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+        />
+      )}
+      <aside
+        className={`fixed left-0 top-0 z-40 flex h-screen w-64 max-w-[85vw] flex-col border-r border-surface-100 bg-white shadow-nav transition-transform duration-200 ease-out lg:w-60 lg:max-w-none lg:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        id="main-navigation"
+        aria-label="Main navigation"
+      >
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-surface-100 px-4 sm:px-6">
+          <div className="flex items-center gap-2">
+            <img src={logo} alt="StockTill logo" className="h-8 w-8 object-contain" />
+            <span className="text-lg font-semibold text-surface-600">StockTill</span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close navigation"
+            className="rounded p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600 lg:hidden"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <nav className="mt-4 flex-1 space-y-1 overflow-y-auto px-3 pb-6">
+          {navigation
+            .filter((item) => item.roles.includes(user.role))
+            .map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={onClose}
+                className={({ isActive }) => `nav-item ${isActive ? 'nav-item-active' : ''}`}
+                end={item.path === '/'}
+              >
+                {getIcon(item.icon)}
+                {item.name}
+              </NavLink>
+            ))}
+        </nav>
+      </aside>
+    </>
   );
 }
