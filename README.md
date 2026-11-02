@@ -338,18 +338,28 @@ Only sales are queued offline; refunds, adjustments and admin actions require a 
 The SPA runs on both a counter till and a phone, so the layout adapts instead of relying on pinch-zoom:
 
 - **Breakpoints.** The default Tailwind scale is used: `sm` 640px, `md` 768px, `lg` 1024px and
-  `xl` 1280px. From `lg` the shell shows the fixed sidebar; below `lg` it becomes a slide-in drawer
-  with an overlay, closed by the header button, the overlay, the close button or any navigation.
+  `xl` 1280px. Tablets are handled at `md` (portrait, 768px) and `lg` (iPad landscape, 1024px).
+- **Navigation.** From `md` the sidebar is always visible as an icon-only rail with tooltips and
+  accessible labels, and the content is offset by 80px. From `lg` it grows to the full 240px
+  labelled sidebar. Below `md` it stays a slide-in drawer with an overlay, closed by the header
+  button, the overlay, the close button or any navigation.
 - **Shared primitives.** `.page`, `.stat-grid`, `.stat-grid-3`, `.filter-grid` and `.scroll-strip`
   in `frontend/src/index.css` define the responsive rhythm (spacing, KPI tiling, filter columns and
   swipeable tab strips) used by every screen.
-- **Tables.** Above 640px data tables scroll horizontally; below it each row becomes a labelled
-  card, using the column header as the label, so sales, stock, purchasing and audit history remain
-  readable without zooming.
-- **POS.** The catalogue and cart stack on phones. Cart quantity controls move to their own row,
-  tap targets are at least 36px, and the charge action stays full width.
-- **Dialogs and forms.** Modals present as bottom sheets with stacked, full-width actions on phones;
-  multi-column forms collapse to a single column, and purchase-order/invoice line editors reflow.
+- **Tables.** Above 640px data tables scroll horizontally; from `sm` to `lg` cells use denser
+  padding and the actions column is pinned to the right edge so row actions stay reachable while
+  the table scrolls. Below 640px each row becomes a labelled card, using the column header as the
+  label, so sales, stock, purchasing and audit history remain readable without zooming.
+- **Dashboard and filters.** KPI tiles go four-up at `md`, filter bars run three columns at `md`,
+  the payment-mix chart sits beside its legend at `md`, and report tab strips wrap instead of
+  scrolling.
+- **POS.** The catalogue and cart stack on phones. From `md` they sit side by side as a 3/5 product
+  pane and a 2/5 cart pane, with the cart staying in view as the catalogue scrolls. Cart quantity
+  controls move to their own row, tap targets are at least 36px, and the charge action stays full
+  width; the single-row cart controls only appear at `xl`.
+- **Dialogs and forms.** Modals present as bottom sheets with stacked, full-width actions on phones,
+  and medium/large dialogs widen once more at `md`. Multi-column forms collapse to a single column
+  on phones and expand to two columns on tablets, and purchase-order/invoice line editors reflow.
 - **Header and feedback.** The header hides the date and user details on narrow screens, keeps the
   password and sign-out actions as icons, and toasts stay inside the viewport.
 
