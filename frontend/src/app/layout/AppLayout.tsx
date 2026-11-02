@@ -10,7 +10,7 @@ export function AppLayout() {
   return (
     <div className="min-h-screen bg-surface-50">
       <Sidebar isOpen={navOpen} onClose={() => setNavOpen(false)} />
-      <div className="lg:ml-60">
+      <div className="md:ml-20 lg:ml-60">
         <Header onOpenNav={() => setNavOpen(true)} />
         <OfflineBanner />
         <main className="p-4 sm:p-6">

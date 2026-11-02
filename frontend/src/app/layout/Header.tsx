@@ -37,7 +37,7 @@ export function Header({ onOpenNav }: HeaderProps) {
           onClick={onOpenNav}
           aria-label="Open navigation"
           aria-controls="main-navigation"
-          className="-ml-1 rounded p-2 text-surface-500 hover:bg-surface-100 hover:text-surface-600 lg:hidden"
+          className="-ml-1 rounded p-2 text-surface-500 hover:bg-surface-100 hover:text-surface-600 md:hidden"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -49,7 +49,7 @@ export function Header({ onOpenNav }: HeaderProps) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-        <div className="hidden text-right sm:block">
+        <div className="hidden text-right lg:block">
           <p className="max-w-[12rem] truncate text-sm font-medium text-surface-600">
             {user.first_name} {user.last_name}
           </p>

@@ -63,6 +63,17 @@ function getIcon(icon: string) {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
       </svg>
     ),
+    settings: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+    audit: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
   };
   return icons[icon] || null;
 }
@@ -84,33 +95,35 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           type="button"
           aria-label="Close navigation"
           onClick={onClose}
-          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
         />
       )}
       <aside
-        className={`fixed left-0 top-0 z-40 flex h-screen w-64 max-w-[85vw] flex-col border-r border-surface-100 bg-white shadow-nav transition-transform duration-200 ease-out lg:w-60 lg:max-w-none lg:translate-x-0 ${
+        className={`fixed left-0 top-0 z-40 flex h-screen w-64 max-w-[85vw] flex-col border-r border-surface-100 bg-white shadow-nav transition-transform duration-200 ease-out md:w-20 md:max-w-none md:translate-x-0 lg:w-60 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         id="main-navigation"
         aria-label="Main navigation"
       >
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-surface-100 px-4 sm:px-6">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-surface-100 px-4 sm:px-6 md:justify-center md:px-2 lg:justify-between lg:px-6">
           <div className="flex items-center gap-2">
             <img src={logo} alt="StockTill logo" className="h-8 w-8 object-contain" />
-            <span className="text-lg font-semibold text-surface-600">StockTill</span>
+            <span className="hidden text-lg font-semibold text-surface-600 lg:inline">
+              StockTill
+            </span>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close navigation"
-            className="rounded p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600 lg:hidden"
+            className="rounded p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600 md:hidden"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <nav className="mt-4 flex-1 space-y-1 overflow-y-auto px-3 pb-6">
+        <nav className="mt-4 flex-1 space-y-1 overflow-y-auto px-3 pb-6 md:px-2 lg:px-3">
           {navigation
             .filter((item) => item.roles.includes(user.role))
             .map((item) => (
@@ -118,11 +131,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 key={item.path}
                 to={item.path}
                 onClick={onClose}
-                className={({ isActive }) => `nav-item ${isActive ? 'nav-item-active' : ''}`}
+                title={item.name}
+                aria-label={item.name}
+                className={({ isActive }) =>
+                  `nav-item md:justify-center md:px-0 lg:justify-start lg:px-4 ${
+                    isActive ? 'nav-item-active' : ''
+                  }`
+                }
                 end={item.path === '/'}
               >
                 {getIcon(item.icon)}
-                {item.name}
+                <span className="hidden lg:inline">{item.name}</span>
               </NavLink>
             ))}
         </nav>
