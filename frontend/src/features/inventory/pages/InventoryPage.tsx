@@ -231,7 +231,7 @@ export function InventoryPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by product or SKU..."
-              className="input w-full sm:w-80"
+              className="input w-full sm:w-80 md:w-96"
             />
           </div>
           <Table
@@ -244,7 +244,7 @@ export function InventoryPage() {
       ) : (
         <Card>
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="w-full sm:w-80">
+            <div className="w-full sm:w-80 md:w-96">
               <label className="label">Product</label>
               <select
                 className="input"

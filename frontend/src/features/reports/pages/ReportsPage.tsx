@@ -60,8 +60,12 @@ export function ReportsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
           {activeExport?.dated && (
             <>
-              <Input label="From" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-              <Input label="To" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              <div className="sm:w-44">
+                <Input label="From" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              </div>
+              <div className="sm:w-44">
+                <Input label="To" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              </div>
             </>
           )}
           <Button
