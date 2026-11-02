@@ -64,12 +64,15 @@ export function UsersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-surface-400">
           {users?.length ?? 0} users
           {pendingCount > 0 && ` · ${pendingCount} awaiting first login`}
         </p>
-        <Button onClick={() => { setEditingUser(null); setShowModal(true); }}>
+        <Button
+          className="w-full sm:w-auto"
+          onClick={() => { setEditingUser(null); setShowModal(true); }}
+        >
           Add User
         </Button>
       </div>
@@ -206,7 +209,7 @@ function UserModal({ user, onClose, onSubmit, isLoading }: {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="First Name" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required />
           <Input label="Last Name" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} required />
         </div>

@@ -42,10 +42,10 @@ export function SettingsPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <Card title="Business Settings">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="Business Name" value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })} />
           <Input label="Currency" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} />
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <Input label="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </div>
           <Input label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
@@ -61,7 +61,7 @@ export function SettingsPage() {
       </Card>
 
       <Card title="POS Settings">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="Cashier Discount Limit (%)" type="number" value={form.cashier_discount_limit} onChange={(e) => setForm({ ...form, cashier_discount_limit: e.target.value })} />
           <Input label="Tax Rate (%)" type="number" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} />
         </div>

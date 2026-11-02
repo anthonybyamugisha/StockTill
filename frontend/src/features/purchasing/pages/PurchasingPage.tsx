@@ -51,7 +51,7 @@ export function PurchasingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           variant={tab === 'suppliers' ? 'primary' : 'secondary'}
           onClick={() => setTab('suppliers')}
@@ -486,8 +486,8 @@ function PurchaseOrderForm({
             </Button>
           </div>
           {lines.map((line, index) => (
-            <div key={index} className="grid grid-cols-12 gap-2">
-              <div className="col-span-5">
+            <div key={index} className="grid grid-cols-1 gap-2 rounded-md border border-surface-100 p-3 sm:grid-cols-12 sm:border-0 sm:p-0">
+              <div className="sm:col-span-5">
                 <Select
                   value={line.product_id}
                   onChange={(e) => {
@@ -503,28 +503,35 @@ function PurchaseOrderForm({
                   ]}
                 />
               </div>
-              <div className="col-span-3">
-                <Input
-                  type="number"
-                  min="1"
-                  value={line.quantity}
-                  onChange={(e) =>
-                    updateLine(index, { quantity: parseInt(e.target.value || '0', 10) })
-                  }
-                />
+              <div className="grid grid-cols-2 gap-2 sm:col-span-6 sm:grid-cols-6">
+                <div className="sm:col-span-3">
+                  <Input
+                    aria-label="Quantity"
+                    placeholder="Qty"
+                    type="number"
+                    min="1"
+                    value={line.quantity}
+                    onChange={(e) =>
+                      updateLine(index, { quantity: parseInt(e.target.value || '0', 10) })
+                    }
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <Input
+                    aria-label="Unit cost"
+                    placeholder="Unit cost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={line.unit_cost}
+                    onChange={(e) => updateLine(index, { unit_cost: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="col-span-3">
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={line.unit_cost}
-                  onChange={(e) => updateLine(index, { unit_cost: e.target.value })}
-                />
-              </div>
-              <div className="col-span-1 flex items-center">
+              <div className="flex items-center justify-end sm:col-span-1 sm:justify-center">
                 <button
                   type="button"
+                  aria-label="Remove line"
                   className="text-surface-400 hover:text-error"
                   onClick={() => setLines((current) => current.filter((_, i) => i !== index))}
                 >
@@ -846,7 +853,7 @@ function InvoiceForm({
             {error}
           </p>
         )}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Select
             label="Supplier"
             value={supplierId}
@@ -874,7 +881,7 @@ function InvoiceForm({
             value={dueDate}
             onChange={(event) => setDueDate(event.target.value)}
           />
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <Select
               label="Purchase Order (optional)"
               value={purchaseOrderId}
@@ -907,8 +914,8 @@ function InvoiceForm({
             </Button>
           </div>
           {lines.map((line, index) => (
-            <div key={index} className="grid grid-cols-12 gap-2">
-              <div className="col-span-3">
+            <div key={index} className="grid grid-cols-1 gap-2 rounded-md border border-surface-100 p-3 sm:grid-cols-12 sm:border-0 sm:p-0">
+              <div className="sm:col-span-4">
                 <Select
                   value={line.product_id}
                   onChange={(event) => {
@@ -929,15 +936,17 @@ function InvoiceForm({
                   ]}
                 />
               </div>
-              <div className="col-span-4">
+              <div className="sm:col-span-3">
                 <Input
                   placeholder="Description"
                   value={line.description}
                   onChange={(event) => updateLine(index, { description: event.target.value })}
                 />
               </div>
-              <div className="col-span-2">
+              <div className="grid grid-cols-2 gap-2 sm:col-span-4">
                 <Input
+                  aria-label="Quantity"
+                  placeholder="Qty"
                   type="number"
                   min="1"
                   value={line.quantity}
@@ -945,9 +954,9 @@ function InvoiceForm({
                     updateLine(index, { quantity: parseInt(event.target.value) || 0 })
                   }
                 />
-              </div>
-              <div className="col-span-2">
                 <Input
+                  aria-label="Unit cost"
+                  placeholder="Unit cost"
                   type="number"
                   min="0"
                   step="0.01"
@@ -955,16 +964,17 @@ function InvoiceForm({
                   onChange={(event) => updateLine(index, { unit_cost: event.target.value })}
                 />
               </div>
-              <div className="col-span-1 flex items-center">
+              <div className="flex items-center justify-end sm:col-span-1 sm:justify-center">
                 <button
                   type="button"
+                  aria-label="Remove line"
                   className="text-surface-400 hover:text-error"
                   onClick={() =>
                     setLines((current) => current.filter((_, i) => i !== index))
                   }
                   disabled={lines.length === 1}
                 >
-                  �
+                  ×
                 </button>
               </div>
             </div>

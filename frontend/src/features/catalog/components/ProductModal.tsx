@@ -93,9 +93,9 @@ export function ProductModal({
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {error && (
-          <p role="alert" className="col-span-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="sm:col-span-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
         )}
@@ -163,7 +163,7 @@ export function ProductModal({
             onChange={(e) => setForm({ ...form, opening_stock: parseInt(e.target.value) || 0 })}
           />
         )}
-        <div className="col-span-2 space-y-3">
+        <div className="sm:col-span-2 space-y-3">
           <Input
             label="Image URL"
             type="url"
@@ -213,7 +213,7 @@ export function ProductModal({
           )}
         </div>
         {form.image_url.trim() && (
-          <div className="col-span-2 flex items-center gap-3 rounded-md border border-surface-100 p-3">
+          <div className="sm:col-span-2 flex items-center gap-3 rounded-md border border-surface-100 p-3">
             <img
               src={form.image_url}
               alt="Product preview"
@@ -224,7 +224,7 @@ export function ProductModal({
             </p>
           </div>
         )}
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <Input
             label="Description"
             value={form.description}
