@@ -85,8 +85,8 @@ export function POSPage() {
   }, [scanFeedback]);
 
   return (
-    <div className="grid grid-cols-3 gap-6">
-      <div className="col-span-2 space-y-4">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:gap-6">
+      <div className="space-y-4 xl:col-span-2">
         <Card>
           {scanFeedback && (
             <div
@@ -152,7 +152,7 @@ export function POSPage() {
               {currentDiscountPercent.toFixed(2)}%.
             </p>
           )}
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <button onClick={clearCart} disabled={items.length === 0} className="btn-secondary flex-1">
               Clear
             </button>

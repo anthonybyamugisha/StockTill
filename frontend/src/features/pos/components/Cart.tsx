@@ -120,7 +120,7 @@ export function Cart({
         );
         return (
           <div key={item.product_id} className="border-b border-surface-100 py-2">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-surface-700">{item.name}</p>
                 <p className="text-sm text-surface-400">UGX {item.unit_price}</p>
@@ -133,32 +133,34 @@ export function Cart({
                   </p>
                 )}
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onUpdateQuantity(item.product_id, item.quantity - 1)}
-                  aria-label={`Decrease quantity of ${item.name}`}
-                  className="h-8 w-8 rounded-md bg-surface-100 text-surface-600 hover:bg-surface-200"
-                >
-                  -
-                </button>
-                <QuantityInput
-                  value={item.quantity}
-                  name={item.name}
-                  onChange={(quantity) => onUpdateQuantity(item.product_id, quantity)}
-                />
-                <button
-                  type="button"
-                  onClick={() => onUpdateQuantity(item.product_id, item.quantity + 1)}
-                  aria-label={`Increase quantity of ${item.name}`}
-                  className="h-8 w-8 rounded-md bg-surface-100 text-surface-600 hover:bg-surface-200"
-                >
-                  +
-                </button>
+              <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onUpdateQuantity(item.product_id, item.quantity - 1)}
+                    aria-label={`Decrease quantity of ${item.name}`}
+                    className="h-9 w-9 rounded-md bg-surface-100 text-surface-600 hover:bg-surface-200"
+                  >
+                    -
+                  </button>
+                  <QuantityInput
+                    value={item.quantity}
+                    name={item.name}
+                    onChange={(quantity) => onUpdateQuantity(item.product_id, quantity)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onUpdateQuantity(item.product_id, item.quantity + 1)}
+                    aria-label={`Increase quantity of ${item.name}`}
+                    className="h-9 w-9 rounded-md bg-surface-100 text-surface-600 hover:bg-surface-200"
+                  >
+                    +
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => onRemove(item.product_id)}
-                  className="ml-1 text-sm text-red-600"
+                  className="text-sm text-red-600"
                 >
                   Remove
                 </button>
