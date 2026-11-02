@@ -179,26 +179,26 @@ export function InventoryPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
+    <div className="page">
+      <div className="stat-grid-3">
         <div className="card">
           <p className="text-sm text-surface-400">Stock Value at Cost</p>
-          <p className="mt-1 text-2xl font-semibold text-surface-700">
+          <p className="mt-1 text-xl font-semibold text-surface-700 sm:text-2xl">
             {formatMoney(valuation?.total ?? '0')}
           </p>
         </div>
         <div className="card">
           <p className="text-sm text-surface-400">Low Stock Alerts</p>
-          <p className="mt-1 text-2xl font-semibold text-warning">{lowStock?.length ?? 0}</p>
+          <p className="mt-1 text-xl font-semibold text-warning sm:text-2xl">{lowStock?.length ?? 0}</p>
         </div>
         <div className="card">
           <p className="text-sm text-surface-400">Out of Stock</p>
-          <p className="mt-1 text-2xl font-semibold text-error">{outOfStock?.length ?? 0}</p>
+          <p className="mt-1 text-xl font-semibold text-error sm:text-2xl">{outOfStock?.length ?? 0}</p>
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="inline-flex rounded-md border border-surface-200 bg-white p-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="inline-flex self-start rounded-md border border-surface-200 bg-white p-1">
           <button
             onClick={() => setTab('overview')}
             className={`rounded px-4 py-1.5 text-sm font-medium ${
@@ -231,7 +231,7 @@ export function InventoryPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by product or SKU..."
-              className="input w-80"
+              className="input w-full sm:w-80"
             />
           </div>
           <Table
@@ -243,8 +243,8 @@ export function InventoryPage() {
         </Card>
       ) : (
         <Card>
-          <div className="mb-4 flex items-end gap-3">
-            <div className="w-80">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="w-full sm:w-80">
               <label className="label">Product</label>
               <select
                 className="input"

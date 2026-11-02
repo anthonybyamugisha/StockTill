@@ -40,12 +40,12 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
+      <div className="scroll-strip">
         {reports.map((r) => (
           <button
             key={r.id}
             onClick={() => setActiveReport(r.id)}
-            className={`rounded px-4 py-2 text-sm font-medium transition-colors ${
+            className={`shrink-0 whitespace-nowrap rounded px-4 py-2 text-sm font-medium transition-colors ${
               activeReport === r.id
                 ? 'bg-primary-500 text-white'
                 : 'bg-white text-surface-600 border border-surface-200 hover:bg-surface-50'
@@ -57,7 +57,7 @@ export function ReportsPage() {
       </div>
 
       <Card>
-        <div className="flex items-end gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
           {activeExport?.dated && (
             <>
               <Input label="From" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
@@ -68,6 +68,7 @@ export function ReportsPage() {
             variant="secondary"
             onClick={() => exportMutation.mutate()}
             disabled={exportMutation.isPending}
+            className="w-full sm:w-auto"
           >
             {exportMutation.isPending ? 'Exporting...' : 'Export CSV'}
           </Button>
@@ -109,22 +110,22 @@ function SalesReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string })
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-4">
+      <div className="stat-grid">
         <div className="card">
           <p className="text-sm text-surface-400">Total Sales</p>
-          <p className="mt-1 text-2xl font-semibold text-surface-600">{summary?.total_sales ?? 0}</p>
+          <p className="mt-1 text-xl font-semibold text-surface-600 sm:text-2xl">{summary?.total_sales ?? 0}</p>
         </div>
         <div className="card">
           <p className="text-sm text-surface-400">Revenue</p>
-          <p className="mt-1 text-2xl font-semibold text-surface-600">UGX {summary?.total_revenue ?? 0}</p>
+          <p className="mt-1 text-xl font-semibold text-surface-600 sm:text-2xl">UGX {summary?.total_revenue ?? 0}</p>
         </div>
         <div className="card">
           <p className="text-sm text-surface-400">Cost</p>
-          <p className="mt-1 text-2xl font-semibold text-surface-600">UGX {summary?.total_cost ?? 0}</p>
+          <p className="mt-1 text-xl font-semibold text-surface-600 sm:text-2xl">UGX {summary?.total_cost ?? 0}</p>
         </div>
         <div className="card">
           <p className="text-sm text-surface-400">Gross Profit</p>
-          <p className="mt-1 text-2xl font-semibold text-success">{summary?.gross_profit ?? 0}</p>
+          <p className="mt-1 text-xl font-semibold text-success sm:text-2xl">{summary?.gross_profit ?? 0}</p>
         </div>
       </div>
       <Card title="Daily Sales Trend" subtitle={`${formatShortDate(dateFrom)} to ${formatShortDate(dateTo)}`}>
@@ -185,28 +186,28 @@ function InventoryReport() {
   });
 
   return (
-    <div className="grid grid-cols-4 gap-4">
+    <div className="stat-grid">
       <div className="card">
         <p className="text-sm text-surface-400">Total Products</p>
-        <p className="mt-1 text-2xl font-semibold text-surface-600">
+        <p className="mt-1 text-xl font-semibold text-surface-600 sm:text-2xl">
           {inventory?.total_products ?? 0}
         </p>
       </div>
       <div className="card">
         <p className="text-sm text-surface-400">Inventory Value</p>
-        <p className="mt-1 text-2xl font-semibold text-surface-600">
+        <p className="mt-1 text-xl font-semibold text-surface-600 sm:text-2xl">
           UGX {inventory?.total_value ?? '0.00'}
         </p>
       </div>
       <div className="card">
         <p className="text-sm text-surface-400">Low Stock</p>
-        <p className="mt-1 text-2xl font-semibold text-warning">
+        <p className="mt-1 text-xl font-semibold text-warning sm:text-2xl">
           {inventory?.low_stock_count ?? 0}
         </p>
       </div>
       <div className="card">
         <p className="text-sm text-surface-400">Out of Stock</p>
-        <p className="mt-1 text-2xl font-semibold text-error">
+        <p className="mt-1 text-xl font-semibold text-error sm:text-2xl">
           {inventory?.out_of_stock_count ?? 0}
         </p>
       </div>
@@ -308,14 +309,14 @@ function PaymentMethodsReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: 
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
         <div className="card">
           <p className="text-sm text-surface-400">Paid Sales</p>
-          <p className="mt-1 text-2xl font-semibold text-surface-600">{totalSales}</p>
+          <p className="mt-1 text-xl font-semibold text-surface-600 sm:text-2xl">{totalSales}</p>
         </div>
         <div className="card">
           <p className="text-sm text-surface-400">Collected</p>
-          <p className="mt-1 text-2xl font-semibold text-surface-600">{formatMoney(total)}</p>
+          <p className="mt-1 text-xl font-semibold text-surface-600 sm:text-2xl">{formatMoney(total)}</p>
         </div>
       </div>
 
