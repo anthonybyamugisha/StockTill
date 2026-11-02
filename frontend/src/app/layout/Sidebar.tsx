@@ -99,7 +99,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         />
       )}
       <aside
-        className={`fixed left-0 top-0 z-40 flex h-screen w-64 max-w-[85vw] flex-col border-r border-surface-100 bg-white shadow-nav transition-transform duration-200 ease-out md:w-20 md:max-w-none md:translate-x-0 lg:w-60 ${
+        className={`fixed left-0 top-0 z-40 flex h-screen w-64 max-w-[85vw] flex-col border-r border-surface-100 bg-white shadow-nav transition-transform duration-200 ease-out md:w-60 md:max-w-none md:translate-x-0 lg:w-60 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         id="main-navigation"
@@ -108,7 +108,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-surface-100 px-4 sm:px-6 md:justify-center md:px-2 lg:justify-between lg:px-6">
           <div className="flex items-center gap-2">
             <img src={logo} alt="StockTill logo" className="h-8 w-8 object-contain" />
-            <span className="text-lg font-semibold text-surface-600 md:hidden lg:inline">
+            <span className="text-lg font-semibold text-surface-600">
               StockTill
             </span>
           </div>
@@ -123,7 +123,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </svg>
           </button>
         </div>
-        <nav className="mt-4 flex-1 space-y-1 overflow-y-auto px-3 pb-6 md:px-2 lg:px-3">
+        <nav className="mt-4 flex-1 space-y-1 overflow-y-auto px-3 pb-6 lg:px-3">
           {navigation
             .filter((item) => item.roles.includes(user.role))
             .map((item) => (
@@ -134,14 +134,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 title={item.name}
                 aria-label={item.name}
                 className={({ isActive }) =>
-                  `nav-item md:justify-center md:px-0 lg:justify-start lg:px-4 ${
+                  `nav-item lg:justify-start lg:px-4 ${
                     isActive ? 'nav-item-active' : ''
                   }`
                 }
                 end={item.path === '/'}
               >
                 {getIcon(item.icon)}
-                <span className="md:hidden lg:inline">{item.name}</span>
+                <span>{item.name}</span>
               </NavLink>
             ))}
         </nav>
