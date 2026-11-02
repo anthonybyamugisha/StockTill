@@ -76,15 +76,15 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-4">
+    <div className="page">
+      <div className="stat-grid">
         <StatCard title={`${dayName}'s Sales`} value={`${stats?.today_sales ?? 0}`} subtitle={`UGX ${stats?.today_revenue ?? 0}`} />
         <StatCard title="This Week" value={`${stats?.week_sales ?? 0}`} subtitle={`UGX ${stats?.week_revenue ?? 0}`} />
         <StatCard title={`${monthName}'s Sales`} value={`${stats?.month_sales ?? 0}`} subtitle={`UGX ${stats?.month_revenue ?? 0}`} />
         <StatCard title="Gross Profit" value={`UGX ${stats?.gross_profit ?? 0}`} subtitle={`Avg: UGX ${stats?.average_sale_value ?? 0}`} />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="stat-grid-3">
         <StatCard title="Total Products" value={`${stats?.total_products ?? 0}`} />
         <StatCard title="Low Stock" value={`${stats?.low_stock_count ?? 0}`} warning />
         <StatCard title="Out of Stock" value={`${stats?.out_of_stock_count ?? 0}`} error />
@@ -118,8 +118,8 @@ export function DashboardPage() {
             No paid sales in this period.
           </p>
         ) : (
-          <div className="flex items-center gap-8">
-            <div className="h-[220px] w-1/2">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-8">
+            <div className="h-[200px] w-full max-w-xs self-center lg:h-[220px] lg:w-1/2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -176,7 +176,7 @@ export function DashboardPage() {
           <BarChart data={(topProducts || []).slice(0, 5)} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
             <XAxis type="number" tick={{ fontSize: 12 }} />
-            <YAxis type="category" dataKey="product_name" tick={{ fontSize: 12 }} width={170} interval={0} />
+            <YAxis type="category" dataKey="product_name" tick={{ fontSize: 12 }} width={120} interval={0} tickFormatter={(value: string) => (value.length > 16 ? `${value.slice(0, 15)}…` : value)} />
             <Tooltip formatter={(value: number) => [value, 'Units sold']} />
             <Bar dataKey="quantity_sold" fill="#0078d4">
               <LabelList dataKey="quantity_sold" position="right" fontSize={12} fill="#4b5563" />
@@ -192,7 +192,7 @@ function StatCard({ title, value, subtitle, warning, error }: { title: string; v
   return (
     <div className="card">
       <p className="text-sm text-surface-400">{title}</p>
-      <p className={`mt-1 text-2xl font-semibold ${error ? 'text-error' : warning ? 'text-warning' : 'text-surface-600'}`}>
+      <p className={`mt-1 text-xl font-semibold sm:text-2xl ${error ? 'text-error' : warning ? 'text-warning' : 'text-surface-600'}`}>
         {value}
       </p>
       {subtitle && <p className="mt-1 text-xs text-surface-400">{subtitle}</p>}
