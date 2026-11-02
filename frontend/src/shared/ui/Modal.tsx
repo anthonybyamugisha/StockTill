@@ -11,8 +11,8 @@ interface ModalProps {
 
 const sizeClasses = {
   sm: 'sm:max-w-md',
-  md: 'sm:max-w-lg',
-  lg: 'sm:max-w-2xl',
+  md: 'sm:max-w-lg md:max-w-xl',
+  lg: 'sm:max-w-2xl md:max-w-3xl',
 };
 
 export function Modal({ isOpen, onClose, title, children, footer, size = 'md' }: ModalProps) {

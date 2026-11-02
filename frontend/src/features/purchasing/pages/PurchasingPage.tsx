@@ -214,13 +214,15 @@ function SupplierForm({
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          required
-        />
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="md:col-span-2">
+          <Input
+            label="Name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+          />
+        </div>
         <Input
           label="Contact Name"
           value={form.contact_name}
@@ -237,11 +239,13 @@ function SupplierForm({
           value={form.phone}
           onChange={(e) => setForm({ ...form, phone: e.target.value })}
         />
-        <Input
-          label="Address"
-          value={form.address}
-          onChange={(e) => setForm({ ...form, address: e.target.value })}
-        />
+        <div className="md:col-span-2">
+          <Input
+            label="Address"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+          />
+        </div>
       </form>
     </Modal>
   );
@@ -459,18 +463,20 @@ function PurchaseOrderForm({
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Select
-          label="Supplier"
-          value={supplierId}
-          onChange={(e) => setSupplierId(e.target.value)}
-          options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
-        />
-        <Input
-          label="Reference"
-          value={reference}
-          onChange={(e) => setReference(e.target.value)}
-          placeholder="e.g. PO-001"
-        />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Select
+            label="Supplier"
+            value={supplierId}
+            onChange={(e) => setSupplierId(e.target.value)}
+            options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+          />
+          <Input
+            label="Reference"
+            value={reference}
+            onChange={(e) => setReference(e.target.value)}
+            placeholder="e.g. PO-001"
+          />
+        </div>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
