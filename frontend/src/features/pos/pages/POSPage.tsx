@@ -165,6 +165,9 @@ export function POSPage() {
             onUpdateDiscount={updateDiscount}
             onClearDiscount={clearDiscount}
             onRemove={removeItem}
+            maxQuantityByProduct={Object.fromEntries(
+              items.map((item) => [item.product_id, getAvailable(item.product_id)]),
+            )}
           />
           <div className="mt-4 space-y-1 border-t border-surface-100 pt-4">
             <div className="flex justify-between text-sm text-surface-500">

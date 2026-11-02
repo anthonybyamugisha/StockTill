@@ -6,10 +6,11 @@ import { discountAmount } from '../lib/discounts';
 interface QuantityInputProps {
   value: number;
   name: string;
+  max: number;
   onChange: (quantity: number) => void;
 }
 
-function QuantityInput({ value, name, onChange }: QuantityInputProps) {
+function QuantityInput({ value, name, max, onChange }: QuantityInputProps) {
   const [draft, setDraft] = useState(String(value));
 
   useEffect(() => {
@@ -21,13 +22,23 @@ function QuantityInput({ value, name, onChange }: QuantityInputProps) {
       type="number"
       inputMode="numeric"
       min={1}
+      max={max}
       step={1}
       value={draft}
       onChange={(event) => {
         const raw = event.target.value;
-        setDraft(raw);
         const parsed = parseQuantityInput(raw);
-        if (parsed !== null) onChange(parsed);
+        if (parsed === null) {
+          setDraft(raw);
+          return;
+        }
+        if (parsed > max) {
+          setDraft(String(max));
+          onChange(max);
+          return;
+        }
+        setDraft(raw);
+        onChange(parsed);
       }}
       onBlur={() => setDraft(String(value))}
       aria-label={`Quantity of ${name}`}
@@ -42,6 +53,7 @@ interface CartProps {
   onUpdateDiscount: (productId: string, type: CartDiscountType, value: string) => void;
   onClearDiscount: (productId: string) => void;
   onRemove: (productId: string) => void;
+  maxQuantityByProduct: Record<string, number>;
 }
 
 interface DiscountEditorProps {
@@ -146,6 +158,7 @@ export function Cart({
                   <QuantityInput
                     value={item.quantity}
                     name={item.name}
+                    max={maxQuantityByProduct[item.product_id] ?? 0}
                     onChange={(quantity) => onUpdateQuantity(item.product_id, quantity)}
                   />
                   <button
