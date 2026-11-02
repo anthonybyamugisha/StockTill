@@ -11,6 +11,7 @@ import { lookupProductByBarcode, ProductLookup } from '../api/pos';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { getSettings } from '../../settings/api/settings';
 import { discountPercent } from '../lib/discounts';
+import { useStockByProduct } from '../hooks/useStock';
 
 interface ScanFeedback {
   type: 'success' | 'error';
@@ -31,10 +32,11 @@ export function POSPage() {
     total,
   } = useCart();
   const { user } = useAuth();
+  const { getAvailable } = useStockByProduct();
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
   const [showPayment, setShowPayment] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
-  const [scanFeedback, setScanFeedback] = useState<ScanFeedback | null>(null);
+  const [feedback, setFeedback] = useState<ScanFeedback | null>(null);
 
   const cashierLimit =
     user?.role === 'cashier' && settings
@@ -48,6 +50,15 @@ export function POSPage() {
     async (barcode: string) => {
       try {
         const product = await lookupProductByBarcode(barcode);
+        const available = getAvailable(product.id);
+        const inCart = items.find((item) => item.product_id === product.id)?.quantity ?? 0;
+        if (inCart + 1 > available) {
+          setFeedback({
+            type: 'error',
+            message: `Only ${available} item(s) of ${product.name} in stock`,
+          });
+          return;
+        }
         addItem({
           product_id: product.id,
           name: product.name,
@@ -55,18 +66,27 @@ export function POSPage() {
           unit_price: product.selling_price,
           unit_cost: product.buying_cost,
         });
-        setScanFeedback({ type: 'success', message: `Added ${product.name}` });
+        setFeedback({ type: 'success', message: `Added ${product.name}` });
       } catch {
-        setScanFeedback({ type: 'error', message: `No product found for barcode ${barcode}` });
+        setFeedback({ type: 'error', message: `No product found for barcode ${barcode}` });
       }
     },
-    [addItem],
+    [addItem, getAvailable, items],
   );
 
   useBarcodeScanner({ onScan: handleScan });
 
   const addProduct = useCallback(
     (product: ProductLookup) => {
+      const available = getAvailable(product.id);
+      const inCart = items.find((item) => item.product_id === product.id)?.quantity ?? 0;
+      if (inCart + 1 > available) {
+        setFeedback({
+          type: 'error',
+          message: `Only ${available} item(s) of ${product.name} in stock`,
+        });
+        return;
+      }
       addItem({
         product_id: product.id,
         name: product.name,
@@ -75,29 +95,45 @@ export function POSPage() {
         unit_cost: product.buying_cost,
       });
     },
-    [addItem],
+    [addItem, getAvailable, items],
+  );
+
+  const handleUpdateQuantity = useCallback(
+    (productId: string, quantity: number) => {
+      const available = getAvailable(productId);
+      const item = items.find((entry) => entry.product_id === productId);
+      if (quantity > available) {
+        setFeedback({
+          type: 'error',
+          message: `Quantity for ${item?.name ?? 'product'} cannot be greater than the available stock`,
+        });
+        return;
+      }
+      updateQuantity(productId, quantity);
+    },
+    [getAvailable, items, updateQuantity],
   );
 
   useEffect(() => {
-    if (!scanFeedback) return;
-    const id = setTimeout(() => setScanFeedback(null), 3000);
+    if (!feedback) return;
+    const id = setTimeout(() => setFeedback(null), 3000);
     return () => clearTimeout(id);
-  }, [scanFeedback]);
+  }, [feedback]);
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-5 md:items-start lg:gap-6">
       <div className="space-y-4 md:col-span-3">
         <Card>
-          {scanFeedback && (
+          {feedback && (
             <div
               className={`mb-3 rounded px-3 py-2 text-sm ${
-                scanFeedback.type === 'success'
+                feedback.type === 'success'
                   ? 'bg-green-50 text-green-700'
                   : 'bg-red-50 text-red-700'
               }`}
               role="status"
             >
-              {scanFeedback.message}
+              {feedback.message}
             </div>
           )}
           <ProductGrid onSelect={addProduct} onScan={handleScan} />
@@ -125,7 +161,7 @@ export function POSPage() {
         >
           <Cart
             items={items}
-            onUpdateQuantity={updateQuantity}
+            onUpdateQuantity={handleUpdateQuantity}
             onUpdateDiscount={updateDiscount}
             onClearDiscount={clearDiscount}
             onRemove={removeItem}

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listAvailableProducts, listCategories, ProductLookup } from '../api/pos';
 import { filterProducts } from '../lib/productFilter';
-import { listStockItems } from '../../inventory/api/inventory';
+import { useStockByProduct } from '../hooks/useStock';
 import { formatMoney } from '../../../shared/utils/money';
 
 interface ProductGridProps {
@@ -26,15 +26,7 @@ export function ProductGrid({ onSelect, onScan }: ProductGridProps) {
     queryFn: listCategories,
   });
 
-  const { data: stockItems = [] } = useQuery({
-    queryKey: ['stockItems'],
-    queryFn: listStockItems,
-  });
-
-  const stockById = useMemo(
-    () => new Map(stockItems.map((item) => [item.product_id, item.available_quantity])),
-    [stockItems],
-  );
+  const { stockById } = useStockByProduct();
 
   const visible = useMemo(
     () => filterProducts(products, query, categoryId),

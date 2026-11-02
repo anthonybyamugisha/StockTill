@@ -105,6 +105,24 @@ def test_sale_without_stock_returns_400(api_client, cashier_user, product):
 
 
 @pytest.mark.django_db
+def test_sale_quantity_greater_than_available_stock_returns_400(
+    api_client, cashier_user, stocked_product
+):
+    api_client.force_authenticate(user=cashier_user)
+
+    payload = _payload(stocked_product.id)
+    payload["lines"][0]["quantity"] = 11
+
+    response = api_client.post("/api/v1/sales/", payload, format="json")
+
+    assert response.status_code == 400
+    assert "greater than" in response.data["detail"]
+
+    stock = StockItemModel.objects.get(product_id=stocked_product.id)
+    assert stock.quantity_on_hand == 10
+
+
+@pytest.mark.django_db
 def test_sale_line_uses_the_catalog_product_name_when_omitted(
     api_client, cashier_user, stocked_product
 ):

@@ -5,7 +5,7 @@ from sales.application.payments import build_payments
 from sales.application.ports import CatalogPort, IdempotencyPort, InventoryPort, ReceiptNumberPort
 from sales.application.sale_lines import build_sale_lines
 from sales.domain.entities import Sale, SaleStatus
-from sales.domain.errors import InvalidPaymentError
+from sales.domain.errors import InsufficientStockError, InvalidPaymentError
 from sales.domain.repository import SaleRepository
 from shared.application.audit import AuditPort, NullAuditPort
 from shared.domain.clock import Clock
@@ -41,6 +41,14 @@ class CompleteSaleUseCase:
             assert_discount_within_limit(command.lines, command.max_discount_percent)
 
         lines = build_sale_lines(command.lines, self._catalog)
+
+        for line in lines:
+            available = self._inventory.get_available_stock(line.product_id)
+            if line.quantity > available:
+                raise InsufficientStockError(
+                    f"Quantity cannot be greater than the available items in stock for product "
+                    f"{line.product_id}. Available: {available}, Requested: {line.quantity}"
+                )
 
         sale = Sale(
             receipt_number=self._receipt_port.generate(),

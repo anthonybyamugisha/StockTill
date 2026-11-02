@@ -1,5 +1,6 @@
 from shared.domain.errors import (  # noqa: F401
     DiscountLimitExceededError,
+    InsufficientStockError,
     InvalidPaymentError,
     RefundExceedsRefundableError,
     SaleAlreadyVoidedError,
@@ -7,6 +8,7 @@ from shared.domain.errors import (  # noqa: F401
 
 __all__ = [
     "DiscountLimitExceededError",
+    "InsufficientStockError",
     "InvalidPaymentError",
     "RefundExceedsRefundableError",
     "SaleAlreadyVoidedError",
