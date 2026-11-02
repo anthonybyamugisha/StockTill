@@ -120,7 +120,7 @@ export function Cart({
         );
         return (
           <div key={item.product_id} className="border-b border-surface-100 py-2">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between xl:gap-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-surface-700">{item.name}</p>
                 <p className="text-sm text-surface-400">UGX {item.unit_price}</p>
@@ -133,7 +133,7 @@ export function Cart({
                   </p>
                 )}
               </div>
-              <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
+              <div className="flex shrink-0 items-center justify-between gap-2 xl:justify-end">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"

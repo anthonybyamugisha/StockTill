@@ -85,8 +85,8 @@ export function POSPage() {
   }, [scanFeedback]);
 
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:gap-6">
-      <div className="space-y-4 xl:col-span-2">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-5 md:items-start lg:gap-6">
+      <div className="space-y-4 md:col-span-3">
         <Card>
           {scanFeedback && (
             <div
@@ -114,7 +114,7 @@ export function POSPage() {
         </Card>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 md:col-span-2 md:sticky md:top-20">
         <Card
           title="Current Sale"
           subtitle={
@@ -152,7 +152,7 @@ export function POSPage() {
               {currentDiscountPercent.toFixed(2)}%.
             </p>
           )}
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-4 flex flex-col gap-2 xl:flex-row">
             <button onClick={clearCart} disabled={items.length === 0} className="btn-secondary flex-1">
               Clear
             </button>
