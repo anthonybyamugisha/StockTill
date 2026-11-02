@@ -12,12 +12,12 @@ export function Card({ children, title, subtitle, actions, className = '' }: Car
   return (
     <div className={`card ${className}`}>
       {(title || actions) && (
-        <div className="mb-4 flex items-center justify-between">
-          <div>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             {title && <h3 className="text-lg font-semibold text-surface-600">{title}</h3>}
             {subtitle && <p className="text-sm text-surface-400 mt-0.5">{subtitle}</p>}
           </div>
-          {actions && <div className="flex items-center gap-2">{actions}</div>}
+          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </div>
       )}
       {children}

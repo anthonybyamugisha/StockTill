@@ -101,7 +101,7 @@ export function SalesPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
           <Input label="From Date" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           <Input label="To Date" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           <Select
@@ -131,7 +131,7 @@ export function SalesPage() {
             placeholder="e.g. 000012"
           />
         </div>
-        <div className="mt-4 flex items-center justify-between gap-3">
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-surface-400">
             {user?.role === 'cashier'
               ? 'Showing sales completed by you.'
@@ -139,6 +139,7 @@ export function SalesPage() {
           </p>
           <Button
             variant="secondary"
+            className="w-full sm:w-auto"
             onClick={() => {
               setDateFrom('');
               setDateTo('');
@@ -215,12 +216,12 @@ function SaleDetailModal({ sale, onClose, onRefund, onVoid, isLoading }: {
       title={`Sale ${sale.receipt_number}`}
       size="lg"
     >
-      <div className="mb-4 flex gap-2 border-b border-surface-100">
+      <div className="mb-4 flex gap-2 overflow-x-auto border-b border-surface-100">
         {(['details', 'refund', 'void'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`shrink-0 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === tab
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-surface-400 hover:text-surface-600'
@@ -233,7 +234,7 @@ function SaleDetailModal({ sale, onClose, onRefund, onVoid, isLoading }: {
 
       {activeTab === 'details' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 sm:gap-4">
             <div><span className="text-surface-400">Receipt:</span> {sale.receipt_number}</div>
             <div><span className="text-surface-400">Date:</span> {formatDateTime(sale.created_at)}</div>
             <div><span className="text-surface-400">Status:</span> <Badge variant="success">{sale.status}</Badge></div>

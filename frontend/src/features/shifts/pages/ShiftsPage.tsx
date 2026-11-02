@@ -76,7 +76,7 @@ export function ShiftsPage() {
 
   if (!shift) {
     return (
-      <div className="space-y-6">
+      <div className="page">
         {closedReport && <ClosedReport report={closedReport} />}
         <Card title="Open a shift" subtitle="Count your opening float to start trading">
           <OpenShiftForm
@@ -92,25 +92,25 @@ export function ShiftsPage() {
   const expected = report?.expected_cash ?? shift.opening_float;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-4">
+    <div className="page">
+      <div className="stat-grid">
         <div className="card">
           <p className="text-sm text-surface-400">Opening Float</p>
-          <p className="mt-1 text-2xl font-semibold text-surface-600">{money(shift.opening_float)}</p>
+          <p className="mt-1 text-xl font-semibold text-surface-600 sm:text-2xl">{money(shift.opening_float)}</p>
         </div>
         <div className="card">
           <p className="text-sm text-surface-400">Cash Sales</p>
-          <p className="mt-1 text-2xl font-semibold text-success">{money(report?.cash_sales ?? null)}</p>
+          <p className="mt-1 text-xl font-semibold text-success sm:text-2xl">{money(report?.cash_sales ?? null)}</p>
         </div>
         <div className="card">
           <p className="text-sm text-surface-400">Cash Movements</p>
-          <p className="mt-1 text-2xl font-semibold text-surface-600">
+          <p className="mt-1 text-xl font-semibold text-surface-600 sm:text-2xl">
             {money(report?.net_cash_movements ?? null)}
           </p>
         </div>
         <div className="card">
           <p className="text-sm text-surface-400">Expected in Drawer</p>
-          <p className="mt-1 text-2xl font-semibold text-primary-600">{money(expected)}</p>
+          <p className="mt-1 text-xl font-semibold text-primary-600 sm:text-2xl">{money(expected)}</p>
         </div>
       </div>
 

@@ -147,8 +147,8 @@ export function CategoryManager() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="relative w-80">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:w-80">
           <input
             type="text"
             value={search}
@@ -171,6 +171,7 @@ export function CategoryManager() {
           </svg>
         </div>
         <Button
+          className="w-full sm:w-auto"
           onClick={() => {
             setEditing(null);
             saveMutation.reset();

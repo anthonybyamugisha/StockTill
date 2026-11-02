@@ -223,8 +223,8 @@ export function CatalogPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="inline-flex rounded-md border border-surface-200 bg-white p-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="inline-flex self-start rounded-md border border-surface-200 bg-white p-1">
           <button
             onClick={() => setTab('products')}
             className={`rounded px-4 py-1.5 text-sm font-medium ${
@@ -248,6 +248,7 @@ export function CatalogPage() {
         </div>
         {tab === 'products' && (
           <Button
+            className="w-full sm:w-auto"
             onClick={() => {
               setEditingProduct(null);
               setShowModal(true);
@@ -262,8 +263,8 @@ export function CatalogPage() {
         <CategoryManager />
       ) : (
         <>
-          <div className="flex items-center gap-3">
-            <div className="relative w-80">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-80">
               <input
                 type="text"
                 value={search}
@@ -288,7 +289,7 @@ export function CatalogPage() {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="input w-56"
+              className="input w-full sm:w-56"
             >
               <option value="">All categories</option>
               {categories
