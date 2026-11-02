@@ -207,6 +207,35 @@
   }
 }
 
+/* Tablet tables: denser cells and pinned row actions. */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .table-header,
+  .table-cell {
+    padding: 0.625rem 0.75rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .table-actions {
+    position: sticky;
+    right: 0;
+    background-color: #fff;
+    box-shadow: -6px 0 6px -6px rgba(0, 0, 0, 0.18);
+  }
+
+  .table-responsive thead .table-actions {
+    z-index: 2;
+  }
+
+  .table-responsive tbody .table-actions {
+    z-index: 1;
+  }
+
+  .table-responsive tbody tr:hover .table-actions {
+    background-color: #f3f2f1;
+  }
+}
+
 @page {
   margin: 8mm;
 }

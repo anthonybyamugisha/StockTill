@@ -17,12 +17,15 @@ interface TableProps<T> {
 
 export function Table<T>({ columns, data, keyExtractor, emptyMessage = 'No data available', onRowClick }: TableProps<T>) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto overscroll-x-contain">
       <table className="table-responsive w-full">
         <thead className="border-b border-surface-100">
           <tr>
             {columns.map((col) => (
-              <th key={col.key} className={`table-header ${col.className || ''}`}>
+              <th
+                key={col.key}
+                className={`table-header ${col.header === '' ? 'table-actions' : ''} ${col.className || ''}`}
+              >
                 {col.header}
               </th>
             ))}
@@ -46,7 +49,7 @@ export function Table<T>({ columns, data, keyExtractor, emptyMessage = 'No data 
                   <td
                     key={col.key}
                     data-label={col.header || undefined}
-                    className={`table-cell ${col.className || ''}`}
+                    className={`table-cell ${col.header === '' ? 'table-actions' : ''} ${col.className || ''}`}
                   >
                     {col.render(item)}
                   </td>
