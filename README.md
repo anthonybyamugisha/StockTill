@@ -333,6 +333,26 @@ StockTill is an installable PWA and keeps trading offline:
 
 Only sales are queued offline; refunds, adjustments and admin actions require a live connection.
 
+### Responsive layout
+
+The SPA runs on both a counter till and a phone, so the layout adapts instead of relying on pinch-zoom:
+
+- **Breakpoints.** The default Tailwind scale is used: `sm` 640px, `md` 768px, `lg` 1024px and
+  `xl` 1280px. From `lg` the shell shows the fixed sidebar; below `lg` it becomes a slide-in drawer
+  with an overlay, closed by the header button, the overlay, the close button or any navigation.
+- **Shared primitives.** `.page`, `.stat-grid`, `.stat-grid-3`, `.filter-grid` and `.scroll-strip`
+  in `frontend/src/index.css` define the responsive rhythm (spacing, KPI tiling, filter columns and
+  swipeable tab strips) used by every screen.
+- **Tables.** Above 640px data tables scroll horizontally; below it each row becomes a labelled
+  card, using the column header as the label, so sales, stock, purchasing and audit history remain
+  readable without zooming.
+- **POS.** The catalogue and cart stack on phones. Cart quantity controls move to their own row,
+  tap targets are at least 36px, and the charge action stays full width.
+- **Dialogs and forms.** Modals present as bottom sheets with stacked, full-width actions on phones;
+  multi-column forms collapse to a single column, and purchase-order/invoice line editors reflow.
+- **Header and feedback.** The header hides the date and user details on narrow screens, keeps the
+  password and sign-out actions as icons, and toasts stay inside the viewport.
+
 ### Shifts and cash-drawer reconciliation
 
 A shift is a cashier's session at a till. You count the opening float when it opens; the system
