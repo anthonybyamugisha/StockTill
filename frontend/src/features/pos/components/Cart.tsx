@@ -117,6 +117,7 @@ export function Cart({
   onUpdateDiscount,
   onClearDiscount,
   onRemove,
+  maxQuantityByProduct,
 }: CartProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
