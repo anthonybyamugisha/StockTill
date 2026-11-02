@@ -118,8 +118,8 @@ export function DashboardPage() {
             No paid sales in this period.
           </p>
         ) : (
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-8">
-            <div className="h-[200px] w-full max-w-xs self-center lg:h-[220px] lg:w-1/2">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:gap-8">
+            <div className="h-[200px] w-full max-w-xs self-center md:h-[220px] md:w-1/2 md:max-w-none">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
