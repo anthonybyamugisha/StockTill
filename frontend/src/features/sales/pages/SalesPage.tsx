@@ -101,7 +101,7 @@ export function SalesPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="filter-grid xl:grid-cols-6">
           <Input label="From Date" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           <Input label="To Date" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           <Select
@@ -216,7 +216,7 @@ function SaleDetailModal({ sale, onClose, onRefund, onVoid, isLoading }: {
       title={`Sale ${sale.receipt_number}`}
       size="lg"
     >
-      <div className="mb-4 flex gap-2 overflow-x-auto border-b border-surface-100">
+      <div className="mb-4 flex gap-2 overflow-x-auto border-b border-surface-100 md:overflow-visible">
         {(['details', 'refund', 'void'] as const).map((tab) => (
           <button
             key={tab}
