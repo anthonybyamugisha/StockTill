@@ -60,23 +60,23 @@
     @apply space-y-4 sm:space-y-6;
   }
 
-  /* KPI tiles: two-up on phones, four-up from large screens. */
+  /* KPI tiles: two-up on phones, four-up from tablet widths. */
   .stat-grid {
-    @apply grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4;
+    @apply grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4;
   }
 
   .stat-grid-3 {
     @apply grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4;
   }
 
-  /* Filter bars: one column on phones, growing with the viewport. */
+  /* Filter bars: one column on phones, three-up on tablets. */
   .filter-grid {
-    @apply grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3;
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3;
   }
 
-  /* Horizontal tab strips that can be swiped on small screens. */
+  /* Horizontal tab strips that can be swiped on phones and wrap on tablets. */
   .scroll-strip {
-    @apply flex gap-2 overflow-x-auto pb-1;
+    @apply flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0;
     scrollbar-width: none;
   }
 
