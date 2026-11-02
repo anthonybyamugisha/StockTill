@@ -108,7 +108,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-surface-100 px-4 sm:px-6 md:justify-center md:px-2 lg:justify-between lg:px-6">
           <div className="flex items-center gap-2">
             <img src={logo} alt="StockTill logo" className="h-8 w-8 object-contain" />
-            <span className="hidden text-lg font-semibold text-surface-600 lg:inline">
+            <span className="text-lg font-semibold text-surface-600 md:hidden lg:inline">
               StockTill
             </span>
           </div>
@@ -141,7 +141,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 end={item.path === '/'}
               >
                 {getIcon(item.icon)}
-                <span className="hidden lg:inline">{item.name}</span>
+                <span className="md:hidden lg:inline">{item.name}</span>
               </NavLink>
             ))}
         </nav>
