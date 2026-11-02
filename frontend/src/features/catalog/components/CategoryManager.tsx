@@ -148,7 +148,7 @@ export function CategoryManager() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:w-80">
+        <div className="relative w-full sm:w-80 md:w-96">
           <input
             type="text"
             value={search}

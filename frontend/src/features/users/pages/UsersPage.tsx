@@ -98,8 +98,8 @@ export function UsersPage() {
                   {u.must_change_password && <Badge variant="warning">First login pending</Badge>}
                 </div>
               )},
-              { key: 'last_login', header: 'Last Login', render: (u: User) => u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never' },
-              { key: 'actions', header: '', render: (u: User) => (
+              { key: 'last_login', header: 'Last Login', className: 'whitespace-nowrap', render: (u: User) => u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never' },
+              { key: 'actions', header: '', className: 'whitespace-nowrap', render: (u: User) => (
                 <div className="flex gap-1">
                   <button onClick={() => { setEditingUser(u); setShowModal(true); }} className="btn-ghost btn-sm">Edit</button>
                   {u.is_active && u.role !== 'admin' && (

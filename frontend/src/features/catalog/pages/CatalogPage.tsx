@@ -157,11 +157,12 @@ export function CatalogPage() {
       render: (p: Product) =>
         (p.category_id && categoryNames.get(p.category_id)) ?? '—',
     },
-    { key: 'price', header: 'Price', render: (p: Product) => `UGX ${p.selling_price}` },
-    { key: 'cost', header: 'Cost', render: (p: Product) => `UGX ${p.buying_cost}` },
+    { key: 'price', header: 'Price', className: 'whitespace-nowrap', render: (p: Product) => `UGX ${p.selling_price}` },
+    { key: 'cost', header: 'Cost', className: 'whitespace-nowrap', render: (p: Product) => `UGX ${p.buying_cost}` },
     {
       key: 'margin',
       header: 'Margin',
+      className: 'whitespace-nowrap',
       render: (p: Product) => {
         const margin = parseFloat(p.selling_price) - parseFloat(p.buying_cost);
         return `UGX ${margin.toFixed(2)}`;
@@ -264,7 +265,7 @@ export function CatalogPage() {
       ) : (
         <>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative w-full sm:w-80">
+            <div className="relative w-full sm:w-80 md:w-96">
               <input
                 type="text"
                 value={search}
@@ -289,7 +290,7 @@ export function CatalogPage() {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="input w-full sm:w-56"
+              className="input w-full sm:w-56 md:w-64"
             >
               <option value="">All categories</option>
               {categories
