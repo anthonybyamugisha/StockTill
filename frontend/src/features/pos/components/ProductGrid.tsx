@@ -107,13 +107,24 @@ export function ProductGrid({ onSelect, onScan }: ProductGridProps) {
                   type="button"
                   onClick={() => onSelect(product)}
                   disabled={outOfStock}
-                  className="flex min-h-[5.5rem] flex-col justify-between rounded-lg border border-surface-200 bg-white p-3 text-left transition-colors hover:border-primary-500 hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-surface-200 disabled:hover:bg-white"
+                  className="flex min-h-[5.5rem] flex-col gap-2 rounded-lg border border-surface-200 bg-white p-3 text-left transition-colors hover:border-primary-500 hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-surface-200 disabled:hover:bg-white"
                   title={product.name}
                 >
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="h-16 w-full rounded-md border border-surface-100 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-full items-center justify-center rounded-md border border-surface-100 bg-surface-50 text-xs text-surface-400">
+                      No image
+                    </div>
+                  )}
                   <span className="line-clamp-2 text-sm font-medium text-surface-600">
                     {product.name}
                   </span>
-                  <span className="mt-2 flex items-baseline justify-between gap-2">
+                  <span className="flex items-baseline justify-between gap-2">
                     <span className="text-sm font-semibold text-primary-600">
                       {formatMoney(product.selling_price)}
                     </span>
