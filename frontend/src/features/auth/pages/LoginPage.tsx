@@ -30,13 +30,13 @@ export function LoginPage() {
   });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-50">
+    <div className="flex min-h-screen items-center justify-center bg-surface-50 px-4 py-8 sm:px-6">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <img
             src={logo}
             alt="StockTill logo"
-            className="mx-auto mb-4 h-16 w-16 object-contain"
+            className="mx-auto mb-4 h-14 w-14 object-contain sm:h-16 sm:w-16"
           />
           <h1 className="text-2xl font-semibold text-surface-600">StockTill</h1>
           <p className="mt-1 text-sm text-surface-400">Sign in to your account</p>

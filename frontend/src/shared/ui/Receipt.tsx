@@ -21,7 +21,7 @@ export function Receipt({ sale, business = {}, cashierName }: ReceiptProps) {
   return (
     <div
       id="receipt-print-area"
-      className="mx-auto w-full max-w-xs bg-white p-4 font-mono text-xs text-black"
+      className="mx-auto w-full max-w-xs break-words bg-white p-4 font-mono text-xs text-black"
     >
       <div className="text-center">
         <p className="text-sm font-bold">{business.business_name || 'StockTill'}</p>

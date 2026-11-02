@@ -106,9 +106,9 @@ export function PaymentStatusPanel({
             <span>{mobileNetworkLabel(intent.network)}</span>
           </div>
         )}
-        <div className="flex justify-between">
-          <span className="text-surface-400">Request</span>
-          <span className="font-mono text-xs">{intent.tx_ref}</span>
+        <div className="flex justify-between gap-3">
+          <span className="shrink-0 text-surface-400">Request</span>
+          <span className="truncate font-mono text-xs">{intent.tx_ref}</span>
         </div>
       </div>
 
