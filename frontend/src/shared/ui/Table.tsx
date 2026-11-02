@@ -18,7 +18,7 @@ interface TableProps<T> {
 export function Table<T>({ columns, data, keyExtractor, emptyMessage = 'No data available', onRowClick }: TableProps<T>) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full">
+      <table className="table-responsive w-full">
         <thead className="border-b border-surface-100">
           <tr>
             {columns.map((col) => (
@@ -43,7 +43,11 @@ export function Table<T>({ columns, data, keyExtractor, emptyMessage = 'No data 
                 className={onRowClick ? 'cursor-pointer hover:bg-surface-50 transition-colors' : ''}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={`table-cell ${col.className || ''}`}>
+                  <td
+                    key={col.key}
+                    data-label={col.header || undefined}
+                    className={`table-cell ${col.className || ''}`}
+                  >
                     {col.render(item)}
                   </td>
                 ))}
